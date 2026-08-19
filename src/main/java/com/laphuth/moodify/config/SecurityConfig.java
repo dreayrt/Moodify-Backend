@@ -1,9 +1,11 @@
 package com.laphuth.moodify.config;
 
+import com.laphuth.moodify.entities.enums.userRole;
 import com.laphuth.moodify.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -13,6 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -41,6 +44,9 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .cors(Customizer.withDefaults())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+            )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
@@ -50,6 +56,10 @@ public class SecurityConfig {
                     "/api/auth/refresh",
                     "/api/auth/logout"
                 ).permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/dashboard/me").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/dashboard/user").hasRole(userRole.USER.name())
+                .requestMatchers(HttpMethod.GET, "/api/dashboard/artist").hasRole(userRole.ARTIST.name())
+                .requestMatchers(HttpMethod.GET, "/api/dashboard/admin").hasRole(userRole.ADMIN.name())
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

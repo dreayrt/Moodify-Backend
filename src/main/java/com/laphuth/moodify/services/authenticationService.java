@@ -61,7 +61,7 @@ public class authenticationService {
         newUser.setEmail(normalizedEmail);
         newUser.setUsername(normalizedUsername);
         newUser.setPassword(passwordEncoder.encode(request.password()));
-        newUser.setRole(request.role() == null ? userRole.USER : request.role());
+        newUser.setRole(resolveRegistrationRole(request.role()));
         newUser.setStatus(userStatus.ACTIVE);
 
         user savedUser = userRepository.save(newUser);
@@ -169,6 +169,21 @@ public class authenticationService {
                 "Confirm password does not match"
             );
         }
+    }
+
+    private userRole resolveRegistrationRole(userRole requestedRole) {
+        if (requestedRole == null) {
+            return userRole.USER;
+        }
+
+        if (requestedRole == userRole.ADMIN) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "You are not allowed to self-register as ADMIN"
+            );
+        }
+
+        return requestedRole;
     }
 
     private String normalizeEmail(String email) {

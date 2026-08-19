@@ -3,6 +3,7 @@ package com.laphuth.moodify.security;
 import com.laphuth.moodify.entities.enums.userStatus;
 import com.laphuth.moodify.entities.user;
 import com.laphuth.moodify.repositories.userRepository;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,7 +45,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authorizationHeader.substring(7);
-        String username = jwtService.extractUsername(token);
+        String username;
+
+        try {
+            username = jwtService.extractUsername(token);
+        } catch (JwtException | IllegalArgumentException exception) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (username == null || SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
