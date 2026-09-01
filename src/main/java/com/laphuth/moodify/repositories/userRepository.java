@@ -1,16 +1,16 @@
 package com.laphuth.moodify.repositories;
 
-import com.laphuth.moodify.entities.user;
+import com.laphuth.moodify.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface userRepository extends JpaRepository<user, Long> {
-    Optional<user> findByEmail(String email);
+public interface userRepository extends JpaRepository<User, Long> {
+    Optional<User> findByEmail(String email);
 
-    Optional<user> findByUsername(String username);
+    Optional<User> findByUsername(String username);
 
-    Optional<user> findByEmailOrUsername(String email, String username);
+    Optional<User> findByEmailOrUsername(String email, String username);
 
     boolean existsByEmail(String email);
 

@@ -1,6 +1,6 @@
 package com.laphuth.moodify.security;
 
-import com.laphuth.moodify.entities.user;
+import com.laphuth.moodify.entities.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -31,11 +31,11 @@ public class JwtService {
         this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
-    public String generateAccessToken(user currentUser) {
+    public String generateAccessToken(User currentUser) {
         return generateToken(currentUser, TokenType.ACCESS, accessTokenExpiration);
     }
 
-    public String generateRefreshToken(user currentUser) {
+    public String generateRefreshToken(User currentUser) {
         return generateToken(currentUser, TokenType.REFRESH, refreshTokenExpiration);
     }
 
@@ -59,7 +59,7 @@ public class JwtService {
         return refreshTokenExpiration / 1000;
     }
 
-    private String generateToken(user currentUser, TokenType tokenType, long expirationMillis) {
+    private String generateToken(User currentUser, TokenType tokenType, long expirationMillis) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", currentUser.getId());
         claims.put("role", currentUser.getRole().name());

@@ -1,4 +1,4 @@
-package com.laphuth.moodify.controller;
+package com.laphuth.moodify.api;
 
 import com.laphuth.moodify.dto.auth.UserProfileResponse;
 import com.laphuth.moodify.dto.dashboard.DashboardAccessResponse;
@@ -12,10 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/dashboard")
-public class DashboardController {
+public class Dashboard {
     private final authenticationService authenticationService;
 
-    public DashboardController(authenticationService authenticationService) {
+    public Dashboard(authenticationService authenticationService) {
         this.authenticationService = authenticationService;
     }
 

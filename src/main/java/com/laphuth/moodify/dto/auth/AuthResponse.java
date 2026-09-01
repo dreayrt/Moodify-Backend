@@ -1,6 +1,6 @@
 package com.laphuth.moodify.dto.auth;
 
-import com.laphuth.moodify.entities.user;
+import com.laphuth.moodify.entities.User;
 
 public record AuthResponse(
     String accessToken,
@@ -16,7 +16,7 @@ public record AuthResponse(
     String status
 ) {
     public static AuthResponse fromUser(
-        user currentUser,
+        User currentUser,
         String accessToken,
         String refreshToken,
         long expiresIn,

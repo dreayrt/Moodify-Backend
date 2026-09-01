@@ -7,13 +7,14 @@ import com.laphuth.moodify.dto.auth.RegisterRequest;
 import com.laphuth.moodify.dto.auth.UserProfileResponse;
 import com.laphuth.moodify.entities.enums.userRole;
 import com.laphuth.moodify.entities.enums.userStatus;
-import com.laphuth.moodify.entities.user;
+import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.repositories.userRepository;
 import com.laphuth.moodify.security.JwtService;
 import com.laphuth.moodify.security.TokenType;
 import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -55,7 +56,7 @@ public class authenticationService {
             );
         }
 
-        user newUser = new user();
+        User newUser = new User();
         newUser.setFullname(request.fullName().trim());
         newUser.setPhone(request.phone().trim());
         newUser.setEmail(normalizedEmail);
@@ -64,12 +65,12 @@ public class authenticationService {
         newUser.setRole(resolveRegistrationRole(request.role()));
         newUser.setStatus(userStatus.ACTIVE);
 
-        user savedUser = userRepository.save(newUser);
+        User savedUser = userRepository.save(newUser);
         return buildAuthResponse(savedUser);
     }
 
     public AuthResponse login(LoginRequest request) {
-        user currentUser = userRepository
+        User currentUser = userRepository
             .findByEmailOrUsername(
                 normalizeIdentifier(request.identifier()),
                 normalizeIdentifier(request.identifier())
@@ -109,7 +110,7 @@ public class authenticationService {
             );
         }
 
-        user currentUser = userRepository
+        User currentUser = userRepository
             .findByUsername(username)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.UNAUTHORIZED,
@@ -133,22 +134,21 @@ public class authenticationService {
         return buildAuthResponse(currentUser);
     }
 
-    public void logout(RefreshTokenRequest request) {
-        request.refreshToken();
+    public void logout() {
+        SecurityContextHolder.clearContext();
     }
 
     public UserProfileResponse getCurrentUserProfile(String principal) {
-        user currentUser = userRepository
+        User currentUser = userRepository
             .findByEmailOrUsername(principal, principal)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "User not found"
             ));
-
         return UserProfileResponse.fromUser(currentUser);
     }
 
-    private AuthResponse buildAuthResponse(user currentUser) {
+    private AuthResponse buildAuthResponse(User currentUser) {
         String accessToken = jwtService.generateAccessToken(currentUser);
         String refreshTokenValue = jwtService.generateRefreshToken(currentUser);
 
@@ -197,4 +197,5 @@ public class authenticationService {
     private String normalizeIdentifier(String identifier) {
         return identifier.trim().toLowerCase(Locale.ROOT);
     }
+
 }

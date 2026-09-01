@@ -1,6 +1,6 @@
 package com.laphuth.moodify.dto.auth;
 
-import com.laphuth.moodify.entities.user;
+import com.laphuth.moodify.entities.User;
 
 import java.time.LocalDateTime;
 
@@ -16,7 +16,7 @@ public record UserProfileResponse(
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {
-    public static UserProfileResponse fromUser(user currentUser) {
+    public static UserProfileResponse fromUser(User currentUser) {
         return new UserProfileResponse(
             currentUser.getId(),
             currentUser.getFullname(),

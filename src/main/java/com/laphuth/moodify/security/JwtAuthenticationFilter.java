@@ -1,7 +1,7 @@
 package com.laphuth.moodify.security;
 
 import com.laphuth.moodify.entities.enums.userStatus;
-import com.laphuth.moodify.entities.user;
+import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.repositories.userRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -59,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        user currentUser = userRepository.findByUsername(username).orElse(null);
+        User currentUser = userRepository.findByUsername(username).orElse(null);
 
         if (
             currentUser != null &&
