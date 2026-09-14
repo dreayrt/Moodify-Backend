@@ -1,12 +1,18 @@
 package com.laphuth.moodify.api;
 
-import com.laphuth.moodify.dto.auth.*;
+import com.laphuth.moodify.dto.auth.AuthResponse;
+import com.laphuth.moodify.dto.auth.LoginRequest;
+import com.laphuth.moodify.dto.auth.RefreshTokenRequest;
+import com.laphuth.moodify.dto.auth.RegisterRequest;
+import com.laphuth.moodify.dto.auth.UserProfileResponse;
 import com.laphuth.moodify.services.authenticationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -50,6 +56,16 @@ public class AuthenticationApi {
     public ResponseEntity<UserProfileResponse> me(Authentication authentication) {
         return ResponseEntity.ok(
                 authenticationService.getCurrentUserProfile(authentication.getName())
+        );
+    }
+
+    @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserProfileResponse> uploadAvatar(
+            Authentication authentication,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(
+                authenticationService.updateAvatar(authentication.getName(), file)
         );
     }
 }

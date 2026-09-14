@@ -12,6 +12,7 @@ public record UserProfileResponse(
     String username,
     String avatarUrl,
     String role,
+    String artistSpotifyId,
     String status,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
@@ -25,6 +26,7 @@ public record UserProfileResponse(
             currentUser.getUsername(),
             currentUser.getAvatarUrl(),
             currentUser.getRole().name(),
+            currentUser.getArtistSpotifyId(),
             currentUser.getStatus().name(),
             currentUser.getCreatedAt(),
             currentUser.getUpdatedAt()

@@ -32,6 +32,12 @@ public class Album {
     @Field("total_tracks")
     private Integer totalTracks;
 
+    @Field("downloaded_tracks_count")
+    private Integer downloadedTracksCount;
+
+    @Field("is_fully_downloaded")
+    private Boolean fullyDownloaded;
+
     @Field("track_ids")
     private List<String> trackIds;
 
@@ -57,6 +63,10 @@ public class Album {
     public void setReleaseDate(String releaseDate) { this.releaseDate = releaseDate; }
     public Integer getTotalTracks() { return totalTracks; }
     public void setTotalTracks(Integer totalTracks) { this.totalTracks = totalTracks; }
+    public Integer getDownloadedTracksCount() { return downloadedTracksCount; }
+    public void setDownloadedTracksCount(Integer downloadedTracksCount) { this.downloadedTracksCount = downloadedTracksCount; }
+    public Boolean getFullyDownloaded() { return fullyDownloaded; }
+    public void setFullyDownloaded(Boolean fullyDownloaded) { this.fullyDownloaded = fullyDownloaded; }
     public List<String> getTrackIds() { return trackIds; }
     public void setTrackIds(List<String> trackIds) { this.trackIds = trackIds; }
     public Instant getCreatedAt() { return createdAt; }

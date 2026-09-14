@@ -56,10 +56,12 @@ public class SecurityConfig {
                     "/api/auth/refresh",
                     "/api/auth/logout"
                 ).permitAll()
+                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/me").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/user").hasRole(userRole.USER.name())
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/artist").hasRole(userRole.ARTIST.name())
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/admin").hasRole(userRole.ADMIN.name())
+                .requestMatchers(HttpMethod.GET, "/api/artists/me/**", "/api/artist/me/**").hasRole(userRole.ARTIST.name())
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

@@ -1,5 +1,5 @@
 package com.laphuth.moodify.entities.enums;
 
 public enum userRole {
-    USER,ARTIST,ADMIN;
+    USER, ARTIST, MODERATOR, ADMIN;
 }

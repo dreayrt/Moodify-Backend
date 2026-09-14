@@ -32,6 +32,32 @@ public record RegisterRequest(
     @NotBlank(message = "Confirm password is required")
     String confirmPassword,
 
-    userRole role
+    userRole role,
+    String avatarUrl,
+    String stageName
 ) {
+    public RegisterRequest(
+        String fullName,
+        String phone,
+        String email,
+        String username,
+        String password,
+        String confirmPassword,
+        userRole role
+    ) {
+        this(fullName, phone, email, username, password, confirmPassword, role, null, null);
+    }
+
+    public RegisterRequest(
+        String fullName,
+        String phone,
+        String email,
+        String username,
+        String password,
+        String confirmPassword,
+        userRole role,
+        String avatarUrl
+    ) {
+        this(fullName, phone, email, username, password, confirmPassword, role, avatarUrl, null);
+    }
 }

@@ -45,9 +45,18 @@ public class User {
     @Column(name = "role")
     private userRole role;
 
+    @Column(name = "staff_code")
+    private String staffCode;
+
+    @Column(name = "artist_spotify_id")
+    private String artistSpotifyId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private userStatus status;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -137,12 +146,36 @@ public class User {
         this.role = role;
     }
 
+    public String getStaffCode() {
+        return staffCode;
+    }
+
+    public void setStaffCode(String staffCode) {
+        this.staffCode = staffCode;
+    }
+
+    public String getArtistSpotifyId() {
+        return artistSpotifyId;
+    }
+
+    public void setArtistSpotifyId(String artistSpotifyId) {
+        this.artistSpotifyId = artistSpotifyId;
+    }
+
     public userStatus getStatus() {
         return status;
     }
 
     public void setStatus(userStatus status) {
         this.status = status;
+    }
+
+    public LocalDateTime getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(LocalDateTime lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
     }
 
     public LocalDateTime getCreatedAt() {

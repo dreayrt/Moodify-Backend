@@ -40,6 +40,7 @@ class DashboardAccessResponseTest {
             username,
             null,
             role,
+            null,
             "ACTIVE",
             LocalDateTime.now(),
             LocalDateTime.now()

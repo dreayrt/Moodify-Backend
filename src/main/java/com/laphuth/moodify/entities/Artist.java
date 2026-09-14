@@ -1,6 +1,6 @@
 package com.laphuth.moodify.entities;
 
-import jakarta.persistence.Id;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -19,6 +19,9 @@ public class Artist {
     private List<String> genres;
     @Field("genres_raw")
     private List<String> genresRaw;
+
+    @Field("created_at")
+    private Instant createdAt;
 
     @Field("image_url")
     private String imageUrl;
@@ -70,6 +73,14 @@ public class Artist {
 
     public void setGenresRaw(List<String> genresRaw) {
         this.genresRaw = genresRaw;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
     }
 
     public String getImageUrl() {
