@@ -10,7 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
-public interface UserLibraryTracksRepository extends JpaRepository<UserLibraryTracks, String> {
+public interface UserLibraryTracksRepository extends JpaRepository<UserLibraryTracks, Long> {
     boolean existsByUserAndTrackSpotifyId(User user, String trackSpotifyId);
     
     void deleteByUserAndTrackSpotifyId(User user, String trackSpotifyId);

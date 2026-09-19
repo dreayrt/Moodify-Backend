@@ -154,6 +154,12 @@ public class Track {
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     public static class AudioFeatures {
+        @Field("bpm")
+        private Double bpm;
+
+        @Field("key_signature")
+        private String keySignature;
+
         @Field("energy")
         private Double energy;
 
@@ -166,6 +172,10 @@ public class Track {
         @Field("acousticness")
         private Double acousticness;
 
+        public Double getBpm() { return bpm; }
+        public void setBpm(Double bpm) { this.bpm = bpm; }
+        public String getKeySignature() { return keySignature; }
+        public void setKeySignature(String keySignature) { this.keySignature = keySignature; }
         public Double getEnergy() { return energy; }
         public void setEnergy(Double energy) { this.energy = energy; }
         public Double getDanceability() { return danceability; }

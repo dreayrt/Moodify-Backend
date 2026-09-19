@@ -8,23 +8,24 @@ import java.time.LocalDateTime;
 @Table(name = "user_library_tracks")
 public class UserLibraryTracks {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
-    @Column(name = "track_spotify_id")
-    private String trackSpotifyId;
+
     @Column(name = "track_id")
-    private String trackId;
+    private String trackSpotifyId;
+
     @Column(name = "added_at")
     private LocalDateTime addedAt;
 
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -42,15 +43,14 @@ public class UserLibraryTracks {
 
     public void setTrackSpotifyId(String trackSpotifyId) {
         this.trackSpotifyId = trackSpotifyId;
-        this.trackId = trackSpotifyId;
     }
 
     public String getTrackId() {
-        return trackId;
+        return trackSpotifyId;
     }
 
     public void setTrackId(String trackId) {
-        this.trackId = trackId;
+        this.trackSpotifyId = trackId;
     }
 
     public LocalDateTime getAddedAt() {

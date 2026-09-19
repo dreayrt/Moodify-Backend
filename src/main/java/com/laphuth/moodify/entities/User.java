@@ -45,6 +45,8 @@ public class User {
     @Column(name = "role")
     private userRole role;
 
+    @jakarta.persistence.Transient
+    private String staffCode;
     @Column(name = "artist_spotify_id")
     private String artistSpotifyId;
 
@@ -93,6 +95,14 @@ public class User {
 
     public void setFullname(String fullname) {
         this.fullname = fullname;
+    }
+
+    public String getFullName() {
+        return fullname;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullname = fullName;
     }
 
     public String getPhone() {
@@ -173,6 +183,14 @@ public class User {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getStaffCode() {
+        return staffCode;
+    }
+
+    public void setStaffCode(String staffCode) {
+        this.staffCode = staffCode;
     }
 
     public LocalDateTime getUpdatedAt() {

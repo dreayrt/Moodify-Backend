@@ -63,6 +63,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/artist").hasRole(userRole.ARTIST.name())
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/moderator").hasRole(userRole.MODERATOR.name())
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/admin").hasRole(userRole.ADMIN.name())
+                .requestMatchers("/api/admin/**").hasRole(userRole.ADMIN.name())
                 .requestMatchers("/api/artists/me/**", "/api/artist/me/**").hasRole(userRole.ARTIST.name())
                 .requestMatchers("/api/moderator/**").hasRole(userRole.MODERATOR.name())
                 // Allow MongoDB API access for GET and HEAD (streaming, browsing)
@@ -85,14 +86,25 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(
-            Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(origin -> !origin.isEmpty())
-                .toList()
-        );
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        List<String> origins = new java.util.ArrayList<>();
+        if (allowedOrigins != null && !allowedOrigins.isBlank()) {
+            origins.addAll(Arrays.stream(allowedOrigins.split(","))
+                    .map(String::trim)
+                    .filter(origin -> !origin.isEmpty())
+                    .toList());
+        }
+        origins.add("http://localhost:[*]");
+        origins.add("http://127.0.0.1:[*]");
+        origins.add("http://localhost:3000");
+        origins.add("http://localhost:3001");
+        origins.add("http://127.0.0.1:3000");
+        origins.add("http://127.0.0.1:3001");
+        origins.add("http://26.22.194.47:[*]");
+
+        configuration.setAllowedOriginPatterns(origins);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
