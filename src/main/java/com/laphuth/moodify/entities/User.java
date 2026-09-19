@@ -45,9 +45,6 @@ public class User {
     @Column(name = "role")
     private userRole role;
 
-    @Column(name = "staff_code")
-    private String staffCode;
-
     @Column(name = "artist_spotify_id")
     private String artistSpotifyId;
 
@@ -144,14 +141,6 @@ public class User {
 
     public void setRole(userRole role) {
         this.role = role;
-    }
-
-    public String getStaffCode() {
-        return staffCode;
-    }
-
-    public void setStaffCode(String staffCode) {
-        this.staffCode = staffCode;
     }
 
     public String getArtistSpotifyId() {

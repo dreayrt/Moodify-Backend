@@ -56,6 +56,9 @@ public class Track {
     @Field("lyrics_plain")
     private String lyricsPlain;
 
+    @Field("lyrics_synced")
+    private String lyricsSynced;
+
     @Field("local_path")
     private String localPath;
 
@@ -114,6 +117,8 @@ public class Track {
     public void setPopularity(Integer popularity) { this.popularity = popularity; }
     public String getLyricsPlain() { return lyricsPlain; }
     public void setLyricsPlain(String lyricsPlain) { this.lyricsPlain = lyricsPlain; }
+    public String getLyricsSynced() { return lyricsSynced; }
+    public void setLyricsSynced(String lyricsSynced) { this.lyricsSynced = lyricsSynced; }
     public String getLocalPath() { return localPath; }
     public void setLocalPath(String localPath) { this.localPath = localPath; }
     public String getDownloadStatus() { return downloadStatus; }

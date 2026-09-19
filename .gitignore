@@ -36,3 +36,6 @@ build/
 # Environment variables
 .env
 
+# Local audio downloads and data cache
+data/
+

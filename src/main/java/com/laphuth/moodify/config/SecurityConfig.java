@@ -49,6 +49,7 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/error", "/error/**").permitAll()
                 .requestMatchers(
                     HttpMethod.POST,
                     "/api/auth/login",
@@ -57,6 +58,11 @@ public class SecurityConfig {
                     "/api/auth/logout"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                // Allow MongoDB API access for GET and HEAD (streaming, browsing)
+                .requestMatchers(HttpMethod.GET, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}").permitAll()
+                .requestMatchers(HttpMethod.HEAD, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}").permitAll()
+                // Seed endpoint (development only)
+                .requestMatchers(HttpMethod.POST, "/api/seed/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/me").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/user").hasRole(userRole.USER.name())
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/artist").hasRole(userRole.ARTIST.name())

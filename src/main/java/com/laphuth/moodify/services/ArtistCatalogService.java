@@ -22,6 +22,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+
 @Service
 public class ArtistCatalogService {
     private static final int MAX_PAGE_SIZE = 100;
@@ -147,5 +149,9 @@ public class ArtistCatalogService {
             query.trim(),
             pageable
         );
+    }
+    
+    public List<Artist> searchArtists(String query) {
+        return artistRepository.findByNameContainingIgnoreCase(query);
     }
 }
