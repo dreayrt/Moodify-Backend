@@ -45,7 +45,7 @@ public class User {
     @Column(name = "role")
     private userRole role;
 
-    @Column(name = "staff_code")
+    @jakarta.persistence.Transient
     private String staffCode;
 
     @Column(name = "artist_spotify_id")
@@ -96,6 +96,14 @@ public class User {
 
     public void setFullname(String fullname) {
         this.fullname = fullname;
+    }
+
+    public String getFullName() {
+        return fullname;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullname = fullName;
     }
 
     public String getPhone() {

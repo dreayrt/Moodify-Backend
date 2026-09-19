@@ -3,8 +3,8 @@
 -- Bao gồm đầy đủ các vai trò: USER (Người nghe), ARTIST (Nghệ sĩ có liên kết MongoDB),
 -- MODERATOR (Kiểm duyệt viên) và ADMIN (Quản trị viên).
 -- 
--- Mật khẩu mặc định cho các tài khoản test bên dưới: Password@123
--- Hash BCrypt: $2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq
+-- Mật khẩu mặc định cho các tài khoản test bên dưới: 123456
+-- Hash BCrypt: $2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS
 -- ============================================================
 
 INSERT INTO users (
@@ -16,7 +16,6 @@ INSERT INTO users (
     password,
     avatar_url,
     role,
-    staff_code,
     artist_spotify_id,
     status,
     last_login_at,
@@ -30,10 +29,9 @@ VALUES
     '0901000001',
     'listener@moodify.local',
     'listener01',
-    '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
+    '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240&auto=format&fit=crop&q=80',
     'USER',
-    NULL,
     NULL,
     'ACTIVE',
     '2026-09-14 09:00:00',
@@ -46,10 +44,9 @@ VALUES
     '0901000002',
     'artist@moodify.local',
     'artist01',
-    '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
+    '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=240&auto=format&fit=crop&q=80',
     'ARTIST',
-    NULL,
     '44ZNcW1ZSGB9oqX1ALnriH',
     'ACTIVE',
     '2026-09-14 08:30:00',
@@ -62,10 +59,9 @@ VALUES
     '0901000003',
     'moderator@moodify.local',
     'moderator01',
-    '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
+    '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
     'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=240&auto=format&fit=crop&q=80',
     'MODERATOR',
-    'MOD001',
     NULL,
     'ACTIVE',
     '2026-09-14 08:00:00',
@@ -78,10 +74,9 @@ VALUES
     '0901000004',
     'admin@moodify.local',
     'admin01',
-    '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
+    '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
     'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=240&auto=format&fit=crop&q=80',
     'ADMIN',
-    'ADM001',
     NULL,
     'ACTIVE',
     '2026-09-01 10:00:00',
@@ -94,10 +89,9 @@ VALUES
     '0901000005',
     'banned@moodify.local',
     'banned01',
-    '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
+    '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
     NULL,
     'USER',
-    NULL,
     NULL,
     'BANNED',
     NULL,
