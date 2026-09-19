@@ -6,6 +6,7 @@ import com.laphuth.moodify.dto.artist.ArtistProfileResponse;
 import com.laphuth.moodify.dto.artist.ArtistTracksPageResponse;
 import com.laphuth.moodify.security.JwtAuthenticationFilter;
 import com.laphuth.moodify.services.ArtistCatalogService;
+import com.laphuth.moodify.services.TrackService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,9 @@ class ArtistCatalogApiTest {
 
     @MockitoBean
     private ArtistCatalogService artistCatalogService;
+
+    @MockitoBean
+    private TrackService trackService;
 
     @MockitoBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;

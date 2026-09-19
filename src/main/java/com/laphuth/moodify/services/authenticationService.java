@@ -314,7 +314,7 @@ public class authenticationService {
             return userRole.USER;
         }
 
-        if (requestedRole != userRole.USER && requestedRole != userRole.ARTIST && requestedRole != userRole.MODERATOR) {
+        if (requestedRole != userRole.USER && requestedRole != userRole.ARTIST) {                                     
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
                 "You are not allowed to self-register as " + requestedRole.name()

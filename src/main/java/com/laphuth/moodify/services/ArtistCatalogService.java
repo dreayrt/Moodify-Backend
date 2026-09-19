@@ -417,6 +417,10 @@ public class ArtistCatalogService {
         }
     }
 
+
+    public List<Artist> searchArtists(String query) {
+        return artistRepository.findByNameContainingIgnoreCase(query);
+    }
 }
 
 
