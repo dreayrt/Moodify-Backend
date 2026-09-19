@@ -1,12 +1,17 @@
 package com.laphuth.moodify.services;
 
 import com.laphuth.moodify.dto.artist.ArtistCatalogResponse;
+import com.laphuth.moodify.dto.artist.TrackUpdateRequest;
+import com.laphuth.moodify.entities.ContentReviewRequest;
 import com.laphuth.moodify.entities.Artist;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.entities.enums.userRole;
 import com.laphuth.moodify.entities.enums.userStatus;
 import com.laphuth.moodify.repositories.AlbumRepository;
+import com.laphuth.moodify.repositories.ContentReviewActionRepository;
+import com.laphuth.moodify.repositories.ContentReviewRequestRepository;
+import com.laphuth.moodify.repositories.SongLicenseRepository;
 import com.laphuth.moodify.repositories.TrackRepository;
 import com.laphuth.moodify.repositories.artistRepoository;
 import com.laphuth.moodify.repositories.userRepository;
@@ -27,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +49,15 @@ class ArtistCatalogServiceTest {
 
     @Mock
     private AlbumRepository albumRepository;
+
+    @Mock
+    private SongLicenseRepository songLicenseRepository;
+
+    @Mock
+    private ContentReviewRequestRepository contentReviewRequestRepository;
+
+    @Mock
+    private ContentReviewActionRepository contentReviewActionRepository;
 
     @InjectMocks
     private ArtistCatalogService artistCatalogService;
@@ -134,6 +149,90 @@ class ArtistCatalogServiceTest {
         assertThat(response.tracks()).hasSize(1);
         assertThat(response.tracks().getFirst().title()).isEqualTo("Túy Âm");
         assertThat(response.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void updateTrackShouldPersistChangesForOwnedTrack() {
+        User user = artistUser("44ZNcW1ZSGB9oqX1ALnriH");
+        Artist artist = artist("44ZNcW1ZSGB9oqX1ALnriH");
+        Track track = track("44ZNcW1ZSGB9oqX1ALnriH");
+        track.setId("track-1");
+
+        TrackUpdateRequest request = new TrackUpdateRequest();
+        request.setTitle("Tên mới");
+        request.setGenre("EDM");
+        request.setAlbumName("Album mới");
+        request.setDescription("Mô tả mới");
+        request.setFeaturedArtists("Guest");
+        request.setStatus("published");
+        request.setVisibility("public");
+        request.setExplicit(true);
+
+        when(userRepository.findByEmailOrUsername("artist01", "artist01"))
+            .thenReturn(Optional.of(user));
+        when(trackRepository.findById("track-1")).thenReturn(Optional.of(track));
+        when(artistRepository.findBySpotifyId("44ZNcW1ZSGB9oqX1ALnriH"))
+            .thenReturn(Optional.of(artist));
+        when(trackRepository.save(any(Track.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(contentReviewRequestRepository.findByContentIdAndContentTypeAndStatus(
+            "track-1",
+            "TRACK",
+            "PENDING"
+        )).thenReturn(Optional.empty());
+
+        var response = artistCatalogService.updateTrack("artist01", "track-1", request);
+
+        assertThat(response.title()).isEqualTo("Tên mới");
+        assertThat(response.genre()).isEqualTo("EDM");
+        assertThat(response.albumName()).isEqualTo("Album mới");
+        assertThat(response.description()).isEqualTo("Mô tả mới");
+        assertThat(response.status()).isEqualTo("published");
+        assertThat(response.visibility()).isEqualTo("public");
+        assertThat(response.explicit()).isTrue();
+        verify(trackRepository).save(track);
+        verify(contentReviewRequestRepository).save(any(ContentReviewRequest.class));
+    }
+
+    @Test
+    void deleteTrackShouldRemoveOnlyOwnedTrackAndRelatedRows() {
+        User user = artistUser("44ZNcW1ZSGB9oqX1ALnriH");
+        Track track = track("44ZNcW1ZSGB9oqX1ALnriH");
+        track.setId("track-1");
+
+        ContentReviewRequest reviewRequest = new ContentReviewRequest();
+        reviewRequest.setId(12L);
+
+        when(userRepository.findByEmailOrUsername("artist01", "artist01"))
+            .thenReturn(Optional.of(user));
+        when(trackRepository.findById("track-1")).thenReturn(Optional.of(track));
+        when(contentReviewRequestRepository.findByContentIdAndContentType("track-1", "TRACK"))
+            .thenReturn(List.of(reviewRequest));
+
+        artistCatalogService.deleteTrack("artist01", "track-1");
+
+        verify(contentReviewActionRepository).deleteByReviewRequestIdIn(List.of(12L));
+        verify(contentReviewRequestRepository).deleteAll(List.of(reviewRequest));
+        verify(songLicenseRepository).deleteByTrackId("track-1");
+        verify(trackRepository).delete(track);
+    }
+
+    @Test
+    void deleteTrackShouldRejectTrackFromAnotherArtist() {
+        User user = artistUser("artist-a");
+        Track track = track("artist-b");
+        track.setId("track-1");
+
+        when(userRepository.findByEmailOrUsername("artist01", "artist01"))
+            .thenReturn(Optional.of(user));
+        when(trackRepository.findById("track-1")).thenReturn(Optional.of(track));
+
+        assertThatThrownBy(() -> artistCatalogService.deleteTrack("artist01", "track-1"))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(exception -> assertThat(
+                ((ResponseStatusException) exception).getStatusCode()
+            ).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(trackRepository, never()).delete(any());
     }
 
     private User artistUser(String artistSpotifyId) {

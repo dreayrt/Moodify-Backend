@@ -28,6 +28,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -104,11 +105,27 @@ public class authenticationService {
             artist.setImageUrl(newUser.getAvatarUrl());
             artist.setFollowers(0);
             artist.setPopularity(0);
+
+            List<String> rawGenres = (request.genres() != null && !request.genres().isEmpty())
+                ? request.genres().stream()
+                    .map(String::trim)
+                    .filter(s -> !s.isBlank())
+                    .toList()
+                : List.of("pop");
+
+            List<String> normalizedGenres = rawGenres.stream()
+                .map(String::toLowerCase)
+                .toList();
+
+            artist.setGenres(normalizedGenres.isEmpty() ? List.of("pop") : normalizedGenres);
+            artist.setGenresRaw(rawGenres.isEmpty() ? List.of("pop") : rawGenres);
+
             artist.setCreatedAt(Instant.now());
             artist.setUpdatedAt(Instant.now());
             artistRepository.save(artist);
 
             newUser.setArtistSpotifyId(artistSpotifyId);
+
         }
 
         User savedUser = userRepository.save(newUser);
@@ -297,7 +314,7 @@ public class authenticationService {
             return userRole.USER;
         }
 
-        if (requestedRole != userRole.USER && requestedRole != userRole.ARTIST) {
+        if (requestedRole != userRole.USER && requestedRole != userRole.ARTIST && requestedRole != userRole.MODERATOR) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
                 "You are not allowed to self-register as " + requestedRole.name()

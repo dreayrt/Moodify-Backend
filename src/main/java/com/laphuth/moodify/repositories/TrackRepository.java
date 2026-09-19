@@ -6,6 +6,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface TrackRepository extends MongoRepository<Track, String> {
+    java.util.List<Track> findByModerationStatus(String moderationStatus);
+    Page<Track> findByModerationStatus(String moderationStatus, Pageable pageable);
     Page<Track> findByArtistSpotifyId(String artistSpotifyId, Pageable pageable);
 
     Page<Track> findByArtistSpotifyIdAndNameContainingIgnoreCase(

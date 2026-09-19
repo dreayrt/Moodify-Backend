@@ -34,7 +34,8 @@ public record RegisterRequest(
 
     userRole role,
     String avatarUrl,
-    String stageName
+    String stageName,
+    java.util.List<String> genres
 ) {
     public RegisterRequest(
         String fullName,
@@ -45,7 +46,7 @@ public record RegisterRequest(
         String confirmPassword,
         userRole role
     ) {
-        this(fullName, phone, email, username, password, confirmPassword, role, null, null);
+        this(fullName, phone, email, username, password, confirmPassword, role, null, null, null);
     }
 
     public RegisterRequest(
@@ -58,6 +59,21 @@ public record RegisterRequest(
         userRole role,
         String avatarUrl
     ) {
-        this(fullName, phone, email, username, password, confirmPassword, role, avatarUrl, null);
+        this(fullName, phone, email, username, password, confirmPassword, role, avatarUrl, null, null);
+    }
+
+    public RegisterRequest(
+        String fullName,
+        String phone,
+        String email,
+        String username,
+        String password,
+        String confirmPassword,
+        userRole role,
+        String avatarUrl,
+        String stageName
+    ) {
+        this(fullName, phone, email, username, password, confirmPassword, role, avatarUrl, stageName, null);
     }
 }
+

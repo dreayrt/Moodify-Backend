@@ -29,6 +29,15 @@ public class Track {
     @Field("album_name")
     private String albumName;
 
+    @Field("featured_artists")
+    private String featuredArtists;
+
+    @Field("description")
+    private String description;
+
+    private String status;
+    private String visibility;
+
     @Field("image_url")
     private String imageUrl;
 
@@ -94,6 +103,14 @@ public class Track {
     public void setAlbumSpotifyId(String albumSpotifyId) { this.albumSpotifyId = albumSpotifyId; }
     public String getAlbumName() { return albumName; }
     public void setAlbumName(String albumName) { this.albumName = albumName; }
+    public String getFeaturedArtists() { return featuredArtists; }
+    public void setFeaturedArtists(String featuredArtists) { this.featuredArtists = featuredArtists; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public String getVisibility() { return visibility; }
+    public void setVisibility(String visibility) { this.visibility = visibility; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public String getReleaseDate() { return releaseDate; }
@@ -132,12 +149,6 @@ public class Track {
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     public static class AudioFeatures {
-        @Field("bpm")
-        private Double bpm;
-
-        @Field("key_signature")
-        private String keySignature;
-
         @Field("energy")
         private Double energy;
 
@@ -150,10 +161,6 @@ public class Track {
         @Field("acousticness")
         private Double acousticness;
 
-        public Double getBpm() { return bpm; }
-        public void setBpm(Double bpm) { this.bpm = bpm; }
-        public String getKeySignature() { return keySignature; }
-        public void setKeySignature(String keySignature) { this.keySignature = keySignature; }
         public Double getEnergy() { return energy; }
         public void setEnergy(Double energy) { this.energy = energy; }
         public Double getDanceability() { return danceability; }

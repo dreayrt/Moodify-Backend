@@ -50,6 +50,9 @@ class authenticationServiceTest {
     @Captor
     private ArgumentCaptor<User> userCaptor;
 
+    @Captor
+    private ArgumentCaptor<Artist> artistCaptor;
+
     @Test
     void registerShouldDefaultToUserRole() {
         stubSuccessfulRegister();
@@ -69,7 +72,9 @@ class authenticationServiceTest {
 
         assertThat(userCaptor.getValue().getRole()).isEqualTo(userRole.ARTIST);
         assertThat(userCaptor.getValue().getArtistSpotifyId()).isNotNull();
-        verify(artistRepository).save(any(Artist.class));
+        verify(artistRepository).save(artistCaptor.capture());
+        assertThat(artistCaptor.getValue().getGenres()).containsExactly("pop");
+        assertThat(artistCaptor.getValue().getGenresRaw()).containsExactly("pop");
     }
 
     @Test

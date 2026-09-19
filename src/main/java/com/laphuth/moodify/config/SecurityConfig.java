@@ -57,11 +57,14 @@ public class SecurityConfig {
                     "/api/auth/logout"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                .requestMatchers("/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/me").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/user").hasRole(userRole.USER.name())
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/artist").hasRole(userRole.ARTIST.name())
+                .requestMatchers(HttpMethod.GET, "/api/dashboard/moderator").hasRole(userRole.MODERATOR.name())
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/admin").hasRole(userRole.ADMIN.name())
-                .requestMatchers(HttpMethod.GET, "/api/artists/me/**", "/api/artist/me/**").hasRole(userRole.ARTIST.name())
+                .requestMatchers("/api/artists/me/**", "/api/artist/me/**").hasRole(userRole.ARTIST.name())
+                .requestMatchers("/api/moderator/**").hasRole(userRole.MODERATOR.name())
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -84,7 +87,7 @@ public class SecurityConfig {
                 .toList()
         );
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

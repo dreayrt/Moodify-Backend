@@ -49,6 +49,13 @@ public class Dashboard {
         return ResponseEntity.ok(buildDashboardResponse(authentication, userRole.ARTIST));
     }
 
+    @GetMapping("/moderator")
+    public ResponseEntity<DashboardAccessResponse> getModeratorDashboard(
+        Authentication authentication
+    ) {
+        return ResponseEntity.ok(buildDashboardResponse(authentication, userRole.MODERATOR));
+    }
+
     @GetMapping("/admin")
     public ResponseEntity<DashboardAccessResponse> getAdminDashboard(
         Authentication authentication

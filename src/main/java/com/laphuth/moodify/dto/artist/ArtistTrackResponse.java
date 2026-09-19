@@ -11,14 +11,14 @@ public record ArtistTrackResponse(
     String title,
     String artist,
     String genre,
+    String albumName,
+    String featuredArtists,
     String duration,
     String status,
     String visibility,
     int plays,
     int likes,
     int commentsCount,
-    Integer bpm,
-    String key,
     String coverUrl,
     String audioUrl,
     String spotifyUrl,
@@ -26,12 +26,20 @@ public record ArtistTrackResponse(
     String moderationStatus,
     Double moderationScore,
     String description,
+    boolean explicit,
     Instant createdAt,
     Instant updatedAt
 ) {
     public static ArtistTrackResponse from(Track track) {
         String moderationStatus = normalizeStatus(track.getModerationStatus());
-        boolean published = "approved".equals(moderationStatus);
+        String status = normalizeStatus(track.getStatus());
+        if (!"draft".equals(status) && !"published".equals(status) && !"scheduled".equals(status)) {
+            status = "approved".equals(moderationStatus) ? "published" : "draft";
+        }
+        String visibility = normalizeStatus(track.getVisibility());
+        if (!"public".equals(visibility) && !"private".equals(visibility) && !"unlisted".equals(visibility)) {
+            visibility = "published".equals(status) ? "public" : "private";
+        }
 
         return new ArtistTrackResponse(
             track.getId(),
@@ -39,21 +47,22 @@ public record ArtistTrackResponse(
             track.getName(),
             track.getArtistName(),
             firstGenre(track.getGenres(), track.getGenresRaw()),
+            track.getAlbumName(),
+            track.getFeaturedArtists(),
             resolveDuration(track),
-            published ? "published" : "draft",
-            published ? "public" : "private",
+            status,
+            visibility,
             0,
             0,
             0,
-            resolveBpm(track),
-            resolveKey(track),
             track.getImageUrl(),
             track.getLocalPath(),
             track.getSpotifyUrl(),
             track.getDownloadStatus(),
             track.getModerationStatus(),
             track.getModerationScore(),
-            track.getAlbumName(),
+            track.getDescription(),
+            track.isExplicit(),
             track.getCreatedAt(),
             track.getUpdatedAt()
         );
@@ -79,20 +88,6 @@ public record ArtistTrackResponse(
         }
         int totalSeconds = durationMs / 1000;
         return "%d:%02d".formatted(totalSeconds / 60, totalSeconds % 60);
-    }
-
-    private static Integer resolveBpm(Track track) {
-        if (track.getAudioFeatures() == null || track.getAudioFeatures().getBpm() == null) {
-            return null;
-        }
-        return (int) Math.round(track.getAudioFeatures().getBpm());
-    }
-
-    private static String resolveKey(Track track) {
-        if (track.getAudioFeatures() == null) {
-            return null;
-        }
-        return track.getAudioFeatures().getKeySignature();
     }
 
     private static String normalizeStatus(String status) {
