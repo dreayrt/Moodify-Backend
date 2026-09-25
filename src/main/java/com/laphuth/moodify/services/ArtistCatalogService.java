@@ -127,7 +127,7 @@ public class ArtistCatalogService {
                 "User not found"
             ));
 
-        if (currentUser.getRole() != userRole.ARTIST) {
+        if (currentUser.getRole() != userRole.ARTIST && currentUser.getRole() != userRole.CONTENT_LEAD) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
                 "Only artist accounts can access artist catalog"
@@ -178,7 +178,7 @@ public class ArtistCatalogService {
         User currentUser = userRepository.findByEmailOrUsername(principal, principal)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        if (currentUser.getRole() != userRole.ARTIST) {
+        if (currentUser.getRole() != userRole.ARTIST && currentUser.getRole() != userRole.CONTENT_LEAD) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only artist accounts can upload tracks");
         }
 

@@ -92,7 +92,7 @@ public class authenticationService {
         }
         newUser.setStatus(userStatus.ACTIVE);
 
-        if (role == userRole.ARTIST) {
+        if (role == userRole.ARTIST || role == userRole.CONTENT_LEAD) {
             String stageName = (request.stageName() != null && !request.stageName().isBlank())
                 ? request.stageName().trim()
                 : request.fullName().trim();
@@ -277,7 +277,7 @@ public class authenticationService {
     }
 
     private void syncArtistAvatar(User user, String avatarUrl) {
-        if (user.getRole() == userRole.ARTIST && user.getArtistSpotifyId() != null) {
+        if ((user.getRole() == userRole.ARTIST || user.getRole() == userRole.CONTENT_LEAD) && user.getArtistSpotifyId() != null) {
             artistRepository.findBySpotifyId(user.getArtistSpotifyId()).ifPresent(artist -> {
                 artist.setImageUrl(avatarUrl);
                 artist.setUpdatedAt(Instant.now());
@@ -314,7 +314,7 @@ public class authenticationService {
             return userRole.USER;
         }
 
-        if (requestedRole != userRole.USER && requestedRole != userRole.ARTIST) {                                     
+        if (requestedRole != userRole.USER && requestedRole != userRole.ARTIST && requestedRole != userRole.CONTENT_LEAD) {                                     
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
                 "You are not allowed to self-register as " + requestedRole.name()
