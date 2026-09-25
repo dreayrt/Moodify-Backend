@@ -68,8 +68,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/content-lead/**", "/api/artists/me/**", "/api/artist/me/**")
                     .hasRole(UserRole.CONTENT_LEAD.name())
                 .requestMatchers("/api/moderator/**").hasRole(UserRole.MODERATOR.name())
-                // Allow MongoDB API access for GET and HEAD (streaming, browsing)
-                .requestMatchers(HttpMethod.GET, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}").permitAll()
+                // Allow MongoDB API access for GET and HEAD (streaming, browsing) and packages
+                .requestMatchers(HttpMethod.GET, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}", "/api/packages/**", "/api/packages").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}").permitAll()
                 // Seed endpoint (development only)
                 .requestMatchers(HttpMethod.POST, "/api/seed/**").permitAll()
