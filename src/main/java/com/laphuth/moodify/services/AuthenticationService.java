@@ -6,11 +6,11 @@ import com.laphuth.moodify.dto.auth.RefreshTokenRequest;
 import com.laphuth.moodify.dto.auth.RegisterRequest;
 import com.laphuth.moodify.dto.auth.UserProfileResponse;
 import com.laphuth.moodify.entities.Artist;
-import com.laphuth.moodify.entities.enums.userRole;
-import com.laphuth.moodify.entities.enums.userStatus;
+import com.laphuth.moodify.entities.enums.UserRole;
+import com.laphuth.moodify.entities.enums.UserStatus;
 import com.laphuth.moodify.entities.User;
-import com.laphuth.moodify.repositories.artistRepoository;
-import com.laphuth.moodify.repositories.userRepository;
+import com.laphuth.moodify.repositories.ArtistRepository;
+import com.laphuth.moodify.repositories.UserRepository;
 import com.laphuth.moodify.security.JwtService;
 import com.laphuth.moodify.security.TokenType;
 import io.jsonwebtoken.JwtException;
@@ -33,17 +33,17 @@ import java.util.Locale;
 import java.util.UUID;
 
 @Service
-public class authenticationService {
-    private final userRepository userRepository;
+public class AuthenticationService {
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final artistRepoository artistRepository;
+    private final ArtistRepository artistRepository;
 
-    public authenticationService(
-        userRepository userRepository,
+    public AuthenticationService(
+        UserRepository userRepository,
         PasswordEncoder passwordEncoder,
         JwtService jwtService,
-        artistRepoository artistRepository
+        ArtistRepository artistRepository
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -85,14 +85,14 @@ public class authenticationService {
         newUser.setEmail(normalizedEmail);
         newUser.setUsername(normalizedUsername);
         newUser.setPassword(passwordEncoder.encode(request.password()));
-        userRole role = resolveRegistrationRole(request.role());
+        UserRole role = resolveRegistrationRole(request.role());
         newUser.setRole(role);
         if (request.avatarUrl() != null && !request.avatarUrl().isBlank()) {
             newUser.setAvatarUrl(request.avatarUrl().trim());
         }
-        newUser.setStatus(userStatus.ACTIVE);
+        newUser.setStatus(UserStatus.ACTIVE);
 
-        if (role == userRole.ARTIST) {
+        if (role == UserRole.CONTENT_LEAD) {
             String stageName = (request.stageName() != null && !request.stageName().isBlank())
                 ? request.stageName().trim()
                 : request.fullName().trim();
@@ -143,7 +143,7 @@ public class authenticationService {
                 "Invalid credentials"
             ));
 
-        if (currentUser.getStatus() != userStatus.ACTIVE) {
+        if (currentUser.getStatus() != UserStatus.ACTIVE) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
                 "Your account is not active"
@@ -184,7 +184,7 @@ public class authenticationService {
             ));
 
         if (
-            currentUser.getStatus() != userStatus.ACTIVE ||
+            currentUser.getStatus() != UserStatus.ACTIVE ||
             !jwtService.isTokenValid(
                 rawRefreshToken,
                 currentUser.getUsername(),
@@ -277,7 +277,7 @@ public class authenticationService {
     }
 
     private void syncArtistAvatar(User user, String avatarUrl) {
-        if (user.getRole() == userRole.ARTIST && user.getArtistSpotifyId() != null) {
+        if (user.getRole() == UserRole.CONTENT_LEAD && user.getArtistSpotifyId() != null) {
             artistRepository.findBySpotifyId(user.getArtistSpotifyId()).ifPresent(artist -> {
                 artist.setImageUrl(avatarUrl);
                 artist.setUpdatedAt(Instant.now());
@@ -309,12 +309,12 @@ public class authenticationService {
         }
     }
 
-    private userRole resolveRegistrationRole(userRole requestedRole) {
+    private UserRole resolveRegistrationRole(UserRole requestedRole) {
         if (requestedRole == null) {
-            return userRole.USER;
+            return UserRole.USER;
         }
 
-        if (requestedRole != userRole.USER && requestedRole != userRole.ARTIST) {                                     
+        if (requestedRole != UserRole.USER && requestedRole != UserRole.CONTENT_LEAD) {                                     
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
                 "You are not allowed to self-register as " + requestedRole.name()

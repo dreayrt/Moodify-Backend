@@ -1,14 +1,12 @@
 package com.laphuth.moodify.api;
 
-import com.laphuth.moodify.dto.artist.ArtistCatalogResponse;
-import com.laphuth.moodify.dto.artist.ArtistProfileResponse;
-import com.laphuth.moodify.dto.artist.ArtistTrackResponse;
-import com.laphuth.moodify.dto.artist.ArtistTracksPageResponse;
-import com.laphuth.moodify.dto.artist.TrackUpdateRequest;
-import com.laphuth.moodify.dto.artist.TrackUploadRequest;
+import com.laphuth.moodify.dto.contentlead.ContentLeadCatalogResponse;
+import com.laphuth.moodify.dto.contentlead.ContentLeadTrackResponse;
+import com.laphuth.moodify.dto.contentlead.ContentLeadTracksPageResponse;
+import com.laphuth.moodify.dto.contentlead.TrackUpdateRequest;
+import com.laphuth.moodify.dto.contentlead.TrackUploadRequest;
 import com.laphuth.moodify.dto.track.TrackPageResponse;
-import com.laphuth.moodify.entities.Artist;
-import com.laphuth.moodify.services.ArtistCatalogService;
+import com.laphuth.moodify.services.ContentLeadCatalogService;
 import com.laphuth.moodify.services.TrackService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -17,17 +15,17 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping({"/api/artists", "/api/artist"})
-public class ArtistCatalogApi {
+@RequestMapping({"/api/content-lead", "/api/artists", "/api/artist"})
+public class ContentLeadCatalogApi {
     private final TrackService trackService;
-    private final ArtistCatalogService artistCatalogService;
+    private final ContentLeadCatalogService contentLeadCatalogService;
 
-    public ArtistCatalogApi(TrackService trackService, ArtistCatalogService artistCatalogService) {
+    public ContentLeadCatalogApi(TrackService trackService, ContentLeadCatalogService contentLeadCatalogService) {
         this.trackService = trackService;
-        this.artistCatalogService = artistCatalogService;
+        this.contentLeadCatalogService = contentLeadCatalogService;
     }
 
     @GetMapping("/{artistId}/tracks")
@@ -40,14 +38,14 @@ public class ArtistCatalogApi {
     }
 
     @GetMapping({"/me", "/me/catalog"})
-    public ResponseEntity<ArtistCatalogResponse> getMyCatalog(
+    public ResponseEntity<ContentLeadCatalogResponse> getMyCatalog(
         Authentication authentication,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "50") int size,
         @RequestParam(required = false) String query
     ) {
         return ResponseEntity.ok(
-            artistCatalogService.getCurrentArtistCatalog(
+            contentLeadCatalogService.getCurrentCatalog(
                 authentication.getName(),
                 page,
                 size,
@@ -57,14 +55,14 @@ public class ArtistCatalogApi {
     }
 
     @GetMapping("/me/tracks")
-    public ResponseEntity<ArtistTracksPageResponse> getMyTracks(
+    public ResponseEntity<ContentLeadTracksPageResponse> getMyTracks(
         Authentication authentication,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "50") int size,
         @RequestParam(required = false) String query
     ) {
         return ResponseEntity.ok(
-            artistCatalogService.getCurrentArtistTracks(
+            contentLeadCatalogService.getCurrentTracks(
                 authentication.getName(),
                 page,
                 size,
@@ -74,7 +72,7 @@ public class ArtistCatalogApi {
     }
 
     @PostMapping(value = "/me/tracks", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ArtistTrackResponse> uploadTrack(
+    public ResponseEntity<ContentLeadTrackResponse> uploadTrack(
         Authentication authentication,
         @ModelAttribute TrackUploadRequest request,
         @RequestParam("audioFile") MultipartFile audioFile,
@@ -82,7 +80,7 @@ public class ArtistCatalogApi {
         @RequestParam(value = "licenseDocFile", required = false) MultipartFile licenseDocFile
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
-            artistCatalogService.uploadTrack(
+            contentLeadCatalogService.uploadTrack(
                 authentication.getName(),
                 request,
                 audioFile,
@@ -93,13 +91,13 @@ public class ArtistCatalogApi {
     }
 
     @PatchMapping("/me/tracks/{trackId}")
-    public ResponseEntity<ArtistTrackResponse> updateTrack(
+    public ResponseEntity<ContentLeadTrackResponse> updateTrack(
         Authentication authentication,
         @PathVariable String trackId,
         @RequestBody TrackUpdateRequest request
     ) {
         return ResponseEntity.ok(
-            artistCatalogService.updateTrack(
+            contentLeadCatalogService.updateTrack(
                 authentication.getName(),
                 trackId,
                 request
@@ -108,27 +106,15 @@ public class ArtistCatalogApi {
     }
 
     @DeleteMapping("/me/tracks/{trackId}")
-    public ResponseEntity<Void> deleteTrack(
+    public ResponseEntity<Map<String, Object>> deleteTrack(
         Authentication authentication,
         @PathVariable String trackId
     ) {
-        artistCatalogService.deleteTrack(authentication.getName(), trackId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping
-    public ResponseEntity<List<ArtistProfileResponse>> searchArtists(
-        @RequestParam(required = false) String query
-    ) {
-        if (query == null || query.isBlank()) {
-            return ResponseEntity.ok(List.of());
-        }
-
-        List<Artist> artists = artistCatalogService.searchArtists(query.trim());
-        List<ArtistProfileResponse> response = artists.stream()
-            .map(ArtistProfileResponse::from)
-            .toList();
-
-        return ResponseEntity.ok(response);
+        contentLeadCatalogService.deleteTrack(authentication.getName(), trackId);
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "message", "Track deleted successfully",
+            "trackId", trackId
+        ));
     }
 }

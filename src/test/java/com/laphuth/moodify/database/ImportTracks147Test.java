@@ -7,6 +7,7 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -14,6 +15,7 @@ import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Disabled("Script tiện ích nhập 147 tracks mẫu vào MongoDB - không chạy tự động trong test suite vì sẽ xóa dữ liệu người dùng")
 public class ImportTracks147Test {
 
     @Test

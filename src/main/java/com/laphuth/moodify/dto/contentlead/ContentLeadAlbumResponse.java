@@ -1,11 +1,11 @@
-package com.laphuth.moodify.dto.artist;
+package com.laphuth.moodify.dto.contentlead;
 
 import com.laphuth.moodify.entities.Album;
 
 import java.time.Instant;
 import java.util.List;
 
-public record ArtistAlbumResponse(
+public record ContentLeadAlbumResponse(
     String id,
     String spotifyId,
     String name,
@@ -20,8 +20,8 @@ public record ArtistAlbumResponse(
     Instant createdAt,
     Instant updatedAt
 ) {
-    public static ArtistAlbumResponse from(Album album) {
-        return new ArtistAlbumResponse(
+    public static ContentLeadAlbumResponse from(Album album) {
+        return new ContentLeadAlbumResponse(
             album.getId(),
             album.getSpotifyId(),
             album.getName(),

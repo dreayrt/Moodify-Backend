@@ -1,24 +1,26 @@
 package com.laphuth.moodify.services;
 
-import com.laphuth.moodify.dto.artist.ArtistAlbumResponse;
-import com.laphuth.moodify.dto.artist.ArtistCatalogResponse;
-import com.laphuth.moodify.dto.artist.ArtistProfileResponse;
-import com.laphuth.moodify.dto.artist.ArtistTrackResponse;
-import com.laphuth.moodify.dto.artist.ArtistTracksPageResponse;
-import com.laphuth.moodify.dto.artist.TrackUpdateRequest;
+import com.laphuth.moodify.dto.contentlead.ContentLeadAlbumResponse;
+import com.laphuth.moodify.dto.contentlead.ContentLeadCatalogResponse;
+import com.laphuth.moodify.dto.contentlead.ContentLeadProfileResponse;
+import com.laphuth.moodify.dto.contentlead.ContentLeadTrackResponse;
+import com.laphuth.moodify.dto.contentlead.ContentLeadTracksPageResponse;
+import com.laphuth.moodify.dto.contentlead.TrackUpdateRequest;
+import com.laphuth.moodify.dto.contentlead.TrackUploadRequest;
 import com.laphuth.moodify.entities.Album;
 import com.laphuth.moodify.entities.Artist;
+import com.laphuth.moodify.entities.ContentReviewRequest;
+import com.laphuth.moodify.entities.SongLicense;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.entities.User;
-import com.laphuth.moodify.entities.enums.userRole;
+import com.laphuth.moodify.entities.enums.UserRole;
 import com.laphuth.moodify.repositories.AlbumRepository;
-import com.laphuth.moodify.repositories.TrackRepository;
-import com.laphuth.moodify.repositories.artistRepoository;
-import com.laphuth.moodify.repositories.userRepository;
+import com.laphuth.moodify.repositories.ArtistRepository;
 import com.laphuth.moodify.repositories.ContentReviewActionRepository;
-import com.laphuth.moodify.repositories.SongLicenseRepository;
 import com.laphuth.moodify.repositories.ContentReviewRequestRepository;
-import com.laphuth.moodify.entities.ContentReviewRequest;
+import com.laphuth.moodify.repositories.SongLicenseRepository;
+import com.laphuth.moodify.repositories.TrackRepository;
+import com.laphuth.moodify.repositories.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,55 +28,64 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.UUID;
 
 @Service
-public class ArtistCatalogService {
+public class ContentLeadCatalogService {
     private static final int MAX_PAGE_SIZE = 100;
     private static final int ALBUM_PREVIEW_SIZE = 50;
 
-    private final userRepository userRepository;
-    private final artistRepoository artistRepository;
+    private final UserRepository userRepository;
+    private final ArtistRepository artistRepository;
     private final TrackRepository trackRepository;
     private final AlbumRepository albumRepository;
     private final SongLicenseRepository songLicenseRepository;
     private final ContentReviewRequestRepository contentReviewRequestRepository;
     private final ContentReviewActionRepository contentReviewActionRepository;
 
-    public ArtistCatalogService(
-        userRepository userRepository,
-        artistRepoository artistRepository,
+    public ContentLeadCatalogService(
+        UserRepository userRepository,
+        ArtistRepository artistRepository,
         TrackRepository trackRepository,
         AlbumRepository albumRepository,
         SongLicenseRepository songLicenseRepository,
         ContentReviewRequestRepository contentReviewRequestRepository,
         ContentReviewActionRepository contentReviewActionRepository
     ) {
-        this.songLicenseRepository = songLicenseRepository;
-        this.contentReviewRequestRepository = contentReviewRequestRepository;
-        this.contentReviewActionRepository = contentReviewActionRepository;
         this.userRepository = userRepository;
         this.artistRepository = artistRepository;
         this.trackRepository = trackRepository;
         this.albumRepository = albumRepository;
+        this.songLicenseRepository = songLicenseRepository;
+        this.contentReviewRequestRepository = contentReviewRequestRepository;
+        this.contentReviewActionRepository = contentReviewActionRepository;
     }
 
-    public ArtistCatalogResponse getCurrentArtistCatalog(
+    public ContentLeadCatalogResponse getCurrentCatalog(
         String principal,
         int page,
         int size,
         String query
     ) {
-        String artistSpotifyId = resolveCurrentArtistUser(principal).getArtistSpotifyId().trim();
+        String artistSpotifyId = resolveCurrentContentLeadUser(principal).getArtistSpotifyId().trim();
 
         Artist artist = artistRepository.findBySpotifyId(artistSpotifyId)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
-                "Artist profile not found in MongoDB"
+                "Content catalog profile not found in MongoDB"
             ));
 
         Pageable trackPageable = buildTrackPageable(page, size);
@@ -90,10 +101,10 @@ public class ArtistCatalogService {
             albumPageable
         );
 
-        return new ArtistCatalogResponse(
-            ArtistProfileResponse.from(artist),
-            tracks.map(ArtistTrackResponse::from).getContent(),
-            albums.map(ArtistAlbumResponse::from).getContent(),
+        return new ContentLeadCatalogResponse(
+            ContentLeadProfileResponse.from(artist),
+            tracks.map(ContentLeadTrackResponse::from).getContent(),
+            albums.map(ContentLeadAlbumResponse::from).getContent(),
             tracks.getNumber(),
             tracks.getSize(),
             tracks.getTotalElements(),
@@ -101,18 +112,18 @@ public class ArtistCatalogService {
         );
     }
 
-    public ArtistTracksPageResponse getCurrentArtistTracks(
+    public ContentLeadTracksPageResponse getCurrentTracks(
         String principal,
         int page,
         int size,
         String query
     ) {
-        String artistSpotifyId = resolveCurrentArtistUser(principal).getArtistSpotifyId().trim();
+        String artistSpotifyId = resolveCurrentContentLeadUser(principal).getArtistSpotifyId().trim();
         Pageable trackPageable = buildTrackPageable(page, size);
         Page<Track> tracks = resolveTracks(artistSpotifyId, query, trackPageable);
 
-        return new ArtistTracksPageResponse(
-            tracks.map(ArtistTrackResponse::from).getContent(),
+        return new ContentLeadTracksPageResponse(
+            tracks.map(ContentLeadTrackResponse::from).getContent(),
             tracks.getNumber(),
             tracks.getSize(),
             tracks.getTotalElements(),
@@ -120,17 +131,17 @@ public class ArtistCatalogService {
         );
     }
 
-    private User resolveCurrentArtistUser(String principal) {
+    private User resolveCurrentContentLeadUser(String principal) {
         User currentUser = userRepository.findByEmailOrUsername(principal, principal)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "User not found"
             ));
 
-        if (currentUser.getRole() != userRole.ARTIST) {
+        if (currentUser.getRole() != UserRole.CONTENT_LEAD) {
             throw new ResponseStatusException(
                 HttpStatus.FORBIDDEN,
-                "Only artist accounts can access artist catalog"
+                "Only Content Lead accounts can access content catalog"
             );
         }
 
@@ -138,7 +149,7 @@ public class ArtistCatalogService {
         if (artistSpotifyId == null || artistSpotifyId.isBlank()) {
             throw new ResponseStatusException(
                 HttpStatus.CONFLICT,
-                "Artist account is not linked to a Spotify artist id"
+                "Content Lead account is not linked to a catalog id"
             );
         }
 
@@ -168,18 +179,18 @@ public class ArtistCatalogService {
         );
     }
 
-    public ArtistTrackResponse uploadTrack(
+    public ContentLeadTrackResponse uploadTrack(
         String principal,
-        com.laphuth.moodify.dto.artist.TrackUploadRequest request,
-        org.springframework.web.multipart.MultipartFile audioFile,
-        org.springframework.web.multipart.MultipartFile coverFile,
-        org.springframework.web.multipart.MultipartFile licenseDocFile
+        TrackUploadRequest request,
+        MultipartFile audioFile,
+        MultipartFile coverFile,
+        MultipartFile licenseDocFile
     ) {
         User currentUser = userRepository.findByEmailOrUsername(principal, principal)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        if (currentUser.getRole() != userRole.ARTIST) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only artist accounts can upload tracks");
+        if (currentUser.getRole() != UserRole.CONTENT_LEAD) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Content Lead accounts can upload tracks");
         }
 
         String artistSpotifyId = currentUser.getArtistSpotifyId();
@@ -199,92 +210,100 @@ public class ArtistCatalogService {
         Track track = new Track();
         track.setName(request.getTitle() != null && !request.getTitle().isBlank() ? request.getTitle().trim() : "Bản phối mới");
         track.setArtistName(fullArtist);
+        track.setFeaturedArtists(feat.isEmpty() ? null : feat);
         track.setArtistSpotifyId(artistSpotifyId);
-        track.setAlbumName(request.getAlbumName());
-        track.setFeaturedArtists(emptyToNull(request.getFeaturedArtists()));
-        track.setDescription(emptyToNull(request.getDescription()));
-        track.setStatus(normalizeTrackStatus(request.getStatus()));
-        track.setVisibility(normalizeTrackVisibility(request.getVisibility()));
-        track.setGenres(java.util.List.of(request.getGenre() != null && !request.getGenre().isBlank() ? request.getGenre().trim() : "Pop"));
+        track.setAlbumName(request.getAlbumName() != null && !request.getAlbumName().isBlank() ? request.getAlbumName().trim() : null);
+        track.setGenres(List.of(request.getGenre() != null && !request.getGenre().isBlank() ? request.getGenre().trim() : "Pop"));
+        track.setExplicit(request.isExplicit());
+        track.setLyricsPlain(request.getLyricsPlain() != null && !request.getLyricsPlain().isBlank() ? request.getLyricsPlain().trim() : null);
+        track.setDescription(request.getDescription() != null && !request.getDescription().isBlank() ? request.getDescription().trim() : null);
         track.setImageUrl(coverUrl);
         track.setLocalPath(audioUrl);
-        track.setExplicit(request.isExplicit());
-        track.setLyricsPlain(request.getLyricsPlain());
-        track.setDurationFormatted("0:00");
-        track.setDurationMs(0);
-        track.setDownloadStatus("completed");
-        track.setModerationStatus("pending"); // PENDING for review
+        track.setStatus(normalizeTrackStatus(request.getStatus()));
+        track.setVisibility(normalizeTrackVisibility(request.getVisibility()));
         track.setCreatedAt(Instant.now());
         track.setUpdatedAt(Instant.now());
+        track.setModerationStatus("pending");
 
         Track savedTrack = trackRepository.save(track);
 
-        // 3. Save SongLicense to MySQL
-        try {
-            com.laphuth.moodify.entities.SongLicense license = new com.laphuth.moodify.entities.SongLicense();
-            license.setTrackId(savedTrack.getId());
-            license.setLicenseType(request.getLicenseType() != null ? request.getLicenseType() : "DIGITAL_STREAMING");
-
-            // CHECK constraint: ((distributor_id IS NOT NULL AND copyright_owner IS NULL) OR (distributor_id IS NULL AND copyright_owner IS NOT NULL))
-            if (request.getDistributorId() != null && request.getDistributorId() > 0) {
-                license.setDistributorId(request.getDistributorId());
-                license.setDistributionContractId(request.getDistributionContractId());
-                license.setCopyrightOwner(null);
-            } else {
-                license.setDistributorId(null);
-                license.setDistributionContractId(null);
-                String owner = (request.getCopyrightOwner() != null && !request.getCopyrightOwner().isBlank()) 
-                    ? request.getCopyrightOwner().trim() 
-                    : mainArtistName;
-                license.setCopyrightOwner(owner);
-            }
-
-            if (request.getIssueDate() != null && !request.getIssueDate().isBlank()) {
-                try { license.setIssueDate(java.time.LocalDate.parse(request.getIssueDate())); } catch (Exception ignored) { license.setIssueDate(java.time.LocalDate.now()); }
-            } else {
-                license.setIssueDate(java.time.LocalDate.now());
-            }
-
-            if (!request.isPerpetual() && request.getExpiryDate() != null && !request.getExpiryDate().isBlank()) {
-                try { license.setExpiryDate(java.time.LocalDate.parse(request.getExpiryDate())); } catch (Exception ignored) {}
-            } else {
-                license.setExpiryDate(null);
-            }
-
-            license.setStatus(com.laphuth.moodify.entities.enums.LicenseStatus.PENDING);
-            license.setDocumentSonglicensesUrl(licenseDocUrl);
-
-            songLicenseRepository.save(license);
-        } catch (Exception e) {
-            // Rollback MongoDB track if MySQL fails
-            trackRepository.deleteById(savedTrack.getId());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to save song license: " + e.getMessage());
+        // 3. Save SongLicense
+        SongLicense license = new SongLicense();
+        license.setTrackId(savedTrack.getId());
+        license.setLicenseType(request.getLicenseType() != null ? request.getLicenseType() : "DIGITAL_STREAMING");
+        // Satisfy MySQL chk_song_license_owner:
+        // (distributor_id IS NOT NULL AND copyright_owner IS NULL) OR (distributor_id IS NULL AND copyright_owner IS NOT NULL)
+        if (request.getDistributorId() != null && request.getDistributorId() > 0) {
+            license.setDistributorId(request.getDistributorId());
+            Long contractId = request.getDistributionContractId();
+            license.setDistributionContractId(contractId != null && contractId > 0 ? contractId : null);
+            license.setCopyrightOwner(null);
+        } else {
+            license.setDistributorId(null);
+            license.setDistributionContractId(null);
+            String owner = request.getCopyrightOwner() != null && !request.getCopyrightOwner().isBlank()
+                ? request.getCopyrightOwner().trim()
+                : mainArtistName;
+            license.setCopyrightOwner(owner);
         }
+        license.setDocumentSonglicensesUrl(licenseDocUrl);
+        license.setStatus(com.laphuth.moodify.entities.enums.LicenseStatus.ACTIVE);
 
-        // 4. Create ContentReviewRequest in MySQL (content_review_requests table)
-        try {
-            ContentReviewRequest reviewRequest = new ContentReviewRequest();
-            reviewRequest.setArtistUserId(currentUser.getId());
-            reviewRequest.setContentType("TRACK");
-            reviewRequest.setContentId(savedTrack.getId());
-            reviewRequest.setRequestType("PUBLISH");
-            reviewRequest.setStatus("PENDING");
-            reviewRequest.setSubmittedAt(LocalDateTime.now());
-            contentReviewRequestRepository.save(reviewRequest);
-        } catch (Exception e) {
-            // Log but don't rollback - the track and license are already saved
-            System.err.println("Warning: Failed to create content review request: " + e.getMessage());
+        if (request.getIssueDate() != null && !request.getIssueDate().isBlank()) {
+            try {
+                license.setIssueDate(LocalDate.parse(request.getIssueDate().trim()));
+            } catch (DateTimeParseException ignored) {}
         }
+        if (request.getExpiryDate() != null && !request.getExpiryDate().isBlank() && !request.isPerpetual()) {
+            try {
+                license.setExpiryDate(LocalDate.parse(request.getExpiryDate().trim()));
+            } catch (DateTimeParseException ignored) {}
+        }
+        songLicenseRepository.save(license);
 
-        return ArtistTrackResponse.from(savedTrack);
+        // 4. Save ContentReviewRequest
+        ContentReviewRequest reviewRequest = new ContentReviewRequest();
+        reviewRequest.setArtistUserId(currentUser.getId());
+        reviewRequest.setContentType("TRACK");
+        reviewRequest.setContentId(savedTrack.getId());
+        reviewRequest.setRequestType("PUBLISH");
+        reviewRequest.setStatus("PENDING");
+        reviewRequest.setSubmittedAt(LocalDateTime.now());
+        contentReviewRequestRepository.save(reviewRequest);
+
+        return ContentLeadTrackResponse.from(savedTrack);
     }
 
-    public ArtistTrackResponse updateTrack(
+    private String saveUploadedFile(MultipartFile file, String subDir) {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
+        }
+        try {
+            Path targetDir = Paths.get(subDir).toAbsolutePath().normalize();
+            Files.createDirectories(targetDir);
+
+            String origName = file.getOriginalFilename();
+            String ext = "";
+            if (origName != null && origName.contains(".")) {
+                ext = origName.substring(origName.lastIndexOf("."));
+            }
+            String uniqueName = UUID.randomUUID().toString() + ext;
+            Path targetPath = targetDir.resolve(uniqueName);
+
+            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+            return "/" + subDir.replace("\\", "/") + "/" + uniqueName;
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store file: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    public ContentLeadTrackResponse updateTrack(
         String principal,
         String trackId,
         TrackUpdateRequest request
     ) {
-        User currentUser = resolveCurrentArtistUser(principal);
+        User currentUser = resolveCurrentContentLeadUser(principal);
         String artistSpotifyId = currentUser.getArtistSpotifyId().trim();
         Track track = resolveOwnedTrack(trackId, artistSpotifyId);
 
@@ -312,6 +331,7 @@ public class ArtistCatalogService {
         }
         track.setStatus(normalizeTrackStatus(request.getStatus()));
         track.setVisibility(normalizeTrackVisibility(request.getVisibility()));
+        track.setModerationStatus("pending");
         track.setUpdatedAt(Instant.now());
 
         Track savedTrack = trackRepository.save(track);
@@ -333,12 +353,12 @@ public class ArtistCatalogService {
                 contentReviewRequestRepository.save(reviewRequest);
             });
 
-        return ArtistTrackResponse.from(savedTrack);
+        return ContentLeadTrackResponse.from(savedTrack);
     }
 
     @Transactional
     public void deleteTrack(String principal, String trackId) {
-        String artistSpotifyId = resolveCurrentArtistUser(principal).getArtistSpotifyId().trim();
+        String artistSpotifyId = resolveCurrentContentLeadUser(principal).getArtistSpotifyId().trim();
         Track track = resolveOwnedTrack(trackId, artistSpotifyId);
 
         List<ContentReviewRequest> reviewRequests =
@@ -361,7 +381,7 @@ public class ArtistCatalogService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Track not found"));
 
         if (track.getArtistSpotifyId() == null || !track.getArtistSpotifyId().trim().equals(artistSpotifyId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Track does not belong to the current artist");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Track does not belong to the current catalog");
         }
 
         return track;
@@ -383,46 +403,17 @@ public class ArtistCatalogService {
         return normalized;
     }
 
-    private String emptyToDefault(String value, String fallback) {
-        String normalized = emptyToNull(value);
-        return normalized == null ? fallback : normalized;
-    }
-
     private String emptyToNull(String value) {
-        if (value == null) {
+        if (value == null || value.isBlank()) {
             return null;
         }
-        String normalized = value.trim();
-        return normalized.isEmpty() ? null : normalized;
+        return value.trim();
     }
 
-    private String saveUploadedFile(org.springframework.web.multipart.MultipartFile file, String folder) {
-        if (file == null || file.isEmpty()) return null;
-        try {
-            java.nio.file.Path uploadDir = java.nio.file.Paths.get(folder);
-            if (!java.nio.file.Files.exists(uploadDir)) {
-                java.nio.file.Files.createDirectories(uploadDir);
-            }
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            String fileName = java.util.UUID.randomUUID() + extension;
-            java.nio.file.Path filePath = uploadDir.resolve(fileName);
-            java.nio.file.Files.copy(file.getInputStream(), filePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            return "/" + folder + "/" + fileName;
-        } catch (java.io.IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Cannot save file: " + e.getMessage());
+    private String emptyToDefault(String value, String defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
         }
-    }
-
-
-    public List<Artist> searchArtists(String query) {
-        return artistRepository.findByNameContainingIgnoreCase(query);
+        return value.trim();
     }
 }
-
-
-
-

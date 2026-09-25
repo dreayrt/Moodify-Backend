@@ -1,8 +1,8 @@
 package com.laphuth.moodify.security;
 
-import com.laphuth.moodify.entities.enums.userStatus;
+import com.laphuth.moodify.entities.enums.UserStatus;
 import com.laphuth.moodify.entities.User;
-import com.laphuth.moodify.repositories.userRepository;
+import com.laphuth.moodify.repositories.UserRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,11 +21,11 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
-    private final userRepository userRepository;
+    private final UserRepository userRepository;
 
     public JwtAuthenticationFilter(
         JwtService jwtService,
-        userRepository userRepository
+        UserRepository userRepository
     ) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
@@ -63,7 +63,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (
             currentUser != null &&
-            currentUser.getStatus() == userStatus.ACTIVE &&
+            currentUser.getStatus() == UserStatus.ACTIVE &&
             jwtService.isTokenValid(token, currentUser.getUsername(), TokenType.ACCESS)
         ) {
             UsernamePasswordAuthenticationToken authentication =

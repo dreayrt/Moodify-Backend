@@ -1,6 +1,6 @@
 package com.laphuth.moodify.dto.auth;
 
-import com.laphuth.moodify.entities.enums.userRole;
+import com.laphuth.moodify.entities.enums.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -32,7 +32,7 @@ public record RegisterRequest(
     @NotBlank(message = "Confirm password is required")
     String confirmPassword,
 
-    userRole role,
+    UserRole role,
     String avatarUrl,
     String stageName,
     java.util.List<String> genres
@@ -44,7 +44,7 @@ public record RegisterRequest(
         String username,
         String password,
         String confirmPassword,
-        userRole role
+        UserRole role
     ) {
         this(fullName, phone, email, username, password, confirmPassword, role, null, null, null);
     }
@@ -56,7 +56,7 @@ public record RegisterRequest(
         String username,
         String password,
         String confirmPassword,
-        userRole role,
+        UserRole role,
         String avatarUrl
     ) {
         this(fullName, phone, email, username, password, confirmPassword, role, avatarUrl, null, null);
@@ -69,7 +69,7 @@ public record RegisterRequest(
         String username,
         String password,
         String confirmPassword,
-        userRole role,
+        UserRole role,
         String avatarUrl,
         String stageName
     ) {

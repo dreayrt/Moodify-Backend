@@ -1,7 +1,7 @@
 package com.laphuth.moodify.dto.dashboard;
 
 import com.laphuth.moodify.dto.auth.UserProfileResponse;
-import com.laphuth.moodify.entities.enums.userRole;
+import com.laphuth.moodify.entities.enums.UserRole;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -10,20 +10,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DashboardAccessResponseTest {
     @Test
-    void shouldResolveArtistDashboardFromRole() {
+    void shouldResolveContentLeadDashboardFromRole() {
         DashboardAccessResponse response = DashboardAccessResponse.forRole(
-            userRole.ARTIST,
-            profile("artist", "ARTIST")
+            UserRole.CONTENT_LEAD,
+            profile("contentlead01", "CONTENT_LEAD")
         );
 
-        assertThat(response.dashboard()).isEqualTo("/dashboard/artist");
-        assertThat(response.role()).isEqualTo("ARTIST");
+        assertThat(response.dashboard()).isEqualTo("/dashboard/content-lead");
+        assertThat(response.role()).isEqualTo("CONTENT_LEAD");
     }
 
     @Test
     void shouldBuildAdminDashboardAccessMessage() {
         DashboardAccessResponse response = DashboardAccessResponse.forDashboard(
-            userRole.ADMIN,
+            UserRole.ADMIN,
             profile("admin", "ADMIN")
         );
 

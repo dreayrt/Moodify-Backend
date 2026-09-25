@@ -8,7 +8,7 @@ import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.entities.UserLibraryTracks;
 import com.laphuth.moodify.repositories.TrackRepository;
 import com.laphuth.moodify.repositories.UserLibraryTracksRepository;
-import com.laphuth.moodify.repositories.userRepository;
+import com.laphuth.moodify.repositories.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,12 +27,12 @@ import java.util.stream.Collectors;
 public class UserLibraryService {
     private static final int MAX_PAGE_SIZE = 100;
 
-    private final userRepository userRepository;
+    private final UserRepository userRepository;
     private final TrackRepository trackRepository;
     private final UserLibraryTracksRepository libraryRepository;
 
     public UserLibraryService(
-        userRepository userRepository,
+        UserRepository userRepository,
         TrackRepository trackRepository,
         UserLibraryTracksRepository libraryRepository
     ) {

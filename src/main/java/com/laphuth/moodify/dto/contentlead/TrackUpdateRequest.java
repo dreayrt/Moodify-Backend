@@ -1,4 +1,4 @@
-package com.laphuth.moodify.dto.artist;
+package com.laphuth.moodify.dto.contentlead;
 
 public class TrackUpdateRequest {
     private String title;

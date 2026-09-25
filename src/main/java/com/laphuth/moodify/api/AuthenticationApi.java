@@ -5,7 +5,7 @@ import com.laphuth.moodify.dto.auth.LoginRequest;
 import com.laphuth.moodify.dto.auth.RefreshTokenRequest;
 import com.laphuth.moodify.dto.auth.RegisterRequest;
 import com.laphuth.moodify.dto.auth.UserProfileResponse;
-import com.laphuth.moodify.services.authenticationService;
+import com.laphuth.moodify.services.AuthenticationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -17,9 +17,9 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthenticationApi {
-    private final authenticationService authenticationService;
+    private final AuthenticationService authenticationService;
 
-    public AuthenticationApi(authenticationService authenticationService) {
+    public AuthenticationApi(AuthenticationService authenticationService) {
         this.authenticationService = authenticationService;
     }
 

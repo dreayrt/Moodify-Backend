@@ -10,7 +10,10 @@ import java.util.Optional;
 
 public interface TrackRepository extends MongoRepository<Track, String> {
     java.util.List<Track> findByModerationStatus(String moderationStatus);
+    java.util.List<Track> findByModerationStatusIn(java.util.List<String> moderationStatuses);
+    java.util.List<Track> findByModerationStatusIgnoreCase(String moderationStatus);
     Page<Track> findByModerationStatus(String moderationStatus, Pageable pageable);
+    Page<Track> findByModerationStatusIn(java.util.List<String> moderationStatuses, Pageable pageable);
     Page<Track> findByArtistSpotifyId(String artistSpotifyId, Pageable pageable);
 
     Page<Track> findByGenresContaining(String genre, Pageable pageable);

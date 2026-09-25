@@ -1,11 +1,11 @@
-package com.laphuth.moodify.dto.artist;
+package com.laphuth.moodify.dto.contentlead;
 
 import com.laphuth.moodify.entities.Track;
 
 import java.time.Instant;
 import java.util.List;
 
-public record ArtistTrackResponse(
+public record ContentLeadTrackResponse(
     String id,
     String spotifyId,
     String title,
@@ -30,7 +30,7 @@ public record ArtistTrackResponse(
     Instant createdAt,
     Instant updatedAt
 ) {
-    public static ArtistTrackResponse from(Track track) {
+    public static ContentLeadTrackResponse from(Track track) {
         String moderationStatus = normalizeStatus(track.getModerationStatus());
         String status = normalizeStatus(track.getStatus());
         if (!"draft".equals(status) && !"published".equals(status) && !"scheduled".equals(status)) {
@@ -41,7 +41,7 @@ public record ArtistTrackResponse(
             visibility = "published".equals(status) ? "public" : "private";
         }
 
-        return new ArtistTrackResponse(
+        return new ContentLeadTrackResponse(
             track.getId(),
             track.getSpotifyId(),
             track.getName(),

@@ -1,6 +1,6 @@
 package com.laphuth.moodify.config;
 
-import com.laphuth.moodify.entities.enums.userRole;
+import com.laphuth.moodify.entities.enums.UserRole;
 import com.laphuth.moodify.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -59,13 +59,15 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/me").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/dashboard/user").hasRole(userRole.USER.name())
-                .requestMatchers(HttpMethod.GET, "/api/dashboard/artist").hasRole(userRole.ARTIST.name())
-                .requestMatchers(HttpMethod.GET, "/api/dashboard/moderator").hasRole(userRole.MODERATOR.name())
-                .requestMatchers(HttpMethod.GET, "/api/dashboard/admin").hasRole(userRole.ADMIN.name())
-                .requestMatchers("/api/admin/**").hasRole(userRole.ADMIN.name())
-                .requestMatchers("/api/artists/me/**", "/api/artist/me/**").hasRole(userRole.ARTIST.name())
-                .requestMatchers("/api/moderator/**").hasRole(userRole.MODERATOR.name())
+                .requestMatchers(HttpMethod.GET, "/api/dashboard/user").hasRole(UserRole.USER.name())
+                .requestMatchers(HttpMethod.GET, "/api/dashboard/content-lead", "/api/dashboard/artist")
+                    .hasRole(UserRole.CONTENT_LEAD.name())
+                .requestMatchers(HttpMethod.GET, "/api/dashboard/moderator").hasRole(UserRole.MODERATOR.name())
+                .requestMatchers(HttpMethod.GET, "/api/dashboard/admin").hasRole(UserRole.ADMIN.name())
+                .requestMatchers("/api/admin/**").hasRole(UserRole.ADMIN.name())
+                .requestMatchers("/api/content-lead/**", "/api/artists/me/**", "/api/artist/me/**")
+                    .hasRole(UserRole.CONTENT_LEAD.name())
+                .requestMatchers("/api/moderator/**").hasRole(UserRole.MODERATOR.name())
                 // Allow MongoDB API access for GET and HEAD (streaming, browsing)
                 .requestMatchers(HttpMethod.GET, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}").permitAll()

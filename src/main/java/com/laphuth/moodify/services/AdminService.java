@@ -2,10 +2,10 @@ package com.laphuth.moodify.services;
 
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.entities.User;
-import com.laphuth.moodify.entities.enums.userRole;
-import com.laphuth.moodify.entities.enums.userStatus;
+import com.laphuth.moodify.entities.enums.UserRole;
+import com.laphuth.moodify.entities.enums.UserStatus;
 import com.laphuth.moodify.repositories.TrackRepository;
-import com.laphuth.moodify.repositories.userRepository;
+import com.laphuth.moodify.repositories.UserRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -29,7 +29,7 @@ public class AdminService {
     private final JdbcTemplate jdbcTemplate;
     private final TrackRepository trackRepository;
     private final MongoTemplate mongoTemplate;
-    private final userRepository userRepository;
+    private final UserRepository userRepository;
 
     private static final String AUDIO_SERVER_BASE_URL = "https://musiccollector.kandes.io.vn/";
     private static final String DEFAULT_REAL_AUDIO_URL = "https://musiccollector.kandes.io.vn/data/audio/xesi-hoaprox/3b2kCFZhX9GYnQ58qL1cAM_vo-tinh.mp3";
@@ -52,7 +52,7 @@ public class AdminService {
             JdbcTemplate jdbcTemplate,
             TrackRepository trackRepository,
             MongoTemplate mongoTemplate,
-            userRepository userRepository
+            UserRepository userRepository
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.trackRepository = trackRepository;
@@ -162,7 +162,7 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        userStatus status = userStatus.valueOf(newStatus.toUpperCase().trim());
+        UserStatus status = UserStatus.valueOf(newStatus.toUpperCase().trim());
         user.setStatus(status);
         userRepository.save(user);
 
@@ -181,7 +181,7 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        userRole role = userRole.valueOf(newRole.toUpperCase().trim());
+        UserRole role = UserRole.valueOf(newRole.toUpperCase().trim());
         user.setRole(role);
         if (artistSpotifyId != null && !artistSpotifyId.isBlank()) {
             user.setArtistSpotifyId(artistSpotifyId.trim());
@@ -231,8 +231,8 @@ public class AdminService {
         String roleStr = (String) data.getOrDefault("role", "USER");
         String statusStr = (String) data.getOrDefault("status", "ACTIVE");
 
-        userRole role = userRole.valueOf(roleStr.toUpperCase().trim());
-        userStatus status = userStatus.valueOf(statusStr.toUpperCase().trim());
+        UserRole role = UserRole.valueOf(roleStr.toUpperCase().trim());
+        UserStatus status = UserStatus.valueOf(statusStr.toUpperCase().trim());
 
         User user = new User();
         user.setUsername(username.trim());
