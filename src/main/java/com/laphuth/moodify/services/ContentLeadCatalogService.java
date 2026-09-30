@@ -55,6 +55,7 @@ public class ContentLeadCatalogService {
     private final SongLicenseRepository songLicenseRepository;
     private final ContentReviewRequestRepository contentReviewRequestRepository;
     private final ContentReviewActionRepository contentReviewActionRepository;
+    private final TrackSyncService trackSyncService;
 
     public ContentLeadCatalogService(
         UserRepository userRepository,
@@ -63,7 +64,9 @@ public class ContentLeadCatalogService {
         AlbumRepository albumRepository,
         SongLicenseRepository songLicenseRepository,
         ContentReviewRequestRepository contentReviewRequestRepository,
-        ContentReviewActionRepository contentReviewActionRepository
+        ContentReviewActionRepository contentReviewActionRepository,
+        @org.springframework.beans.factory.annotation.Autowired(required = false)
+        TrackSyncService trackSyncService
     ) {
         this.userRepository = userRepository;
         this.artistRepository = artistRepository;
@@ -72,6 +75,7 @@ public class ContentLeadCatalogService {
         this.songLicenseRepository = songLicenseRepository;
         this.contentReviewRequestRepository = contentReviewRequestRepository;
         this.contentReviewActionRepository = contentReviewActionRepository;
+        this.trackSyncService = trackSyncService;
     }
 
     public ContentLeadCatalogResponse getCurrentCatalog(
@@ -226,6 +230,9 @@ public class ContentLeadCatalogService {
         track.setModerationStatus("pending");
 
         Track savedTrack = trackRepository.save(track);
+        if (trackSyncService != null) {
+            trackSyncService.pushSingleTrack(savedTrack);
+        }
 
         // 3. Save SongLicense
         SongLicense license = new SongLicense();
@@ -335,6 +342,9 @@ public class ContentLeadCatalogService {
         track.setUpdatedAt(Instant.now());
 
         Track savedTrack = trackRepository.save(track);
+        if (trackSyncService != null) {
+            trackSyncService.pushSingleTrack(savedTrack);
+        }
 
         contentReviewRequestRepository
             .findByContentIdAndContentTypeAndStatus(trackId, "TRACK", "PENDING")

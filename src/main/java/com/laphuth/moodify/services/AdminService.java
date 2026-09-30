@@ -32,21 +32,8 @@ public class AdminService {
     private final MongoTemplate mongoTemplate;
     private final UserRepository userRepository;
 
-    private static final String AUDIO_SERVER_BASE_URL = "https://musiccollector.kandes.io.vn/";
-    private static final String DEFAULT_REAL_AUDIO_URL = "https://musiccollector.kandes.io.vn/data/audio/xesi-hoaprox/3b2kCFZhX9GYnQ58qL1cAM_vo-tinh.mp3";
-
     private String resolveAudioUrl(String localPath) {
-        if (localPath == null || localPath.trim().isEmpty()) {
-            return DEFAULT_REAL_AUDIO_URL;
-        }
-        String clean = localPath.trim().replace("\\", "/");
-        if (clean.startsWith("/")) {
-            clean = clean.substring(1);
-        }
-        if (clean.startsWith("http://") || clean.startsWith("https://")) {
-            return clean;
-        }
-        return AUDIO_SERVER_BASE_URL + clean;
+        return AudioUrlResolver.resolve(localPath);
     }
 
     public AdminService(
@@ -156,7 +143,7 @@ public class AdminService {
                 r.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
                 r.put("duration", "3:30");
                 r.put("genre", "V-Pop");
-                r.put("audioUrl", DEFAULT_REAL_AUDIO_URL);
+                r.put("audioUrl", resolveAudioUrl(null));
             }
             result.add(r);
         }
@@ -190,7 +177,7 @@ public class AdminService {
                 r.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
                 r.put("duration", "3:30");
                 r.put("genre", "V-Pop");
-                r.put("audioUrl", DEFAULT_REAL_AUDIO_URL);
+                r.put("audioUrl", resolveAudioUrl(null));
             }
             result.add(r);
         }
@@ -962,7 +949,7 @@ public class AdminService {
                     m.put("targetTitle", "Bài hát #" + targetId.substring(Math.max(0, targetId.length() - 6)));
                     m.put("targetSubtitle", "V-Pop");
                     m.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                    m.put("audioUrl", DEFAULT_REAL_AUDIO_URL);
+                    m.put("audioUrl", resolveAudioUrl(null));
                 }
             } else if ("ARTIST".equals(itType)) {
                 m.put("targetTitle", "Nghệ sĩ #" + targetId.substring(Math.max(0, targetId.length() - 6)));
@@ -1008,7 +995,7 @@ public class AdminService {
                 r.put("targetTitle", "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
                 r.put("targetSubtitle", "Moodify Artist");
                 r.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                r.put("audioUrl", DEFAULT_REAL_AUDIO_URL);
+                r.put("audioUrl", resolveAudioUrl(null));
             }
         }
         return rows;

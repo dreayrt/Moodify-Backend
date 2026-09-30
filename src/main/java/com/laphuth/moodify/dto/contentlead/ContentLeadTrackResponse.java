@@ -56,7 +56,7 @@ public record ContentLeadTrackResponse(
             0,
             0,
             track.getImageUrl(),
-            track.getLocalPath(),
+            com.laphuth.moodify.services.AudioUrlResolver.resolve(track.getLocalPath()),
             track.getSpotifyUrl(),
             track.getDownloadStatus(),
             track.getModerationStatus(),

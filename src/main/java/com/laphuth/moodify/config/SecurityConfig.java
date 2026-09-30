@@ -71,8 +71,9 @@ public class SecurityConfig {
                 // Allow MongoDB API access for GET and HEAD (streaming, browsing) and packages
                 .requestMatchers(HttpMethod.GET, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}", "/api/packages/**", "/api/packages").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}").permitAll()
-                // Seed endpoint (development only)
+                // Seed & Sync endpoints
                 .requestMatchers(HttpMethod.POST, "/api/seed/**").permitAll()
+                .requestMatchers("/api/sync/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
