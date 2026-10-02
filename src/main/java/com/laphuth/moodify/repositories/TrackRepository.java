@@ -15,6 +15,7 @@ public interface TrackRepository extends MongoRepository<Track, String> {
     Page<Track> findByModerationStatus(String moderationStatus, Pageable pageable);
     Page<Track> findByModerationStatusIn(java.util.List<String> moderationStatuses, Pageable pageable);
     Page<Track> findByArtistSpotifyId(String artistSpotifyId, Pageable pageable);
+    List<Track> findByArtistSpotifyId(String artistSpotifyId);
 
     Page<Track> findByGenresContaining(String genre, Pageable pageable);
     

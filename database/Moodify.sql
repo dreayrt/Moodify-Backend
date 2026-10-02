@@ -178,6 +178,25 @@ CREATE TABLE search_history (
 ) ;
 
 -- ============================================================
+-- 9.1 LƯỢT TRUY CẬP ĐA NỀN TẢNG (PLATFORM TRAFFIC EVENTS)
+-- Ghi nhận lượt tiếp cận của người dùng vào bài hát/nghệ sĩ qua Web, Android, iOS, Mạng xã hội.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS platform_traffic_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    target_type ENUM('TRACK', 'ARTIST', 'GENERAL') NOT NULL DEFAULT 'TRACK',
+    target_id VARCHAR(64) NOT NULL,
+    platform ENUM('WEB', 'ANDROID', 'IOS', 'OTHER') NOT NULL DEFAULT 'WEB',
+    referrer_type ENUM('DIRECT', 'SEARCH', 'TIKTOK', 'FACEBOOK', 'AI_RECOMMEND', 'OTHER') NOT NULL DEFAULT 'DIRECT',
+    user_id BIGINT NULL,
+    session_id VARCHAR(64) NULL,
+    visited_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_traffic_target_time (target_id, visited_at),
+    INDEX idx_traffic_platform (platform),
+    INDEX idx_traffic_visited_at (visited_at)
+) ;
+
+-- ============================================================
 -- 10. GÓI DỊCH VỤ
 -- Ánh xạ ServicePackage trong sơ đồ lớp.
 -- Quyền lợi của gói được chuẩn hóa thành bảng riêng thay vì hard-code thành nhiều cột.

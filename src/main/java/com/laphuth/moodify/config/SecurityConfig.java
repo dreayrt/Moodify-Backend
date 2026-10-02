@@ -77,6 +77,7 @@ public class SecurityConfig {
                 // Emotion Detection & Music Recommendation
                 .requestMatchers(HttpMethod.POST, "/api/emotions/predict", "/api/emotions/recommend").permitAll()
                 .requestMatchers("/api/emotions/history").authenticated()
+                .requestMatchers("/api/analytics/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

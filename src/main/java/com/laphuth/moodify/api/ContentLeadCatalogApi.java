@@ -16,16 +16,24 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
+import com.laphuth.moodify.dto.contentlead.ContentLeadAudienceResponse;
+import com.laphuth.moodify.services.ContentLeadAnalyticsService;
 
 @RestController
 @RequestMapping({"/api/content-lead", "/api/artists", "/api/artist"})
 public class ContentLeadCatalogApi {
     private final TrackService trackService;
     private final ContentLeadCatalogService contentLeadCatalogService;
+    private final ContentLeadAnalyticsService contentLeadAnalyticsService;
 
-    public ContentLeadCatalogApi(TrackService trackService, ContentLeadCatalogService contentLeadCatalogService) {
+    public ContentLeadCatalogApi(
+        TrackService trackService,
+        ContentLeadCatalogService contentLeadCatalogService,
+        ContentLeadAnalyticsService contentLeadAnalyticsService
+    ) {
         this.trackService = trackService;
         this.contentLeadCatalogService = contentLeadCatalogService;
+        this.contentLeadAnalyticsService = contentLeadAnalyticsService;
     }
 
     @GetMapping("/{artistId}/tracks")
@@ -67,6 +75,21 @@ public class ContentLeadCatalogApi {
                 page,
                 size,
                 query
+            )
+        );
+    }
+
+    @GetMapping({"/me/analytics/audience-channels", "/analytics/audience-channels"})
+    public ResponseEntity<ContentLeadAudienceResponse> getAudienceAnalytics(
+        Authentication authentication,
+        @RequestParam(defaultValue = "30d") String period,
+        @RequestParam(required = false) String trackId
+    ) {
+        return ResponseEntity.ok(
+            contentLeadAnalyticsService.getAudienceAnalytics(
+                authentication.getName(),
+                period,
+                trackId
             )
         );
     }
