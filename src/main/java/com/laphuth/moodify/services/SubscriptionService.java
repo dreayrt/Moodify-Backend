@@ -1,7 +1,7 @@
 package com.laphuth.moodify.services;
 
 import com.laphuth.moodify.entities.User;
-import com.laphuth.moodify.repositories.userRepository;
+import com.laphuth.moodify.repositories.UserRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,9 +17,9 @@ import java.util.*;
 public class SubscriptionService {
 
     private final JdbcTemplate jdbcTemplate;
-    private final userRepository userRepository;
+    private final UserRepository userRepository;
 
-    public SubscriptionService(JdbcTemplate jdbcTemplate, userRepository userRepository) {
+    public SubscriptionService(JdbcTemplate jdbcTemplate, UserRepository userRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.userRepository = userRepository;
     }

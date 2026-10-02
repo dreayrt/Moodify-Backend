@@ -5,12 +5,12 @@ import com.laphuth.moodify.dto.auth.LoginRequest;
 import com.laphuth.moodify.dto.auth.RegisterRequest;
 import com.laphuth.moodify.dto.auth.UserProfileResponse;
 import com.laphuth.moodify.entities.User;
-import com.laphuth.moodify.entities.enums.userRole;
-import com.laphuth.moodify.entities.enums.userStatus;
-import com.laphuth.moodify.repositories.userRepository;
+import com.laphuth.moodify.entities.enums.UserRole;
+import com.laphuth.moodify.entities.enums.UserStatus;
+import com.laphuth.moodify.repositories.UserRepository;
 import com.laphuth.moodify.security.JwtService;
 import com.laphuth.moodify.entities.Artist;
-import com.laphuth.moodify.repositories.artistRepoository;
+import com.laphuth.moodify.repositories.ArtistRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -31,9 +31,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class authenticationServiceTest {
+class AuthenticationServiceTest {
     @Mock
-    private userRepository userRepository;
+    private UserRepository userRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -42,10 +42,10 @@ class authenticationServiceTest {
     private JwtService jwtService;
 
     @Mock
-    private artistRepoository artistRepository;
+    private ArtistRepository artistRepository;
 
     @InjectMocks
-    private authenticationService authenticationService;
+    private AuthenticationService authenticationService;
 
     @Captor
     private ArgumentCaptor<User> userCaptor;
@@ -60,17 +60,17 @@ class authenticationServiceTest {
 
         authenticationService.register(request);
 
-        assertThat(userCaptor.getValue().getRole()).isEqualTo(userRole.USER);
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(UserRole.USER);
     }
 
     @Test
-    void registerShouldAllowArtistRole() {
+    void registerShouldAllowContentLeadRole() {
         stubSuccessfulRegister();
-        RegisterRequest request = buildRequest(userRole.ARTIST);
+        RegisterRequest request = buildRequest(UserRole.CONTENT_LEAD);
 
         authenticationService.register(request);
 
-        assertThat(userCaptor.getValue().getRole()).isEqualTo(userRole.ARTIST);
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(UserRole.CONTENT_LEAD);
         assertThat(userCaptor.getValue().getArtistSpotifyId()).isNotNull();
         verify(artistRepository).save(artistCaptor.capture());
         assertThat(artistCaptor.getValue().getGenres()).containsExactly("pop");
@@ -79,7 +79,7 @@ class authenticationServiceTest {
 
     @Test
     void registerShouldRejectAdminRole() {
-        RegisterRequest request = buildRequest(userRole.ADMIN);
+        RegisterRequest request = buildRequest(UserRole.ADMIN);
 
         assertThatThrownBy(() -> authenticationService.register(request))
             .isInstanceOf(ResponseStatusException.class)
@@ -93,7 +93,7 @@ class authenticationServiceTest {
 
     @Test
     void registerShouldRejectModeratorRole() {
-        RegisterRequest request = buildRequest(userRole.MODERATOR);
+        RegisterRequest request = buildRequest(UserRole.MODERATOR);
 
         assertThatThrownBy(() -> authenticationService.register(request))
             .isInstanceOf(ResponseStatusException.class)
@@ -108,16 +108,16 @@ class authenticationServiceTest {
     @Test
     void loginShouldAcceptBcryptPasswordAndUpdateLastLogin() {
         User currentUser = activeUser("$2a$10$existing-bcrypt-hash");
-        when(userRepository.findByEmailOrUsername("artist01", "artist01"))
+        when(userRepository.findByEmailOrUsername("contentlead01", "contentlead01"))
             .thenReturn(java.util.Optional.of(currentUser));
         when(passwordEncoder.matches("123456", currentUser.getPassword())).thenReturn(true);
         stubSuccessfulTokens();
 
         AuthResponse response = authenticationService.login(
-            new LoginRequest(" Artist01 ", "123456")
+            new LoginRequest(" ContentLead01 ", "123456")
         );
 
-        assertThat(response.username()).isEqualTo("artist01");
+        assertThat(response.username()).isEqualTo("contentlead01");
         assertThat(currentUser.getLastLoginAt()).isNotNull();
         verify(userRepository).save(currentUser);
         verify(passwordEncoder, never()).encode("123456");
@@ -126,13 +126,13 @@ class authenticationServiceTest {
     @Test
     void loginShouldRejectWrongPassword() {
         User currentUser = activeUser("$2a$10$existing-bcrypt-hash");
-        when(userRepository.findByEmailOrUsername("artist01", "artist01"))
+        when(userRepository.findByEmailOrUsername("contentlead01", "contentlead01"))
             .thenReturn(java.util.Optional.of(currentUser));
         when(passwordEncoder.matches("wrong-password", currentUser.getPassword()))
             .thenReturn(false);
 
         assertThatThrownBy(() -> authenticationService.login(
-            new LoginRequest("artist01", "wrong-password")
+            new LoginRequest("contentlead01", "wrong-password")
         ))
             .isInstanceOf(ResponseStatusException.class)
             .satisfies(exception -> assertThat(
@@ -145,7 +145,7 @@ class authenticationServiceTest {
     @Test
     void registerShouldRejectDuplicateEmail() {
         when(userRepository.existsByEmail("user@example.com")).thenReturn(true);
-        RegisterRequest request = buildRequest(userRole.USER);
+        RegisterRequest request = buildRequest(UserRole.USER);
 
         assertThatThrownBy(() -> authenticationService.register(request))
             .isInstanceOf(ResponseStatusException.class)
@@ -160,7 +160,7 @@ class authenticationServiceTest {
     void registerShouldRejectDuplicateUsername() {
         when(userRepository.existsByEmail(any())).thenReturn(false);
         when(userRepository.existsByUsername("moodifyuser")).thenReturn(true);
-        RegisterRequest request = buildRequest(userRole.USER);
+        RegisterRequest request = buildRequest(UserRole.USER);
 
         assertThatThrownBy(() -> authenticationService.register(request))
             .isInstanceOf(ResponseStatusException.class)
@@ -176,7 +176,7 @@ class authenticationServiceTest {
         when(userRepository.existsByEmail(any())).thenReturn(false);
         when(userRepository.existsByUsername(any())).thenReturn(false);
         when(userRepository.existsByPhone("0900000000")).thenReturn(true);
-        RegisterRequest request = buildRequest(userRole.USER);
+        RegisterRequest request = buildRequest(UserRole.USER);
 
         assertThatThrownBy(() -> authenticationService.register(request))
             .isInstanceOf(ResponseStatusException.class)
@@ -197,7 +197,7 @@ class authenticationServiceTest {
             "moodifyuser",
             "password123",
             "password123",
-            userRole.USER,
+            UserRole.USER,
             "https://example.com/avatar.png"
         );
 
@@ -209,12 +209,12 @@ class authenticationServiceTest {
     @Test
     void updateAvatarUrlShouldUpdateUserAvatar() {
         User currentUser = activeUser("$2a$10$existing-bcrypt-hash");
-        when(userRepository.findByEmailOrUsername("artist01", "artist01"))
+        when(userRepository.findByEmailOrUsername("contentlead01", "contentlead01"))
             .thenReturn(java.util.Optional.of(currentUser));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UserProfileResponse response = authenticationService.updateAvatarUrl(
-            "artist01",
+            "contentlead01",
             "https://example.com/avatar.jpg"
         );
 
@@ -245,16 +245,16 @@ class authenticationServiceTest {
     private User activeUser(String storedPassword) {
         User currentUser = new User();
         currentUser.setId(2L);
-        currentUser.setFullname("Moodify Artist");
-        currentUser.setEmail("artist@moodify.local");
-        currentUser.setUsername("artist01");
+        currentUser.setFullname("Moodify Content Lead");
+        currentUser.setEmail("contentlead@moodify.local");
+        currentUser.setUsername("contentlead01");
         currentUser.setPassword(storedPassword);
-        currentUser.setRole(userRole.ARTIST);
-        currentUser.setStatus(userStatus.ACTIVE);
+        currentUser.setRole(UserRole.CONTENT_LEAD);
+        currentUser.setStatus(UserStatus.ACTIVE);
         return currentUser;
     }
 
-    private RegisterRequest buildRequest(userRole role) {
+    private RegisterRequest buildRequest(UserRole role) {
         return new RegisterRequest(
             "Moodify User",
             "0900000000",

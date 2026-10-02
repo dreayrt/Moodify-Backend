@@ -1,7 +1,7 @@
 package com.laphuth.moodify.dto.dashboard;
 
 import com.laphuth.moodify.dto.auth.UserProfileResponse;
-import com.laphuth.moodify.entities.enums.userRole;
+import com.laphuth.moodify.entities.enums.UserRole;
 
 import java.util.Locale;
 
@@ -11,12 +11,19 @@ public record DashboardAccessResponse(
     String message,
     UserProfileResponse user
 ) {
+    private static String resolveDashboardPath(UserRole role) {
+        if (role == UserRole.CONTENT_LEAD) {
+            return "/dashboard/content-lead";
+        }
+        return "/dashboard/" + role.name().toLowerCase(Locale.ROOT);
+    }
+
     public static DashboardAccessResponse forRole(
-        userRole role,
+        UserRole role,
         UserProfileResponse currentUser
     ) {
         return new DashboardAccessResponse(
-            "/dashboard/" + role.name().toLowerCase(Locale.ROOT),
+            resolveDashboardPath(role),
             role.name(),
             "Authenticated successfully",
             currentUser
@@ -24,11 +31,11 @@ public record DashboardAccessResponse(
     }
 
     public static DashboardAccessResponse forDashboard(
-        userRole role,
+        UserRole role,
         UserProfileResponse currentUser
     ) {
         return new DashboardAccessResponse(
-            "/dashboard/" + role.name().toLowerCase(Locale.ROOT),
+            resolveDashboardPath(role),
             role.name(),
             "Access granted to " + role.name() + " dashboard",
             currentUser

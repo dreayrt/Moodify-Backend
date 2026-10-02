@@ -4,6 +4,7 @@ import com.laphuth.moodify.dto.track.TrackPageResponse;
 import com.laphuth.moodify.dto.track.TrackResponse;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.repositories.TrackRepository;
+import com.laphuth.moodify.services.AudioUrlResolver;
 import com.laphuth.moodify.services.TrackService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -87,7 +89,7 @@ public class TrackApi {
     }
 
     @GetMapping(value = {"/{id}/stream", "/stream/{id}"})
-    public ResponseEntity<ResourceRegion> streamTrack(
+    public ResponseEntity<?> streamTrack(
         @PathVariable String id,
         @RequestHeader HttpHeaders headers
     ) throws IOException {
@@ -99,6 +101,14 @@ public class TrackApi {
 
         File audioFile = resolveAudioFile(track);
         if (audioFile == null || !audioFile.exists() || audioFile.length() == 0) {
+            if (track != null) {
+                String remoteAudioUrl = AudioUrlResolver.resolve(track.getLocalPath());
+                if (remoteAudioUrl != null && !remoteAudioUrl.isBlank()) {
+                    return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
+                        .location(URI.create(remoteAudioUrl))
+                        .build();
+                }
+            }
             throw new ResponseStatusException(NOT_FOUND, "Audio file not available yet for track: " + id);
         }
 

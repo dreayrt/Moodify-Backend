@@ -1,18 +1,17 @@
 package com.laphuth.moodify.api;
 
 import com.laphuth.moodify.config.SecurityConfig;
-import com.laphuth.moodify.dto.artist.ArtistCatalogResponse;
-import com.laphuth.moodify.dto.artist.ArtistProfileResponse;
-import com.laphuth.moodify.dto.artist.ArtistTracksPageResponse;
+import com.laphuth.moodify.dto.contentlead.ContentLeadCatalogResponse;
+import com.laphuth.moodify.dto.contentlead.ContentLeadProfileResponse;
+import com.laphuth.moodify.dto.contentlead.ContentLeadTracksPageResponse;
 import com.laphuth.moodify.security.JwtAuthenticationFilter;
-import com.laphuth.moodify.services.ArtistCatalogService;
+import com.laphuth.moodify.services.ContentLeadCatalogService;
 import com.laphuth.moodify.services.TrackService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,15 +27,15 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = ArtistCatalogApi.class)
+@WebMvcTest(controllers = ContentLeadCatalogApi.class)
 @Import(SecurityConfig.class)
-class ArtistCatalogApiTest {
+class ContentLeadCatalogApiTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ArtistCatalogService artistCatalogService;
+    private ContentLeadCatalogService contentLeadCatalogService;
 
     @MockitoBean
     private TrackService trackService;
@@ -56,8 +55,8 @@ class ArtistCatalogApiTest {
     }
 
     @Test
-    void getMyCatalogWithArtistsMeShouldReturnOkForArtist() throws Exception {
-        ArtistProfileResponse profile = new ArtistProfileResponse(
+    void getMyCatalogWithContentLeadRouteShouldReturnOk() throws Exception {
+        ContentLeadProfileResponse profile = new ContentLeadProfileResponse(
             "mongo-id-1",
             "spotify-artist-1",
             "Sơn Tùng M-TP",
@@ -69,7 +68,7 @@ class ArtistCatalogApiTest {
             null,
             null
         );
-        ArtistCatalogResponse catalogResponse = new ArtistCatalogResponse(
+        ContentLeadCatalogResponse catalogResponse = new ContentLeadCatalogResponse(
             profile,
             List.of(),
             List.of(),
@@ -79,18 +78,18 @@ class ArtistCatalogApiTest {
             0
         );
 
-        when(artistCatalogService.getCurrentArtistCatalog(eq("artist01"), anyInt(), anyInt(), any()))
+        when(contentLeadCatalogService.getCurrentCatalog(eq("contentlead01"), anyInt(), anyInt(), any()))
             .thenReturn(catalogResponse);
 
-        mockMvc.perform(get("/api/artists/me/catalog").with(user("artist01").roles("ARTIST")))
+        mockMvc.perform(get("/api/content-lead/me/catalog").with(user("contentlead01").roles("CONTENT_LEAD")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.artist.name").value("Sơn Tùng M-TP"))
             .andExpect(jsonPath("$.artist.spotifyId").value("spotify-artist-1"));
     }
 
     @Test
-    void getMyCatalogWithSingularAliasShouldReturnOkForArtist() throws Exception {
-        ArtistProfileResponse profile = new ArtistProfileResponse(
+    void getMyCatalogWithLegacyArtistsMeShouldReturnOkForContentLead() throws Exception {
+        ContentLeadProfileResponse profile = new ContentLeadProfileResponse(
             "mongo-id-1",
             "spotify-artist-1",
             "Sơn Tùng M-TP",
@@ -102,7 +101,7 @@ class ArtistCatalogApiTest {
             null,
             null
         );
-        ArtistCatalogResponse catalogResponse = new ArtistCatalogResponse(
+        ContentLeadCatalogResponse catalogResponse = new ContentLeadCatalogResponse(
             profile,
             List.of(),
             List.of(),
@@ -112,17 +111,17 @@ class ArtistCatalogApiTest {
             0
         );
 
-        when(artistCatalogService.getCurrentArtistCatalog(eq("artist01"), anyInt(), anyInt(), any()))
+        when(contentLeadCatalogService.getCurrentCatalog(eq("contentlead01"), anyInt(), anyInt(), any()))
             .thenReturn(catalogResponse);
 
-        mockMvc.perform(get("/api/artist/me/catalog").with(user("artist01").roles("ARTIST")))
+        mockMvc.perform(get("/api/artists/me/catalog").with(user("contentlead01").roles("CONTENT_LEAD")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.artist.name").value("Sơn Tùng M-TP"));
     }
 
     @Test
     void getMyTracksShouldReturnPagedTracks() throws Exception {
-        ArtistTracksPageResponse tracksResponse = new ArtistTracksPageResponse(
+        ContentLeadTracksPageResponse tracksResponse = new ContentLeadTracksPageResponse(
             List.of(),
             0,
             20,
@@ -130,10 +129,10 @@ class ArtistCatalogApiTest {
             0
         );
 
-        when(artistCatalogService.getCurrentArtistTracks(eq("artist01"), anyInt(), anyInt(), any()))
+        when(contentLeadCatalogService.getCurrentTracks(eq("contentlead01"), anyInt(), anyInt(), any()))
             .thenReturn(tracksResponse);
 
-        mockMvc.perform(get("/api/artists/me/tracks?page=0&size=20").with(user("artist01").roles("ARTIST")))
+        mockMvc.perform(get("/api/content-lead/me/tracks?page=0&size=20").with(user("contentlead01").roles("CONTENT_LEAD")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(20));
@@ -141,13 +140,13 @@ class ArtistCatalogApiTest {
 
     @Test
     void getMyCatalogShouldRejectNormalUserWithForbidden() throws Exception {
-        mockMvc.perform(get("/api/artists/me/catalog").with(user("listener01").roles("USER")))
+        mockMvc.perform(get("/api/content-lead/me/catalog").with(user("listener01").roles("USER")))
             .andExpect(status().isForbidden());
     }
 
     @Test
     void getMyCatalogWithoutAuthShouldReturnUnauthorized() throws Exception {
-        mockMvc.perform(get("/api/artists/me/catalog"))
+        mockMvc.perform(get("/api/content-lead/me/catalog"))
             .andExpect(status().isUnauthorized());
     }
 }

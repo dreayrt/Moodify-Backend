@@ -207,4 +207,29 @@ public class AdminApi {
     public ResponseEntity<Map<String, Object>> getLicensing() {
         return ResponseEntity.ok(adminService.getLicensingData());
     }
+
+
+    // ==========================================
+    // 8. FAVORITES MANAGEMENT
+    // ==========================================
+    @GetMapping("/favorites")
+    public ResponseEntity<Map<String, Object>> getFavorites(
+            @RequestParam(required = false, defaultValue = "SONG") String type,
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(adminService.getFavorites(type, query, page, size));
+    }
+
+    @GetMapping("/favorites/leaderboard")
+    public ResponseEntity<List<Map<String, Object>>> getFavoriteLeaderboard() {
+        return ResponseEntity.ok(adminService.getFavoriteLeaderboard());
+    }
+
+    @DeleteMapping("/favorites/{id}")
+    public ResponseEntity<Map<String, Object>> deleteFavorite(@PathVariable Long id) {
+        adminService.deleteFavorite(id);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Lượt yêu thích đã được xóa khỏi hệ thống"));
+    }
 }

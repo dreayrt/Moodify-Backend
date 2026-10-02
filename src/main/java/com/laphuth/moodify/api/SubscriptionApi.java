@@ -2,6 +2,7 @@ package com.laphuth.moodify.api;
 
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.repositories.TrackRepository;
+import com.laphuth.moodify.services.AudioUrlResolver;
 import com.laphuth.moodify.services.SubscriptionService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -21,8 +22,6 @@ public class SubscriptionApi {
 
     private final SubscriptionService subscriptionService;
     private final TrackRepository trackRepository;
-
-    private static final String AUDIO_SERVER_BASE_URL = "https://musiccollector.kandes.io.vn/";
 
     public SubscriptionApi(SubscriptionService subscriptionService, TrackRepository trackRepository) {
         this.subscriptionService = subscriptionService;
@@ -115,15 +114,7 @@ public class SubscriptionApi {
             .or(() -> trackRepository.findById(trackSpotifyId))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bài hát."));
 
-        String localPath = track.getLocalPath();
-        String downloadUrl;
-        if (localPath != null && !localPath.isBlank()) {
-            String clean = localPath.trim().replace("\\", "/");
-            if (clean.startsWith("/")) clean = clean.substring(1);
-            downloadUrl = clean.startsWith("http") ? clean : AUDIO_SERVER_BASE_URL + clean;
-        } else {
-            downloadUrl = "https://musiccollector.kandes.io.vn/data/audio/xesi-hoaprox/3b2kCFZhX9GYnQ58qL1cAM_vo-tinh.mp3";
-        }
+        String downloadUrl = AudioUrlResolver.resolve(track.getLocalPath());
 
         // Redirect hoặc trả về URL download kèm file name
         return ResponseEntity.status(HttpStatus.FOUND)

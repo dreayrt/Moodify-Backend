@@ -1,5 +1,5 @@
 package com.laphuth.moodify.entities.enums;
 
-public enum userStatus {
+public enum UserStatus {
     ACTIVE, INACTIVE, BANNED;
 }

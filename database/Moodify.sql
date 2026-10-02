@@ -10,7 +10,7 @@ USE moodify;
 -- ============================================================
 -- 1. NGƯỜI DÙNG
 -- Ánh xạ lớp cha User và các lớp con phân biệt theo role trong sơ đồ lớp.
--- Admin / Listener / Artist / ContentModerator được biểu diễn thông qua field role.
+-- Admin / Listener (User) / Content Lead (Phụ trách nội dung) / ContentModerator được biểu diễn thông qua field role.
 -- ============================================================
 CREATE TABLE users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -20,8 +20,8 @@ CREATE TABLE users (
     username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     avatar_url VARCHAR(500) NULL,
-    role ENUM('USER','ARTIST','MODERATOR','ADMIN') NOT NULL DEFAULT 'USER',
-    artist_spotify_id VARCHAR(80) NULL UNIQUE,  -- <--- Cột liên kết sang MongoDB
+    role ENUM('USER','CONTENT_LEAD','MODERATOR','ADMIN') NOT NULL DEFAULT 'USER',
+    artist_spotify_id VARCHAR(80) NULL UNIQUE,  -- Cột liên kết mã catalog / Spotify artist ID do Content Lead phụ trách
     status ENUM('ACTIVE','INACTIVE','BANNED') NOT NULL DEFAULT 'ACTIVE',
     last_login_at DATETIME NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -175,8 +175,6 @@ CREATE TABLE search_history (
     INDEX idx_search_user_time (user_id, searched_at),
     INDEX idx_search_keyword (keyword),
     INDEX idx_search_emotion (detected_emotion)
-) ;
-
 -- ============================================================
 -- 9.1 LƯỢT TRUY CẬP ĐA NỀN TẢNG (PLATFORM TRAFFIC EVENTS)
 -- Ghi nhận lượt tiếp cận của người dùng vào bài hát/nghệ sĩ qua Web, Android, iOS, Mạng xã hội.
@@ -452,21 +450,21 @@ INSERT INTO users (
     role, artist_spotify_id, status, last_login_at, created_at, updated_at
 ) VALUES
 (1, 'Nguyễn Văn Listener', '0901000001', 'listener@moodify.local', 'listener01',
- '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
+ '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240',
  'USER', NULL, 'ACTIVE', '2026-09-15 08:10:00', '2026-01-01 08:00:00', '2026-09-15 08:10:00'),
-(2, 'Trần Minh Artist', '0901000002', 'artist@moodify.local', 'artist01',
- '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
+(2, 'Trần Minh Content Lead', '0901000002', 'contentlead@moodify.local', 'contentlead01',
+ '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=240',
- 'ARTIST', '4OCl7UfKRXLcYouOYa3Bwc', 'ACTIVE', '2026-09-15 08:00:00', '2026-02-01 08:00:00', '2026-09-15 08:00:00'),
+ 'CONTENT_LEAD', '4OCl7UfKRXLcYouOYa3Bwc', 'ACTIVE', '2026-09-15 08:00:00', '2026-02-01 08:00:00', '2026-09-15 08:00:00'),
 (3, 'Lê Hoàng Moderator', '0901000003', 'moderator@moodify.local', 'moderator01',
- '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
+ '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
  NULL, 'MODERATOR', NULL, 'ACTIVE', '2026-09-15 07:45:00', '2026-03-01 08:00:00', '2026-09-15 07:45:00'),
 (4, 'Phạm Quốc Admin', '0901000004', 'admin@moodify.local', 'admin01',
- '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
- NULL, 'ADMIN', NULL, 'ACTIVE', NULL, '2026-01-15 08:00:00', '2026-08-30 09:00:00'),
+ '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
+ NULL, 'ADMIN', NULL, 'INACTIVE', NULL, '2026-01-15 08:00:00', '2026-08-30 09:00:00'),
 (5, 'Hoàng Anh Banned', '0901000005', 'banned@moodify.local', 'banned01',
- '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
+ '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
  NULL, 'USER', NULL, 'BANNED', NULL, '2026-04-01 08:00:00', '2026-09-10 14:00:00');
 
 -- ============================================================
@@ -568,7 +566,7 @@ INSERT INTO service_packages (
 (1, 'Moodify Trial 7 Days', 'Gói dùng thử miễn phí trong 7 ngày.', 0, 7, 1, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
 (2, 'Premium 30 Days', 'Gói Premium trong 30 ngày.', 59000, 30, 2, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
 (3, 'Premium 90 Days', 'Gói Premium trong 90 ngày.', 149000, 90, 3, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(4, 'Artist Pro 365 Days', 'Gói chuyên nghiệp dành cho Artist trong 365 ngày.', 599000, 365, 4, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(4, 'Content Lead Pro 365 Days', 'Gói chuyên nghiệp dành cho Content Lead trong 365 ngày.', 599000, 365, 4, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
 (5, 'Legacy 45 Days', 'Gói cũ đã ngừng cho đăng ký mới.', 99000, 45, 5, 'INACTIVE', '2026-01-01 00:00:00', '2026-08-01 00:00:00');
 
 -- ============================================================
@@ -701,5 +699,12 @@ INSERT INTO song_licenses (
 (3, '6a8230b53cccfc45cd626cef', 4, 4, 'MASTER_LICENSE', NULL, '2026-02-01', '2026-08-01', 'REVOKED', 'https://example.com/licenses/license-003.pdf', '2026-02-01 08:00:00', '2026-08-01 08:00:00'),
 (4, '6a8230b53cccfc45cd626cf0', 2, NULL, 'STREAMING_PENDING', NULL, NULL, NULL, 'PENDING', NULL, '2026-09-10 08:00:00', '2026-09-10 08:00:00'),
 (5, '6a8230b53cccfc45cd626cf1', NULL, NULL, 'DIRECT_LICENSE', 'Independent Artist', '2026-06-01', NULL, 'ACTIVE', NULL, '2026-06-01 08:00:00', '2026-06-01 08:00:00');
+
+
+USE moodify;
+UPDATE users 
+SET password = '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS'
+WHERE username IN ('contentlead01', 'artist01', 'listener01', 'moderator01', 'admin01');
+
 
 

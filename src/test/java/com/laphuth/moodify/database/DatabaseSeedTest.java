@@ -17,7 +17,7 @@ class DatabaseSeedTest {
 
     @Test
     void allSeedUsersShouldUseBcrypt() throws Exception {
-        String sql = new ClassPathResource("db/moodify-reset.sql")
+        String sql = new ClassPathResource("db/Moodify.sql")
             .getContentAsString(StandardCharsets.UTF_8);
 
         assertThat(sql).doesNotContainIgnoringCase("SHA2(");
@@ -36,7 +36,7 @@ class DatabaseSeedTest {
 
     @Test
     void relationalSchemaShouldNotStoreDerivedDuplicateColumns() throws Exception {
-        String sql = new ClassPathResource("db/moodify-reset.sql")
+        String sql = new ClassPathResource("db/Moodify.sql")
             .getContentAsString(StandardCharsets.UTF_8);
 
         String playbackEvents = createTableBlock(sql, "playback_events");

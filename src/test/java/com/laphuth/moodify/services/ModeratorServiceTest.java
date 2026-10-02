@@ -9,7 +9,7 @@ import com.laphuth.moodify.repositories.ContentReviewActionRepository;
 import com.laphuth.moodify.repositories.ContentReviewRequestRepository;
 import com.laphuth.moodify.repositories.SongLicenseRepository;
 import com.laphuth.moodify.repositories.TrackRepository;
-import com.laphuth.moodify.repositories.userRepository;
+import com.laphuth.moodify.repositories.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,7 +40,7 @@ class ModeratorServiceTest {
     private ContentReviewActionRepository contentReviewActionRepository;
 
     @Mock
-    private userRepository userRepo;
+    private UserRepository userRepo;
 
     @InjectMocks
     private ModeratorService moderatorService;
@@ -91,5 +91,26 @@ class ModeratorServiceTest {
         assertThat(item.reviewerName()).isEqualTo("Kiểm Duyệt Viên");
         assertThat(item.reviewDurationSec()).isEqualTo(300);
         assertThat(item.assignedExplicitTag()).isTrue();
+    }
+
+    @Test
+    void getPendingQueueShouldReturnTracksInPendingQueue() {
+        Track pendingTrack = new Track();
+        pendingTrack.setId("track-pending-1");
+        pendingTrack.setName("Bài hát đang chờ duyệt");
+        pendingTrack.setArtistName("Content Lead Artist");
+        pendingTrack.setModerationStatus("pending");
+
+        when(trackRepository.findByModerationStatusIn(List.of("pending", "PENDING")))
+            .thenReturn(List.of(pendingTrack));
+        when(songLicenseRepository.findByTrackIdIn(List.of("track-pending-1")))
+            .thenReturn(List.of());
+
+        var queue = moderatorService.getPendingQueue();
+
+        assertThat(queue).hasSize(1);
+        assertThat(queue.get(0).id()).isEqualTo("track-pending-1");
+        assertThat(queue.get(0).title()).isEqualTo("Bài hát đang chờ duyệt");
+        assertThat(queue.get(0).status()).isEqualTo("pending");
     }
 }

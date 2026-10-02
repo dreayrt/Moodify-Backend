@@ -6,6 +6,7 @@ public class ModerationDecisionRequest {
     private String rejectionReason;
     private String internalNote;
     private Boolean explicitTag;
+    private Double moderationScore;
 
     public String getTrackId() { return trackId; }
     public void setTrackId(String trackId) { this.trackId = trackId; }
@@ -21,4 +22,7 @@ public class ModerationDecisionRequest {
 
     public Boolean getExplicitTag() { return explicitTag; }
     public void setExplicitTag(Boolean explicitTag) { this.explicitTag = explicitTag; }
+
+    public Double getModerationScore() { return moderationScore; }
+    public void setModerationScore(Double moderationScore) { this.moderationScore = moderationScore; }
 }

@@ -13,7 +13,7 @@ import com.laphuth.moodify.repositories.ContentReviewActionRepository;
 import com.laphuth.moodify.repositories.ContentReviewRequestRepository;
 import com.laphuth.moodify.repositories.SongLicenseRepository;
 import com.laphuth.moodify.repositories.TrackRepository;
-import com.laphuth.moodify.repositories.userRepository;
+import com.laphuth.moodify.repositories.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -32,14 +32,14 @@ public class ModeratorService {
     private final SongLicenseRepository songLicenseRepository;
     private final ContentReviewRequestRepository contentReviewRequestRepository;
     private final ContentReviewActionRepository contentReviewActionRepository;
-    private final userRepository userRepo;
+    private final UserRepository userRepo;
 
     public ModeratorService(
         TrackRepository trackRepository,
         SongLicenseRepository songLicenseRepository,
         ContentReviewRequestRepository contentReviewRequestRepository,
         ContentReviewActionRepository contentReviewActionRepository,
-        userRepository userRepo
+        UserRepository userRepo
     ) {
         this.trackRepository = trackRepository;
         this.songLicenseRepository = songLicenseRepository;
@@ -49,7 +49,7 @@ public class ModeratorService {
     }
 
     public List<ModerationQueueTrackResponse> getPendingQueue() {
-        List<Track> pendingTracks = trackRepository.findByModerationStatus("pending");
+        List<Track> pendingTracks = trackRepository.findByModerationStatusIn(List.of("pending", "PENDING"));
         if (pendingTracks.isEmpty()) {
             return List.of();
         }
@@ -135,18 +135,24 @@ public class ModeratorService {
         switch (action) {
             case "approve" -> {
                 track.setModerationStatus("approved");
-                track.setModerationScore(98.0);
+                track.setStatus("published");
+                double score = (request.getModerationScore() != null && request.getModerationScore() > 0)
+                    ? request.getModerationScore()
+                    : 98.0;
+                track.setModerationScore(score);
                 track.setDownloadStatus("completed");
                 reviewAction = "APPROVE";
                 reviewRequestStatus = "APPROVED";
             }
             case "reject" -> {
                 track.setModerationStatus("rejected");
+                track.setStatus("draft");
                 reviewAction = "REJECT";
                 reviewRequestStatus = "REJECTED";
             }
             case "needs_revision" -> {
                 track.setModerationStatus("needs_revision");
+                track.setStatus("draft");
                 reviewAction = "RETURN_FOR_EDIT";
                 reviewRequestStatus = "PENDING"; // Still pending, waiting for artist revision
             }

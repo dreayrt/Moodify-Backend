@@ -49,7 +49,7 @@ public record ModerationQueueTrackResponse(
             durationFormatted,
             durationSec,
             track.getImageUrl(),
-            track.getLocalPath(),
+            com.laphuth.moodify.services.AudioUrlResolver.resolve(track.getLocalPath()),
             track.getCreatedAt() != null ? track.getCreatedAt().toString() : "Vừa xong",
             "normal",
             track.getModerationStatus() != null ? track.getModerationStatus() : "pending",

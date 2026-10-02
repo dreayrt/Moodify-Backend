@@ -1,7 +1,7 @@
 package com.laphuth.moodify.entities;
 
-import com.laphuth.moodify.entities.enums.userRole;
-import com.laphuth.moodify.entities.enums.userStatus;
+import com.laphuth.moodify.entities.enums.UserRole;
+import com.laphuth.moodify.entities.enums.UserStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -43,7 +43,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
-    private userRole role;
+    private UserRole role;
 
     @jakarta.persistence.Transient
     private String staffCode;
@@ -52,7 +52,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private userStatus status;
+    private UserStatus status;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
@@ -69,10 +69,10 @@ public class User {
         createdAt = now;
         updatedAt = now;
         if (role == null) {
-            role = userRole.USER;
+            role = UserRole.USER;
         }
         if (status == null) {
-            status = userStatus.ACTIVE;
+            status = UserStatus.ACTIVE;
         }
     }
 
@@ -145,11 +145,11 @@ public class User {
         this.avatarUrl = avatarUrl;
     }
 
-    public userRole getRole() {
+    public UserRole getRole() {
         return role;
     }
 
-    public void setRole(userRole role) {
+    public void setRole(UserRole role) {
         this.role = role;
     }
 
@@ -161,11 +161,11 @@ public class User {
         this.artistSpotifyId = artistSpotifyId;
     }
 
-    public userStatus getStatus() {
+    public UserStatus getStatus() {
         return status;
     }
 
-    public void setStatus(userStatus status) {
+    public void setStatus(UserStatus status) {
         this.status = status;
     }
 

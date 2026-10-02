@@ -1,6 +1,7 @@
 package com.laphuth.moodify.dto.track;
 
 import com.laphuth.moodify.entities.Track;
+import com.laphuth.moodify.services.AudioUrlResolver;
 
 import java.time.Instant;
 import java.util.List;
@@ -22,6 +23,7 @@ public record TrackResponse(
     String lyricsPlain,
     String lyricsSynced,
     String localPath,
+    String audioUrl,
     String downloadStatus,
     Instant createdAt,
     Instant updatedAt
@@ -44,6 +46,7 @@ public record TrackResponse(
             track.getLyricsPlain(),
             track.getLyricsSynced(),
             track.getLocalPath(),
+            AudioUrlResolver.resolve(track.getLocalPath()),
             track.getDownloadStatus(),
             track.getCreatedAt(),
             track.getUpdatedAt()
