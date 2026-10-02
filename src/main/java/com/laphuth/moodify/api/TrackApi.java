@@ -36,10 +36,16 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class TrackApi {
     private final TrackService trackService;
     private final TrackRepository trackRepository;
+    private final com.laphuth.moodify.services.EmotionService emotionService;
 
-    public TrackApi(TrackService trackService, TrackRepository trackRepository) {
+    public TrackApi(
+        TrackService trackService,
+        TrackRepository trackRepository,
+        com.laphuth.moodify.services.EmotionService emotionService
+    ) {
         this.trackService = trackService;
         this.trackRepository = trackRepository;
+        this.emotionService = emotionService;
     }
 
     @GetMapping("/debug/genres")
@@ -71,8 +77,22 @@ public class TrackApi {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(required = false) String query,
-        @RequestParam(required = false) String genre
+        @RequestParam(required = false) String genre,
+        @RequestParam(required = false) String mode,
+        org.springframework.security.core.Authentication authentication
     ) {
+        if ("mood".equalsIgnoreCase(mode) && query != null && !query.isBlank()) {
+            String principal = (authentication != null) ? authentication.getName() : null;
+            var moodRec = emotionService.recommendTracksByMood(query.trim(), "empathy", size, principal);
+            var trackList = moodRec.getTracks();
+            return ResponseEntity.ok(new TrackPageResponse(
+                trackList,
+                0,
+                trackList.size(),
+                trackList.size(),
+                1
+            ));
+        }
         if (genre != null && !genre.isBlank()) {
             return ResponseEntity.ok(trackService.getTracksByGenre(genre.trim(), page, size));
         }

@@ -74,6 +74,9 @@ public class SecurityConfig {
                 // Seed & Sync endpoints
                 .requestMatchers(HttpMethod.POST, "/api/seed/**").permitAll()
                 .requestMatchers("/api/sync/**").permitAll()
+                // Emotion Detection & Music Recommendation
+                .requestMatchers(HttpMethod.POST, "/api/emotions/predict", "/api/emotions/recommend").permitAll()
+                .requestMatchers("/api/emotions/history").authenticated()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

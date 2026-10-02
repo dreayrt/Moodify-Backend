@@ -16,3 +16,17 @@ services:
       - 'MYSQL_USER=myuser'
     ports:
       - '3306'
+
+  detect-emotions:
+    image: 'dreayrt/detect-emotions:latest'
+    container_name: 'moodify-detect-emotions'
+    restart: 'unless-stopped'
+    ports:
+      - '8000:8000'
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
