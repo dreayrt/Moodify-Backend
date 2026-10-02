@@ -18,6 +18,7 @@ public class LibraryTrackResponse {
     private String lyricsPlain;
     private String lyricsSynced;
     private String localPath;
+    private String audioUrl;
 
     public LibraryTrackResponse() {
     }
@@ -140,5 +141,13 @@ public class LibraryTrackResponse {
 
     public void setLocalPath(String localPath) {
         this.localPath = localPath;
+    }
+
+    public String getAudioUrl() {
+        return audioUrl;
+    }
+
+    public void setAudioUrl(String audioUrl) {
+        this.audioUrl = audioUrl;
     }
 }

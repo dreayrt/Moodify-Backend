@@ -71,9 +71,13 @@ public class SecurityConfig {
                 // Allow MongoDB API access for GET and HEAD (streaming, browsing) and packages
                 .requestMatchers(HttpMethod.GET, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}", "/api/packages/**", "/api/packages").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/{id}").permitAll()
-                // Seed & Sync endpoints
-                .requestMatchers(HttpMethod.POST, "/api/seed/**").permitAll()
-                .requestMatchers("/api/sync/**").permitAll()
+                // Public ad serving for the player (active campaigns only)
+                .requestMatchers(HttpMethod.GET, "/api/ads/active").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/ads/*/impression").permitAll()
+                // User notification inbox
+                .requestMatchers("/api/notifications/**").authenticated()
+                // Seed & Sync are destructive/maintenance operations -> ADMIN only
+                .requestMatchers("/api/seed/**", "/api/sync/**").hasRole(UserRole.ADMIN.name())
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

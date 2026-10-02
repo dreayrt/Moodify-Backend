@@ -1,9 +1,14 @@
 package com.laphuth.moodify.api;
 
+import com.laphuth.moodify.services.AdService;
 import com.laphuth.moodify.services.AdminService;
+import com.laphuth.moodify.services.NotificationService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -13,9 +18,18 @@ import java.util.Map;
 public class AdminApi {
 
     private final AdminService adminService;
+    private final NotificationService notificationService;
+    private final AdService adService;
+    private final JdbcTemplate jdbcTemplate;
 
-    public AdminApi(AdminService adminService) {
+    public AdminApi(AdminService adminService,
+                    NotificationService notificationService,
+                    AdService adService,
+                    JdbcTemplate jdbcTemplate) {
         this.adminService = adminService;
+        this.notificationService = notificationService;
+        this.adService = adService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     // ==========================================
@@ -41,30 +55,39 @@ public class AdminApi {
     @PatchMapping("/users/{id}/status")
     public ResponseEntity<Map<String, Object>> updateUserStatus(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body
+            @RequestBody Map<String, String> body,
+            Authentication authentication
     ) {
         String status = body.get("status");
         String reason = body.get("reason");
-        adminService.updateUserStatus(id, status, reason);
+        adminService.updateUserStatus(id, status, reason, authentication.getName());
         return ResponseEntity.ok(Map.of("success", true, "message", "Trạng thái người dùng đã được cập nhật thành công"));
     }
 
     @PatchMapping("/users/{id}/role")
     public ResponseEntity<Map<String, Object>> updateUserRole(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body
+            @RequestBody Map<String, String> body,
+            Authentication authentication
     ) {
         String role = body.get("role");
         String staffCode = body.get("staffCode");
         String artistSpotifyId = body.get("artistSpotifyId");
-        adminService.updateUserRole(id, role, staffCode, artistSpotifyId);
+        adminService.updateUserRole(id, role, staffCode, artistSpotifyId, authentication.getName());
         return ResponseEntity.ok(Map.of("success", true, "message", "Vai trò người dùng đã được cập nhật thành công"));
     }
 
     @PostMapping("/users/{id}/reset-password")
-    public ResponseEntity<Map<String, Object>> resetUserPassword(@PathVariable Long id) {
-        adminService.resetUserPassword(id);
-        return ResponseEntity.ok(Map.of("success", true, "message", "Mật khẩu đã được đặt lại về 123456 thành công"));
+    public ResponseEntity<Map<String, Object>> resetUserPassword(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        String tempPassword = adminService.resetUserPassword(id, authentication.getName());
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Mật khẩu đã được đặt lại. Mật khẩu tạm: " + tempPassword,
+                "tempPassword", tempPassword
+        ));
     }
 
     @PostMapping("/users")
@@ -231,5 +254,113 @@ public class AdminApi {
     public ResponseEntity<Map<String, Object>> deleteFavorite(@PathVariable Long id) {
         adminService.deleteFavorite(id);
         return ResponseEntity.ok(Map.of("success", true, "message", "Lượt yêu thích đã được xóa khỏi hệ thống"));
+    }
+
+    // ==========================================
+    // 7. NOTIFICATIONS (Thông báo tới người dùng)
+    // ==========================================
+    @PostMapping("/notifications/broadcast")
+    public ResponseEntity<Map<String, Object>> broadcastNotification(
+            @RequestBody Map<String, Object> body,
+            Authentication authentication
+    ) {
+        Long createdBy = null;
+        try {
+            createdBy = jdbcTemplate.queryForObject(
+                    "SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1",
+                    Long.class, authentication.getName(), authentication.getName());
+        } catch (Exception ignored) {}
+        Map<String, Object> result = notificationService.broadcast(
+                (String) body.get("title"),
+                (String) body.get("message"),
+                (String) body.getOrDefault("type", "SYSTEM"),
+                (String) body.getOrDefault("targetRole", "ALL"),
+                (String) body.get("linkUrl"),
+                createdBy);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/notifications")
+    public ResponseEntity<List<Map<String, Object>>> getNotificationHistory() {
+        return ResponseEntity.ok(notificationService.getBroadcastHistory());
+    }
+
+    // ==========================================
+    // 7b. AUDIT LOGS (Nhật ký hành chính - MongoDB)
+    // ==========================================
+    @GetMapping("/audit-logs")
+    public ResponseEntity<List<Map<String, Object>>> getAuditLogs() {
+        return ResponseEntity.ok(adminService.getAuditLogs());
+    }
+
+    // ==========================================
+    // 9. AD MANAGEMENT (Quản lý quảng cáo & danh mục)
+    // ==========================================
+    @GetMapping("/ads")
+    public ResponseEntity<List<Map<String, Object>>> getAdCampaigns(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String categoryId
+    ) {
+        return ResponseEntity.ok(adService.getCampaigns(status, categoryId));
+    }
+
+    @PostMapping("/ads")
+    public ResponseEntity<Map<String, Object>> createAdCampaign(@RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(adService.createCampaign(body));
+    }
+
+    @PutMapping("/ads/{id}")
+    public ResponseEntity<Map<String, Object>> updateAdCampaign(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> body
+    ) {
+        adService.updateCampaign(id, body);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã cập nhật chiến dịch quảng cáo."));
+    }
+
+    @PatchMapping("/ads/{id}/status")
+    public ResponseEntity<Map<String, Object>> toggleAdCampaignStatus(@PathVariable String id) {
+        adService.toggleCampaignStatus(id);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã đổi trạng thái chiến dịch quảng cáo."));
+    }
+
+    @DeleteMapping("/ads/{id}")
+    public ResponseEntity<Map<String, Object>> deleteAdCampaign(@PathVariable String id) {
+        adService.deleteCampaign(id);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã xóa chiến dịch quảng cáo."));
+    }
+
+    @PostMapping(value = "/ads/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> uploadAdAudio(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(adService.uploadAdAudio(file));
+    }
+
+    @GetMapping("/ads/categories")
+    public ResponseEntity<List<Map<String, Object>>> getAdCategories() {
+        return ResponseEntity.ok(adService.getCategories());
+    }
+
+    @PostMapping("/ads/categories")
+    public ResponseEntity<Map<String, Object>> createAdCategory(@RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(adService.createCategory(
+                (String) body.get("name"), (String) body.get("description")));
+    }
+
+    @PutMapping("/ads/categories/{id}")
+    public ResponseEntity<Map<String, Object>> updateAdCategory(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> body
+    ) {
+        adService.updateCategory(id,
+                (String) body.get("name"),
+                (String) body.get("description"),
+                (String) body.get("status"));
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã cập nhật danh mục quảng cáo."));
+    }
+
+    @DeleteMapping("/ads/categories/{id}")
+    public ResponseEntity<Map<String, Object>> deleteAdCategory(@PathVariable String id) {
+        adService.deleteCategory(id);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã xóa danh mục quảng cáo."));
     }
 }

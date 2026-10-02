@@ -1,17 +1,26 @@
 package com.laphuth.moodify.services;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.repositories.TrackRepository;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.IndexOptions;
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -26,6 +35,7 @@ public class TrackSyncService {
     private static final Logger log = LoggerFactory.getLogger(TrackSyncService.class);
 
     private final TrackRepository trackRepository;
+    private final MongoTemplate mongoTemplate;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
     private final String oracleBaseUrl;
@@ -37,11 +47,13 @@ public class TrackSyncService {
 
     public TrackSyncService(
             TrackRepository trackRepository,
+            MongoTemplate mongoTemplate,
             @org.springframework.beans.factory.annotation.Autowired(required = false) ObjectMapper springObjectMapper,
             @Value("${oracle.audio.base-url:}") String oracleBaseUrl,
             @Value("${sync.scheduler.enabled:true}") boolean syncEnabled
     ) {
         this.trackRepository = trackRepository;
+        this.mongoTemplate = mongoTemplate;
         this.oracleBaseUrl = oracleBaseUrl != null ? oracleBaseUrl.trim() : "";
         this.syncEnabled = syncEnabled;
 
@@ -49,8 +61,45 @@ public class TrackSyncService {
             this.objectMapper = springObjectMapper.copy();
         } else {
             this.objectMapper = new ObjectMapper();
-            this.objectMapper.findAndRegisterModules();
         }
+
+        JavaTimeModule javaTimeModule = new JavaTimeModule();
+        javaTimeModule.addDeserializer(Instant.class, new JsonDeserializer<Instant>() {
+            @Override
+            public Instant deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+                JsonNode node = p.getCodec().readTree(p);
+                if (node == null || node.isNull()) {
+                    return null;
+                }
+                if (node.isTextual()) {
+                    try {
+                        return Instant.parse(node.asText());
+                    } catch (Exception e) {
+                        return null;
+                    }
+                }
+                if (node.isNumber()) {
+                    long val = node.asLong();
+                    return val > 100_000_000_000L ? Instant.ofEpochMilli(val) : Instant.ofEpochSecond(val);
+                }
+                if (node.isObject() && node.has("$date")) {
+                    JsonNode dateNode = node.get("$date");
+                    if (dateNode.isTextual()) {
+                        try {
+                            return Instant.parse(dateNode.asText());
+                        } catch (Exception e) {
+                            return null;
+                        }
+                    } else if (dateNode.isNumber()) {
+                        long val = dateNode.asLong();
+                        return val > 100_000_000_000L ? Instant.ofEpochMilli(val) : Instant.ofEpochSecond(val);
+                    }
+                }
+                return null;
+            }
+        });
+        this.objectMapper.registerModule(javaTimeModule);
+        this.objectMapper.findAndRegisterModules();
         this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         this.httpClient = HttpClient.newBuilder()
@@ -143,6 +192,8 @@ public class TrackSyncService {
             return result;
         }
 
+        ensureSparseSpotifyIdIndex();
+
         List<Track> oracleTracks = objectMapper.convertValue(content, new TypeReference<List<Track>>() {});
         Set<String> oracleSpotifyIds = new HashSet<>();
 
@@ -150,12 +201,16 @@ public class TrackSyncService {
         int updatedTracks = 0;
 
         for (Track oracleTrack : oracleTracks) {
-            if (oracleTrack.getSpotifyId() != null && !oracleTrack.getSpotifyId().isBlank()) {
+            if (oracleTrack.getSpotifyId() != null && oracleTrack.getSpotifyId().isBlank()) {
+                oracleTrack.setSpotifyId(null);
+            }
+
+            if (oracleTrack.getSpotifyId() != null) {
                 oracleSpotifyIds.add(oracleTrack.getSpotifyId().trim());
             }
 
             Track localExisting = null;
-            if (oracleTrack.getSpotifyId() != null && !oracleTrack.getSpotifyId().isBlank()) {
+            if (oracleTrack.getSpotifyId() != null) {
                 localExisting = trackRepository.findBySpotifyId(oracleTrack.getSpotifyId().trim()).orElse(null);
             }
             if (localExisting == null && oracleTrack.getId() != null && !oracleTrack.getId().isBlank()) {
@@ -309,5 +364,35 @@ public class TrackSyncService {
         status.put("lastSyncStatus", lastSyncStatus);
         status.put("lastSyncResult", lastSyncResult);
         return status;
+    }
+
+    private void ensureSparseSpotifyIdIndex() {
+        if (mongoTemplate == null) return;
+        try {
+            MongoCollection<Document> collection = mongoTemplate.getCollection("tracks");
+            boolean needsRecreation = false;
+            for (Document index : collection.listIndexes()) {
+                String name = index.getString("name");
+                if ("spotify_id_1".equals(name)) {
+                    Boolean isSparse = index.getBoolean("sparse", false);
+                    if (!Boolean.TRUE.equals(isSparse)) {
+                        log.info("[Sync] Phát hiện index spotify_id_1 cũ không có cờ sparse -> Đang drop index...");
+                        collection.dropIndex("spotify_id_1");
+                        needsRecreation = true;
+                    }
+                    break;
+                }
+            }
+            if (needsRecreation) {
+                log.info("[Sync] Đang tạo lại index spotify_id_1 với { unique: true, sparse: true }...");
+                collection.createIndex(
+                        new Document("spotify_id", 1),
+                        new IndexOptions().unique(true).sparse(true)
+                );
+                log.info("[Sync] Đã tạo index sparse spotify_id_1 thành công!");
+            }
+        } catch (Exception e) {
+            log.warn("[Sync] Không thể cấu hình index sparse cho spotify_id: {}", e.getMessage());
+        }
     }
 }

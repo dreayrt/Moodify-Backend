@@ -69,7 +69,8 @@ public class SubscriptionApi {
     }
 
     /**
-     * Endpoint dành riêng cho DEV/TEST: Bật / Tắt Premium tức thì để demo và kiểm thử.
+     * Endpoint DEV/TEST: Bật / Tắt Premium tức thì để demo và kiểm thử.
+     * Chỉ ADMIN mới được phép tự cấp/gỡ premium (trước đây mọi user đăng nhập đều gọi được).
      */
     @PostMapping("/subscriptions/dev-toggle")
     public ResponseEntity<Map<String, Object>> devToggle(
@@ -79,10 +80,17 @@ public class SubscriptionApi {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        boolean isAdmin = authentication.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Chức năng này chỉ dành cho Quản trị viên (ADMIN).");
+        }
         boolean enable = Boolean.TRUE.equals(request.get("enable"));
         Integer days = request.get("days") != null ? Integer.valueOf(request.get("days").toString()) : 30;
+        Long packageId = request.get("packageId") != null ? Long.valueOf(request.get("packageId").toString()) : null;
 
-        return ResponseEntity.ok(subscriptionService.devTogglePremium(authentication.getName(), enable, days));
+        return ResponseEntity.ok(subscriptionService.devTogglePremium(authentication.getName(), enable, days, packageId));
     }
 
     /**
