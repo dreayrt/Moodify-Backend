@@ -5,7 +5,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class AudioUrlResolver {
-    private static String baseUrl = "";
+    public static final String DEFAULT_ONLINE_AUDIO_BASE_URL = "http://158.178.247.33/";
+    private static String baseUrl = DEFAULT_ONLINE_AUDIO_BASE_URL;
 
     public AudioUrlResolver(@Value("${oracle.audio.base-url:}") String configuredBaseUrl) {
         if (configuredBaseUrl != null && !configuredBaseUrl.isBlank()) {
@@ -14,6 +15,8 @@ public class AudioUrlResolver {
                 clean += "/";
             }
             baseUrl = clean;
+        } else {
+            baseUrl = DEFAULT_ONLINE_AUDIO_BASE_URL;
         }
     }
 

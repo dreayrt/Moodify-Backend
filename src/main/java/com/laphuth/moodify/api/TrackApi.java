@@ -119,16 +119,19 @@ public class TrackApi {
         } catch (Exception ignored) {
         }
 
+        // 1. Luôn ưu tiên phát nhạc trực tiếp từ máy chủ đám mây trực tuyến (Oracle Music Server)
+        if (track != null) {
+            String remoteAudioUrl = AudioUrlResolver.resolve(track.getLocalPath());
+            if (remoteAudioUrl != null && !remoteAudioUrl.isBlank()) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
+                    .location(URI.create(remoteAudioUrl))
+                    .build();
+            }
+        }
+
+        // 2. Dự phòng trong trường hợp offline/không có mạng
         File audioFile = resolveAudioFile(track);
         if (audioFile == null || !audioFile.exists() || audioFile.length() == 0) {
-            if (track != null) {
-                String remoteAudioUrl = AudioUrlResolver.resolve(track.getLocalPath());
-                if (remoteAudioUrl != null && !remoteAudioUrl.isBlank()) {
-                    return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
-                        .location(URI.create(remoteAudioUrl))
-                        .build();
-                }
-            }
             throw new ResponseStatusException(NOT_FOUND, "Audio file not available yet for track: " + id);
         }
 

@@ -13,11 +13,13 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import jakarta.annotation.PostConstruct;
 
+import java.security.SecureRandom;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -31,21 +33,72 @@ public class AdminService {
     private final TrackRepository trackRepository;
     private final MongoTemplate mongoTemplate;
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     private String resolveAudioUrl(String localPath) {
         return AudioUrlResolver.resolve(localPath);
+    }
+
+    /**
+     * Ghi nhật ký hành động quản trị vào MongoDB collection "audit_logs"
+     * với đúng danh tính người thực hiện (trước đây hardcode operator_user_id = 4
+     * và insert vào bảng MySQL không tồn tại). Không đổi schema MySQL.
+     */
+    private void recordAudit(String principal, String entity, Long targetId, String action, String details) {
+        try {
+            User operator = userRepository.findByEmailOrUsername(principal, principal).orElse(null);
+            if (operator == null) return;
+
+            org.bson.Document log = new org.bson.Document();
+            log.put("operatorUserId", operator.getId());
+            log.put("operatorName", operator.getFullname());
+            log.put("operatorRole", operator.getRole() != null ? operator.getRole().name() : "ADMIN");
+            log.put("targetEntity", entity);
+            log.put("targetId", targetId);
+            log.put("action", action);
+            log.put("details", details);
+            log.put("createdAt", new java.util.Date());
+            mongoTemplate.insert(log, "audit_logs");
+        } catch (Exception e) {
+            System.err.println("Failed to write audit log: " + e.getMessage());
+        }
+    }
+
+    /** Đọc 100 nhật ký hành chính gần nhất để hiển thị trong tab Cài Đặt & Nhật Ký. */
+    public List<Map<String, Object>> getAuditLogs() {
+        Query query = Query.query(new Criteria())
+                .with(Sort.by(Sort.Direction.DESC, "createdAt"))
+                .limit(100);
+        List<org.bson.Document> docs = mongoTemplate.find(query, org.bson.Document.class, "audit_logs");
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (org.bson.Document doc : docs) {
+            Map<String, Object> log = new HashMap<>();
+            log.put("id", doc.getObjectId("_id").toHexString());
+            log.put("operatorName", doc.getString("operatorName") != null ? doc.getString("operatorName") : "Hệ thống");
+            log.put("operatorRole", doc.getString("operatorRole") != null ? doc.getString("operatorRole") : "SYSTEM");
+            log.put("targetEntity", doc.getString("targetEntity"));
+            log.put("targetId", doc.get("targetId") != null ? doc.get("targetId").toString() : null);
+            log.put("action", doc.getString("action"));
+            log.put("details", doc.getString("details"));
+            log.put("createdAt", doc.getDate("createdAt") != null ? doc.getDate("createdAt").toString() : null);
+            result.add(log);
+        }
+        return result;
     }
 
     public AdminService(
             JdbcTemplate jdbcTemplate,
             TrackRepository trackRepository,
             MongoTemplate mongoTemplate,
-            UserRepository userRepository
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.trackRepository = trackRepository;
         this.mongoTemplate = mongoTemplate;
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // ==========================================
@@ -58,7 +111,7 @@ public class AdminService {
         Long totalUsers = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users", Long.class);
         Long activeUsers = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE status = 'ACTIVE'", Long.class);
         Long bannedUsers = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE status = 'BANNED'", Long.class);
-        Long artistUsers = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE role = 'ARTIST'", Long.class);
+        Long artistUsers = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE role IN ('CONTENT_LEAD', 'ARTIST')", Long.class);
         Long moderatorUsers = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE role = 'MODERATOR'", Long.class);
 
         Double totalRevenue = jdbcTemplate.queryForObject(
@@ -268,8 +321,13 @@ public class AdminService {
         List<Object> params = new ArrayList<>();
 
         if (role != null && !role.isBlank() && !role.equalsIgnoreCase("ALL")) {
-            sql.append("AND u.role = ? ");
-            params.add(role.toUpperCase().trim());
+            String r = role.toUpperCase().trim();
+            if ("CONTENT_LEAD".equals(r) || "ARTIST".equals(r)) {
+                sql.append("AND u.role IN ('CONTENT_LEAD', 'ARTIST') ");
+            } else {
+                sql.append("AND u.role = ? ");
+                params.add(r);
+            }
         }
 
         if (status != null && !status.isBlank() && !status.equalsIgnoreCase("ALL")) {
@@ -312,7 +370,7 @@ public class AdminService {
     }
 
     @Transactional
-    public void updateUserStatus(Long userId, String newStatus, String reason) {
+    public void updateUserStatus(Long userId, String newStatus, String reason, String principal) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
@@ -320,44 +378,56 @@ public class AdminService {
         user.setStatus(status);
         userRepository.save(user);
 
-        // Record audit if table exists
-        try {
-            jdbcTemplate.update(
-                    "INSERT INTO audit_logs (operator_user_id, target_entity, target_id, action, details) " +
-                    "VALUES (4, 'USER', ?, ?, ?)",
-                    userId, status.name(), reason != null ? reason : "Status changed by admin"
-            );
-        } catch (Exception ignored) {}
+        recordAudit(principal, "USER", userId, status.name(),
+                reason != null ? reason : "Status changed by admin");
     }
 
     @Transactional
-    public void updateUserRole(Long userId, String newRole, String staffCode, String artistSpotifyId) {
+    public void updateUserRole(Long userId, String newRole, String staffCode, String artistSpotifyId, String principal) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        UserRole role = UserRole.valueOf(newRole.toUpperCase().trim());
+        String normalizedRole = newRole.toUpperCase().trim();
+        if ("ARTIST".equals(normalizedRole)) {
+            normalizedRole = "CONTENT_LEAD";
+        }
+        UserRole role = UserRole.valueOf(normalizedRole);
         user.setRole(role);
         if (artistSpotifyId != null && !artistSpotifyId.isBlank()) {
             user.setArtistSpotifyId(artistSpotifyId.trim());
         }
         userRepository.save(user);
+
+        recordAudit(principal, "USER", userId, "CHANGE_ROLE",
+                "Vai trò chuyển sang " + role.name());
     }
 
+    /**
+     * Reset mật khẩu về một mật khẩu tạm ngẫu nhiên (không còn mặc định 123456).
+     * Trả về mật khẩu tạm để admin thông báo cho người dùng.
+     */
     @Transactional
-    public void resetUserPassword(Long userId) {
+    public String resetUserPassword(Long userId, String principal) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        // Default password '123456'
-        user.setPassword("$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS");
+
+        String tempPassword = generateTempPassword();
+        user.setPassword(passwordEncoder.encode(tempPassword));
         userRepository.save(user);
 
-        try {
-            jdbcTemplate.update(
-                    "INSERT INTO audit_logs (operator_user_id, target_entity, target_id, action, details) " +
-                    "VALUES (4, 'USER', ?, 'RESET_PASSWORD', 'Mật khẩu đã được đặt lại về 123456')",
-                    userId
-            );
-        } catch (Exception ignored) {}
+        recordAudit(principal, "USER", userId, "RESET_PASSWORD",
+                "Mật khẩu đã được đặt lại bằng mật khẩu tạm ngẫu nhiên");
+        return tempPassword;
+    }
+
+    private String generateTempPassword() {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(10);
+        for (int i = 0; i < 10; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 
     @Transactional
@@ -384,8 +454,13 @@ public class AdminService {
         String phone = (String) data.getOrDefault("phone", "0900000000");
         String roleStr = (String) data.getOrDefault("role", "USER");
         String statusStr = (String) data.getOrDefault("status", "ACTIVE");
+        String password = (String) data.get("password");
 
-        UserRole role = UserRole.valueOf(roleStr.toUpperCase().trim());
+        String r = roleStr.toUpperCase().trim();
+        if ("ARTIST".equals(r)) {
+            r = "CONTENT_LEAD";
+        }
+        UserRole role = UserRole.valueOf(r);
         UserStatus status = UserStatus.valueOf(statusStr.toUpperCase().trim());
 
         User user = new User();
@@ -395,7 +470,9 @@ public class AdminService {
         user.setPhone(phone);
         user.setRole(role);
         user.setStatus(status);
-        user.setPassword("$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS");
+        // Mật khẩu do admin cung cấp; nếu bỏ trống thì sinh mật khẩu tạm ngẫu nhiên
+        user.setPassword(passwordEncoder.encode(
+                (password != null && !password.isBlank()) ? password.trim() : generateTempPassword()));
         userRepository.save(user);
     }
 
@@ -682,7 +759,7 @@ public class AdminService {
     // ==========================================
     public List<Map<String, Object>> getPackages() {
         String sql =
-                "SELECT p.id, p.name, p.description, p.price, p.duration_days, p.display_order, p.status, " +
+                "SELECT p.id, p.name, p.description, p.price, p.duration_days, p.display_order, p.status, p.features_json, " +
                 "COUNT(s.id) as subscribers_count " +
                 "FROM service_packages p " +
                 "LEFT JOIN subscriptions s ON p.id = s.service_package_id AND s.status = 'ACTIVE' " +
@@ -699,6 +776,7 @@ public class AdminService {
             p.put("displayOrder", rs.getInt("display_order"));
             p.put("status", rs.getString("status"));
             p.put("subscribersCount", rs.getInt("subscribers_count"));
+            p.put("featuresJson", rs.getString("features_json"));
             return p;
         });
     }
@@ -710,23 +788,63 @@ public class AdminService {
     public void createPackage(Map<String, Object> data) {
         String name = (String) data.getOrDefault("name", "Gói Cước Mới");
         String description = (String) data.getOrDefault("description", "");
-        Double price = data.get("price") instanceof Number ? ((Number) data.get("price")).doubleValue() : 0.0;
-        Integer durationDays = data.get("durationDays") instanceof Number ? ((Number) data.get("durationDays")).intValue() : 30;
-        Integer displayOrder = data.get("displayOrder") instanceof Number ? ((Number) data.get("displayOrder")).intValue() : 1;
-        String status = (String) data.getOrDefault("status", "ACTIVE");
 
-        String sql = "INSERT INTO service_packages (name, description, price, duration_days, display_order, status, created_at, updated_at) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
-        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status.toUpperCase());
+        Double price = 0.0;
+        if (data.get("price") instanceof Number) {
+            price = ((Number) data.get("price")).doubleValue();
+        } else if (data.get("price") != null) {
+            try { price = Double.parseDouble(data.get("price").toString().trim()); } catch (Exception ignored) {}
+        }
+
+        Integer durationDays = 30;
+        if (data.get("durationDays") instanceof Number) {
+            durationDays = ((Number) data.get("durationDays")).intValue();
+        } else if (data.get("durationDays") != null) {
+            try { durationDays = Integer.parseInt(data.get("durationDays").toString().trim()); } catch (Exception ignored) {}
+        }
+
+        Integer displayOrder = 1;
+        if (data.get("displayOrder") instanceof Number) {
+            displayOrder = ((Number) data.get("displayOrder")).intValue();
+        } else if (data.get("displayOrder") != null) {
+            try { displayOrder = Integer.parseInt(data.get("displayOrder").toString().trim()); } catch (Exception ignored) {}
+        }
+
+        String status = (String) data.getOrDefault("status", "ACTIVE");
+        String featuresJson = (String) data.get("featuresJson");
+
+        String sql = "INSERT INTO service_packages (name, description, price, duration_days, display_order, status, features_json, created_at, updated_at) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status.toUpperCase(), featuresJson);
     }
 
     public void updatePackageDetails(Long packageId, Map<String, Object> data) {
         String name = (String) data.get("name");
         String description = (String) data.get("description");
-        Double price = data.get("price") instanceof Number ? ((Number) data.get("price")).doubleValue() : null;
-        Integer durationDays = data.get("durationDays") instanceof Number ? ((Number) data.get("durationDays")).intValue() : null;
-        Integer displayOrder = data.get("displayOrder") instanceof Number ? ((Number) data.get("displayOrder")).intValue() : null;
+
+        Double price = null;
+        if (data.get("price") instanceof Number) {
+            price = ((Number) data.get("price")).doubleValue();
+        } else if (data.get("price") != null) {
+            try { price = Double.parseDouble(data.get("price").toString().trim()); } catch (Exception ignored) {}
+        }
+
+        Integer durationDays = null;
+        if (data.get("durationDays") instanceof Number) {
+            durationDays = ((Number) data.get("durationDays")).intValue();
+        } else if (data.get("durationDays") != null) {
+            try { durationDays = Integer.parseInt(data.get("durationDays").toString().trim()); } catch (Exception ignored) {}
+        }
+
+        Integer displayOrder = null;
+        if (data.get("displayOrder") instanceof Number) {
+            displayOrder = ((Number) data.get("displayOrder")).intValue();
+        } else if (data.get("displayOrder") != null) {
+            try { displayOrder = Integer.parseInt(data.get("displayOrder").toString().trim()); } catch (Exception ignored) {}
+        }
+
         String status = (String) data.get("status");
+        String featuresJson = (String) data.get("featuresJson");
 
         String sql = "UPDATE service_packages SET " +
                      "name = COALESCE(?, name), " +
@@ -735,9 +853,10 @@ public class AdminService {
                      "duration_days = COALESCE(?, duration_days), " +
                      "display_order = COALESCE(?, display_order), " +
                      "status = COALESCE(?, status), " +
+                     "features_json = COALESCE(?, features_json), " +
                      "updated_at = NOW() " +
                      "WHERE id = ?";
-        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status != null ? status.toUpperCase() : null, packageId);
+        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status != null ? status.toUpperCase() : null, featuresJson, packageId);
     }
 
     public void togglePackageStatus(Long packageId) {
@@ -745,12 +864,22 @@ public class AdminService {
         jdbcTemplate.update(sql, packageId);
     }
 
+    /**
+     * Xóa gói cước an toàn: nếu gói đã phát sinh lịch sử thanh toán thì từ chối
+     * xóa cứng (tránh mất dữ liệu doanh thu), admin nên chuyển gói sang INACTIVE.
+     */
     @Transactional
     public void deletePackage(Long packageId) {
-        try {
-            jdbcTemplate.update("DELETE FROM payment_transactions WHERE subscription_id IN (SELECT id FROM subscriptions WHERE service_package_id = ?)", packageId);
-            jdbcTemplate.update("DELETE FROM subscriptions WHERE service_package_id = ?", packageId);
-        } catch (Exception ignored) {}
+        Long paymentCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM payment_transactions t " +
+                "JOIN subscriptions s ON t.subscription_id = s.id " +
+                "WHERE s.service_package_id = ?", Long.class, packageId);
+        if (paymentCount != null && paymentCount > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Gói này đã phát sinh " + paymentCount + " giao dịch thanh toán nên không thể xóa. " +
+                    "Vui lòng chuyển gói sang trạng thái INACTIVE để ngừng bán thay vì xóa.");
+        }
+        jdbcTemplate.update("DELETE FROM subscriptions WHERE service_package_id = ?", packageId);
         jdbcTemplate.update("DELETE FROM service_packages WHERE id = ?", packageId);
     }
 
@@ -784,8 +913,24 @@ public class AdminService {
         });
     }
 
+    /**
+     * Hoàn tiền: chỉ cho phép với giao dịch thanh toán THÀNH CÔNG,
+     * tránh hoàn lại giao dịch PENDING/FAILED hoặc đã hoàn tiền.
+     */
+    @Transactional
     public void refundTransaction(Long transactionId) {
-        jdbcTemplate.update("UPDATE payment_transactions SET status = 'REFUNDED' WHERE id = ?", transactionId);
+        String currentStatus = jdbcTemplate.queryForObject(
+                "SELECT status FROM payment_transactions WHERE id = ?", String.class, transactionId);
+        if (currentStatus == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy giao dịch.");
+        }
+        if (!"SUCCESS".equalsIgnoreCase(currentStatus)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Chỉ có thể hoàn tiền giao dịch ở trạng thái SUCCESS (trạng thái hiện tại: " + currentStatus + ").");
+        }
+        jdbcTemplate.update(
+                "UPDATE payment_transactions SET status = 'REFUNDED', updated_at = NOW() WHERE id = ?",
+                transactionId);
     }
 
     // ==========================================
@@ -1002,6 +1147,12 @@ public class AdminService {
     }
 
     public void deleteFavorite(Long id) {
-        jdbcTemplate.update("DELETE FROM favorite_songs WHERE id = ?", id);
+        int deleted = jdbcTemplate.update("DELETE FROM favorite_songs WHERE id = ?", id);
+        if (deleted == 0) {
+            deleted = jdbcTemplate.update("DELETE FROM favorite_artists WHERE id = ?", id);
+        }
+        if (deleted == 0) {
+            jdbcTemplate.update("DELETE FROM favorite_albums WHERE id = ?", id);
+        }
     }
 }

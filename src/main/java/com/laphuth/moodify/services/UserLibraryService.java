@@ -127,6 +127,7 @@ public class UserLibraryService {
                 response.setLyricsPlain(track.getLyricsPlain());
                 response.setLyricsSynced(track.getLyricsSynced());
                 response.setLocalPath(track.getLocalPath());
+                response.setAudioUrl(AudioUrlResolver.resolve(track.getLocalPath()));
                 // Add library-specific field
                 response.setAddedAt(libraryTrack.getAddedAt() != null ? libraryTrack.getAddedAt().toString() : LocalDateTime.now().toString());
                 libraryTracks.add(response);
