@@ -35,6 +35,9 @@ public class AudioUrlResolver {
         if (clean.startsWith("http://") || clean.startsWith("https://")) {
             return clean;
         }
+        if (clean.startsWith("uploads/")) {
+            return "/" + clean;
+        }
         return baseUrl + clean;
     }
 }

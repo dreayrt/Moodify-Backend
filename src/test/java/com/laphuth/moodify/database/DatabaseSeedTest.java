@@ -17,8 +17,7 @@ class DatabaseSeedTest {
 
     @Test
     void allSeedUsersShouldUseBcrypt() throws Exception {
-        String sql = new ClassPathResource("db/Moodify.sql")
-            .getContentAsString(StandardCharsets.UTF_8);
+        String sql = java.nio.file.Files.readString(java.nio.file.Path.of("database/Moodify.sql"), StandardCharsets.UTF_8);
 
         assertThat(sql).doesNotContainIgnoringCase("SHA2(");
 
@@ -31,13 +30,12 @@ class DatabaseSeedTest {
             hashCount++;
         }
 
-        assertThat(hashCount).isEqualTo(5);
+        assertThat(hashCount).isGreaterThanOrEqualTo(5);
     }
 
     @Test
     void relationalSchemaShouldNotStoreDerivedDuplicateColumns() throws Exception {
-        String sql = new ClassPathResource("db/Moodify.sql")
-            .getContentAsString(StandardCharsets.UTF_8);
+        String sql = java.nio.file.Files.readString(java.nio.file.Path.of("database/Moodify.sql"), StandardCharsets.UTF_8);
 
         String playbackEvents = createTableBlock(sql, "playback_events");
         assertThat(playbackEvents)

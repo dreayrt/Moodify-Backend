@@ -57,7 +57,7 @@ public class SecurityConfig {
                     "/api/auth/refresh",
                     "/api/auth/logout"
                 ).permitAll()
-                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/me").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/user").hasRole(UserRole.USER.name())
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/content-lead", "/api/dashboard/artist")

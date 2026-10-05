@@ -5,8 +5,11 @@ import com.laphuth.moodify.dto.contentlead.ContentLeadCatalogResponse;
 import com.laphuth.moodify.dto.contentlead.ContentLeadProfileResponse;
 import com.laphuth.moodify.dto.contentlead.ContentLeadTracksPageResponse;
 import com.laphuth.moodify.security.JwtAuthenticationFilter;
+import com.laphuth.moodify.services.ContentLeadAnalyticsService;
 import com.laphuth.moodify.services.ContentLeadCatalogService;
+import com.laphuth.moodify.services.OcrService;
 import com.laphuth.moodify.services.TrackService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,10 +41,17 @@ class ContentLeadCatalogApiTest {
     private ContentLeadCatalogService contentLeadCatalogService;
 
     @MockitoBean
+    private ContentLeadAnalyticsService contentLeadAnalyticsService;
+
+    @MockitoBean
+    private OcrService ocrService;
+
+    @MockitoBean
     private TrackService trackService;
 
     @MockitoBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
 
     @BeforeEach
     void setUp() throws Exception {
@@ -149,4 +159,37 @@ class ContentLeadCatalogApiTest {
         mockMvc.perform(get("/api/content-lead/me/catalog"))
             .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void extractLicenseFromDocumentShouldReturnSuccess() throws Exception {
+        com.laphuth.moodify.dto.ocr.OcrExtractResponse ocrResponse = new com.laphuth.moodify.dto.ocr.OcrExtractResponse();
+        ocrResponse.setSuccess(true);
+        ocrResponse.setLicenseType("DIGITAL_STREAMING");
+        ocrResponse.setCopyrightOwner("Nguyen Van A");
+        ocrResponse.setDistributorId(1L);
+        ocrResponse.setContractId("CTR-2026-999");
+        ocrResponse.setIssueDate("2026-10-05");
+        ocrResponse.setConfidence(0.95);
+
+        when(ocrService.extractLicenseDocument(any())).thenReturn(ocrResponse);
+
+        org.springframework.mock.web.MockMultipartFile mockFile = new org.springframework.mock.web.MockMultipartFile(
+            "file",
+            "hop_dong_ban_quyen.pdf",
+            "application/pdf",
+            "sample-pdf-content".getBytes()
+        );
+
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/content-lead/ocr/extract-license")
+                .file(mockFile)
+                .with(user("contentlead01").roles("CONTENT_LEAD"))
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.licenseType").value("DIGITAL_STREAMING"))
+            .andExpect(jsonPath("$.copyrightOwner").value("Nguyen Van A"))
+            .andExpect(jsonPath("$.contractId").value("CTR-2026-999"));
+    }
 }
+

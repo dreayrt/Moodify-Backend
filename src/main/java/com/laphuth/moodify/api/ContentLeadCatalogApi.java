@@ -6,7 +6,9 @@ import com.laphuth.moodify.dto.contentlead.ContentLeadTracksPageResponse;
 import com.laphuth.moodify.dto.contentlead.TrackUpdateRequest;
 import com.laphuth.moodify.dto.contentlead.TrackUploadRequest;
 import com.laphuth.moodify.dto.track.TrackPageResponse;
+import com.laphuth.moodify.dto.ocr.OcrExtractResponse;
 import com.laphuth.moodify.services.ContentLeadCatalogService;
+import com.laphuth.moodify.services.OcrService;
 import com.laphuth.moodify.services.TrackService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -25,16 +27,20 @@ public class ContentLeadCatalogApi {
     private final TrackService trackService;
     private final ContentLeadCatalogService contentLeadCatalogService;
     private final ContentLeadAnalyticsService contentLeadAnalyticsService;
+    private final OcrService ocrService;
 
     public ContentLeadCatalogApi(
         TrackService trackService,
         ContentLeadCatalogService contentLeadCatalogService,
-        ContentLeadAnalyticsService contentLeadAnalyticsService
+        ContentLeadAnalyticsService contentLeadAnalyticsService,
+        OcrService ocrService
     ) {
         this.trackService = trackService;
         this.contentLeadCatalogService = contentLeadCatalogService;
         this.contentLeadAnalyticsService = contentLeadAnalyticsService;
+        this.ocrService = ocrService;
     }
+
 
     @GetMapping("/{artistId}/tracks")
     public ResponseEntity<TrackPageResponse> getArtistTracks(
@@ -140,4 +146,13 @@ public class ContentLeadCatalogApi {
             "trackId", trackId
         ));
     }
+
+    @PostMapping(value = "/ocr/extract-license", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<OcrExtractResponse> extractLicenseFromDocument(
+        Authentication authentication,
+        @RequestParam("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(ocrService.extractLicenseDocument(file));
+    }
 }
+
