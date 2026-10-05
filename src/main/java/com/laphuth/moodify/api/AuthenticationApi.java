@@ -68,4 +68,40 @@ public class AuthenticationApi {
                 authenticationService.updateAvatar(authentication.getName(), file)
         );
     }
+
+    @GetMapping("/devices")
+    public ResponseEntity<java.util.Map<String, Object>> getMyDevices(Authentication authentication) {
+        return ResponseEntity.ok(authenticationService.getUserDevices(authentication.getName()));
+    }
+
+    @PostMapping("/devices/register")
+    public ResponseEntity<java.util.Map<String, Object>> registerDevice(
+            Authentication authentication,
+            @RequestBody java.util.Map<String, String> body
+    ) {
+        String deviceUuid = body != null ? body.get("deviceUuid") : null;
+        String deviceName = body != null ? body.get("deviceName") : null;
+        String platform = body != null ? body.get("platform") : null;
+        authenticationService.registerCurrentDevice(authentication.getName(), deviceUuid, deviceName, platform);
+        return ResponseEntity.ok(java.util.Map.of("message", "Device registered successfully"));
+    }
+
+    @PatchMapping("/devices/{id}/revoke")
+    public ResponseEntity<java.util.Map<String, Object>> revokeMyDevice(
+            Authentication authentication,
+            @PathVariable Long id
+    ) {
+        boolean ok = authenticationService.revokeUserDevice(authentication.getName(), id);
+        return ResponseEntity.ok(java.util.Map.of("success", ok, "id", id));
+    }
+
+    @PostMapping("/devices/revoke-others")
+    public ResponseEntity<java.util.Map<String, Object>> revokeOtherDevices(
+            Authentication authentication,
+            @RequestBody(required = false) java.util.Map<String, String> body
+    ) {
+        String currentDeviceUuid = body != null ? body.get("deviceUuid") : null;
+        int count = authenticationService.revokeOtherDevices(authentication.getName(), currentDeviceUuid);
+        return ResponseEntity.ok(java.util.Map.of("revokedCount", count));
+    }
 }

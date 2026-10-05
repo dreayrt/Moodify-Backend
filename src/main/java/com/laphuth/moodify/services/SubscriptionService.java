@@ -27,109 +27,167 @@ public class SubscriptionService {
     }
 
     /**
-     * Tự động khởi tạo dữ liệu mẫu cho các gói dịch vụ nếu bảng chưa có hoặc cập nhật gói chuẩn.
-     * Mỗi gói được seed sẵn features_json (quyền hạn) để phân quyền theo gói hoạt động ngay.
+     * Tự động khởi tạo dữ liệu mẫu cho các tầng gói dịch vụ (subscription_tiers)
+     * và các gói cước bán hàng (service_packages) nếu bảng chưa có dữ liệu.
      */
     @PostConstruct
     public void initDefaultPackages() {
         try {
-            String basicJson = entitlementsJson("INDIVIDUAL_BASIC", "DAILY_QUOTA", 15, 7, "LIMITED", 30, "HQ_320", true, 50, 1, false, 0);
-            String fullJson = entitlementsJson("INDIVIDUAL_FULL", "NO_ADS", 0, 0, "UNLIMITED", 0, "LOSSLESS_FLAC", true, 999, 1, false, 0);
-            String familyJson = entitlementsJson("FAMILY", "NO_ADS", 0, 0, "UNLIMITED", 0, "LOSSLESS_FLAC", true, 999, 6, true, 6);
+            // 0. Tự động tạo bảng subscription_tiers nếu chưa có (Hỗ trợ teammate pull code chạy được ngay)
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS subscription_tiers (" +
+                "    id VARCHAR(50) PRIMARY KEY, " +
+                "    name VARCHAR(100) NOT NULL, " +
+                "    description VARCHAR(255) NULL, " +
+                "    ad_policy VARCHAR(20) NOT NULL DEFAULT 'NO_ADS', " +
+                "    ad_free_daily_limit INT NOT NULL DEFAULT 0, " +
+                "    skip_policy VARCHAR(20) NOT NULL DEFAULT 'UNLIMITED', " +
+                "    skip_daily_limit INT NOT NULL DEFAULT 0, " +
+                "    offline_allowed BOOLEAN NOT NULL DEFAULT TRUE, " +
+                "    offline_max_tracks INT NOT NULL DEFAULT 100, " +
+                "    max_devices INT NOT NULL DEFAULT 1, " +
+                "    synced_lyrics BOOLEAN NOT NULL DEFAULT TRUE, " +
+                "    vip_badge BOOLEAN NOT NULL DEFAULT TRUE, " +
+                "    family_sharing BOOLEAN NOT NULL DEFAULT FALSE, " +
+                "    family_members INT NOT NULL DEFAULT 0" +
+                ")"
+            );
 
+            // Tự động thêm cột tier_id vào service_packages nếu chưa có
+            try {
+                jdbcTemplate.execute("ALTER TABLE service_packages ADD COLUMN tier_id VARCHAR(50) NOT NULL DEFAULT 'INDIVIDUAL_BASIC'");
+            } catch (Exception ignored) {}
+
+            // 1. Đảm bảo bảng subscription_tiers có đủ 4 bậc tiêu chuẩn
             jdbcTemplate.update(
-                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, features_json) " +
-                "VALUES (1, 'Gói VIP Tiết Kiệm (30 Ngày)', 'Dành cho 1 người: 15 bài hát/ngày không quảng cáo, 30 lượt skip/ngày, tải 50 bài offline.', 29000, 30, 1, 'ACTIVE', ?) " +
-                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), features_json = VALUES(features_json), status = 'ACTIVE'",
-                basicJson
+                "INSERT INTO subscription_tiers (id, name, description, ad_policy, ad_free_daily_limit, skip_policy, skip_daily_limit, offline_allowed, offline_max_tracks, max_devices, synced_lyrics, vip_badge, family_sharing, family_members) " +
+                "VALUES ('FREE', 'Tài khoản Miễn Phí', 'Dành cho người nghe thông thường', 'FULL_ADS', 0, 'LIMITED', 6, FALSE, 0, 1, FALSE, FALSE, FALSE, 0) " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), ad_policy = VALUES(ad_policy)"
             );
             jdbcTemplate.update(
-                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, features_json) " +
-                "VALUES (2, 'Gói VIP Tiết Kiệm (1 Năm)', 'Tiết kiệm 20%: Trọn gói 365 ngày nghe nhạc tiết kiệm.', 279000, 365, 2, 'ACTIVE', ?) " +
-                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), features_json = VALUES(features_json), status = 'ACTIVE'",
-                basicJson
+                "INSERT INTO subscription_tiers (id, name, description, ad_policy, ad_free_daily_limit, skip_policy, skip_daily_limit, offline_allowed, offline_max_tracks, max_devices, synced_lyrics, vip_badge, family_sharing, family_members) " +
+                "VALUES ('INDIVIDUAL_BASIC', 'Gói Tiết Kiệm (Basic)', '15 bài không quảng cáo mỗi ngày, 30 skip/ngày, 50 bài offline', 'DAILY_QUOTA', 15, 'LIMITED', 30, TRUE, 50, 1, TRUE, TRUE, FALSE, 0) " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), ad_policy = VALUES(ad_policy), ad_free_daily_limit = VALUES(ad_free_daily_limit)"
             );
             jdbcTemplate.update(
-                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, features_json) " +
-                "VALUES (3, 'Gói Cá Nhân FULL (30 Ngày)', 'Dành cho 1 người: 100% không quảng cáo vô hạn, chuyển bài và tải nhạc offline vô hạn.', 49000, 30, 3, 'ACTIVE', ?) " +
-                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), features_json = VALUES(features_json), status = 'ACTIVE'",
-                fullJson
+                "INSERT INTO subscription_tiers (id, name, description, ad_policy, ad_free_daily_limit, skip_policy, skip_daily_limit, offline_allowed, offline_max_tracks, max_devices, synced_lyrics, vip_badge, family_sharing, family_members) " +
+                "VALUES ('INDIVIDUAL_FULL', 'Cá Nhân VIP FULL', '100% không quảng cáo, chuyển bài và tải offline không giới hạn', 'NO_ADS', 0, 'UNLIMITED', 0, TRUE, 9999, 1, TRUE, TRUE, FALSE, 0) " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), ad_policy = VALUES(ad_policy)"
             );
             jdbcTemplate.update(
-                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, features_json) " +
-                "VALUES (4, 'Gói Cá Nhân FULL (90 Ngày)', 'Tiết kiệm 12%: 3 tháng âm nhạc không quảng cáo vô hạn.', 129000, 90, 4, 'ACTIVE', ?) " +
-                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), features_json = VALUES(features_json), status = 'ACTIVE'",
-                fullJson
+                "INSERT INTO subscription_tiers (id, name, description, ad_policy, ad_free_daily_limit, skip_policy, skip_daily_limit, offline_allowed, offline_max_tracks, max_devices, synced_lyrics, vip_badge, family_sharing, family_members) " +
+                "VALUES ('FAMILY', 'Gói Gia Đình VIP', 'Trọn bộ đặc quyền FULL cho tối đa 6 thành viên/thiết bị', 'NO_ADS', 0, 'UNLIMITED', 0, TRUE, 9999, 6, TRUE, TRUE, TRUE, 6) " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), ad_policy = VALUES(ad_policy), max_devices = VALUES(max_devices), family_sharing = VALUES(family_sharing)"
+            );
+
+            // 2. Đồng bộ các gói bán hàng gắn khóa ngoại tier_id vào subscription_tiers
+            jdbcTemplate.update(
+                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, tier_id) " +
+                "VALUES (1, 'Gói VIP Tiết Kiệm (30 Ngày)', 'Dành cho 1 người: 15 bài hát/ngày không quảng cáo, 30 lượt skip/ngày, tải 50 bài offline.', 29000, 30, 1, 'ACTIVE', 'INDIVIDUAL_BASIC') " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), tier_id = VALUES(tier_id), status = 'ACTIVE'"
             );
             jdbcTemplate.update(
-                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, features_json) " +
-                "VALUES (5, 'Gói Cá Nhân FULL (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng, trọn bộ đặc quyền cá nhân không giới hạn.', 469000, 365, 5, 'ACTIVE', ?) " +
-                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), features_json = VALUES(features_json), status = 'ACTIVE'",
-                fullJson
+                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, tier_id) " +
+                "VALUES (2, 'Gói VIP Tiết Kiệm (1 Năm)', 'Tiết kiệm 20%: Trọn gói 365 ngày nghe nhạc tiết kiệm.', 279000, 365, 2, 'ACTIVE', 'INDIVIDUAL_BASIC') " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), tier_id = VALUES(tier_id), status = 'ACTIVE'"
             );
             jdbcTemplate.update(
-                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, features_json) " +
-                "VALUES (6, 'Gói Gia Đình (30 Ngày)', 'Tối đa 6 tài khoản/thiết bị đồng thời: Trọn bộ đặc quyền FULL chia sẻ cả gia đình.', 79000, 30, 6, 'ACTIVE', ?) " +
-                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), features_json = VALUES(features_json), status = 'ACTIVE'",
-                familyJson
+                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, tier_id) " +
+                "VALUES (3, 'Gói Cá Nhân FULL (30 Ngày)', 'Dành cho 1 người: 100% không quảng cáo vô hạn, chuyển bài và tải nhạc offline vô hạn.', 49000, 30, 3, 'ACTIVE', 'INDIVIDUAL_FULL') " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), tier_id = VALUES(tier_id), status = 'ACTIVE'"
             );
             jdbcTemplate.update(
-                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, features_json) " +
-                "VALUES (7, 'Gói Gia Đình (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng cho cả 6 thành viên gia đình.', 790000, 365, 7, 'ACTIVE', ?) " +
-                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), features_json = VALUES(features_json), status = 'ACTIVE'",
-                familyJson
+                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, tier_id) " +
+                "VALUES (4, 'Gói Cá Nhân FULL (90 Ngày)', 'Tiết kiệm 12%: 3 tháng âm nhạc không quảng cáo vô hạn.', 129000, 90, 4, 'ACTIVE', 'INDIVIDUAL_FULL') " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), tier_id = VALUES(tier_id), status = 'ACTIVE'"
+            );
+            jdbcTemplate.update(
+                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, tier_id) " +
+                "VALUES (5, 'Gói Cá Nhân FULL (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng, trọn bộ đặc quyền cá nhân không giới hạn.', 469000, 365, 5, 'ACTIVE', 'INDIVIDUAL_FULL') " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), tier_id = VALUES(tier_id), status = 'ACTIVE'"
+            );
+            jdbcTemplate.update(
+                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, tier_id) " +
+                "VALUES (6, 'Gói Gia Đình (30 Ngày)', 'Tối đa 6 tài khoản/thiết bị đồng thời: Trọn bộ đặc quyền FULL chia sẻ cả gia đình.', 79000, 30, 6, 'ACTIVE', 'FAMILY') " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), tier_id = VALUES(tier_id), status = 'ACTIVE'"
+            );
+            jdbcTemplate.update(
+                "INSERT INTO service_packages (id, name, description, price, duration_days, display_order, status, tier_id) " +
+                "VALUES (7, 'Gói Gia Đình (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng cho cả 6 thành viên gia đình.', 790000, 365, 7, 'ACTIVE', 'FAMILY') " +
+                "ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), price = VALUES(price), duration_days = VALUES(duration_days), tier_id = VALUES(tier_id), status = 'ACTIVE'"
             );
         } catch (Exception e) {
             System.err.println("Note: Auto-init service_packages encountered: " + e.getMessage());
         }
     }
 
-    /** Sinh chuỗi JSON quyền hạn (features_json) cho một gói. */
-    private String entitlementsJson(String tier, String adPolicy, int adFreeDailyLimit, int adIntervalAfterLimit,
-                                    String skipPolicy, int skipDailyLimit, String audioQuality,
-                                    boolean offlineAllowed, int offlineMaxTracks, int maxDevices,
-                                    boolean familySharing, int familyMembers) {
+    /**
+     * Chuyển một hàng dữ liệu từ bảng subscription_tiers thành Map entitlements chuẩn hóa.
+     */
+    public static Map<String, Object> mapTierToEntitlements(Map<String, Object> row) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("tier", tier);
+        String tierId = (String) row.getOrDefault("tier_id", row.get("id"));
+        if (tierId == null) tierId = "INDIVIDUAL_BASIC";
+
+        String adPolicy = (String) row.getOrDefault("ad_policy", "NO_ADS");
+        m.put("tier", tierId);
+        m.put("tierName", row.get("tier_name") != null ? row.get("tier_name") : row.get("name"));
         m.put("adPolicy", adPolicy);
-        m.put("adFreeDailyLimit", adFreeDailyLimit);
-        m.put("adIntervalAfterLimit", adIntervalAfterLimit);
-        m.put("skipPolicy", skipPolicy);
-        m.put("skipDailyLimit", skipDailyLimit);
-        m.put("audioQuality", audioQuality);
-        m.put("offlineAllowed", offlineAllowed);
-        m.put("offlineMaxTracks", offlineMaxTracks);
-        m.put("maxDevices", maxDevices);
-        m.put("syncedLyrics", true);
-        m.put("vipBadge", true);
-        m.put("customThemes", true);
-        m.put("familySharing", familySharing);
-        if (familySharing) {
-            m.put("familyMembers", familyMembers);
+        m.put("adFreeDailyLimit", toInt(row.get("ad_free_daily_limit"), 0));
+        m.put("adIntervalAfterLimit", "DAILY_QUOTA".equals(adPolicy) ? 7 : 0);
+        m.put("skipPolicy", row.getOrDefault("skip_policy", "UNLIMITED"));
+        m.put("skipDailyLimit", toInt(row.get("skip_daily_limit"), 0));
+        m.put("offlineAllowed", toBool(row.get("offline_allowed"), true));
+        m.put("offlineMaxTracks", toInt(row.get("offline_max_tracks"), 100));
+        m.put("maxDevices", toInt(row.get("max_devices"), 1));
+        m.put("syncedLyrics", toBool(row.get("synced_lyrics"), true));
+        m.put("vipBadge", toBool(row.get("vip_badge"), true));
+        m.put("familySharing", toBool(row.get("family_sharing"), false));
+        m.put("familyMembers", toInt(row.get("family_members"), 0));
+        return m;
+    }
+
+    private static int toInt(Object val, int def) {
+        if (val instanceof Number) return ((Number) val).intValue();
+        if (val != null) {
+            try { return Integer.parseInt(val.toString().trim()); } catch (Exception ignored) {}
         }
+        return def;
+    }
+
+    private static boolean toBool(Object val, boolean def) {
+        if (val instanceof Boolean) return (Boolean) val;
+        if (val instanceof Number) return ((Number) val).intValue() != 0;
+        if (val != null) return Boolean.parseBoolean(val.toString().trim()) || "1".equals(val.toString().trim());
+        return def;
+    }
+
+    private String toJsonString(Object obj) {
         try {
-            return objectMapper.writeValueAsString(m);
+            return objectMapper.writeValueAsString(obj);
         } catch (Exception e) {
-            return null;
+            return "{}";
         }
     }
 
     /**
-     * Lấy danh sách các gói dịch vụ đang hoạt động (kèm quyền hạn theo gói).
+     * Lấy danh sách các gói dịch vụ đang hoạt động kèm quyền hạn từ bảng subscription_tiers.
      */
     public List<Map<String, Object>> getActivePackages() {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-            "SELECT id, name, description, price, duration_days, display_order, features_json " +
-            "FROM service_packages " +
-            "WHERE status = 'ACTIVE' " +
-            "ORDER BY display_order ASC, price ASC"
+            "SELECT p.id, p.name, p.description, p.price, p.duration_days, p.display_order, p.tier_id, " +
+            "       t.name as tier_name, t.ad_policy, t.ad_free_daily_limit, t.skip_policy, t.skip_daily_limit, " +
+            "       t.offline_allowed, t.offline_max_tracks, t.max_devices, " +
+            "       t.synced_lyrics, t.vip_badge, t.family_sharing, t.family_members " +
+            "FROM service_packages p " +
+            "LEFT JOIN subscription_tiers t ON p.tier_id = t.id " +
+            "WHERE p.status = 'ACTIVE' " +
+            "ORDER BY p.display_order ASC, p.price ASC"
         );
         for (Map<String, Object> row : rows) {
-            String featuresJson = row.get("features_json") != null ? row.get("features_json").toString() : null;
-            Map<String, Object> entitlements = parseEntitlements(featuresJson);
-            if (entitlements.get("tier") == null) {
-                entitlements.put("tier", inferTierFromName((String) row.get("name")));
-            }
+            Map<String, Object> entitlements = mapTierToEntitlements(row);
+            String featuresJson = toJsonString(entitlements);
+            row.put("tierId", row.get("tier_id"));
             row.put("featuresJson", featuresJson);
             row.put("entitlements", entitlements);
         }
@@ -145,10 +203,14 @@ public class SubscriptionService {
 
         List<Map<String, Object>> activeSubs = jdbcTemplate.queryForList(
             "SELECT s.id as subscription_id, s.service_package_id, s.start_at, s.end_at, s.status, " +
-            "       p.name as package_name, p.price, p.duration_days, p.features_json, " +
+            "       p.name as package_name, p.price, p.duration_days, p.tier_id, " +
+            "       t.name as tier_name, t.ad_policy, t.ad_free_daily_limit, t.skip_policy, t.skip_daily_limit, " +
+            "       t.offline_allowed, t.offline_max_tracks, t.max_devices, " +
+            "       t.synced_lyrics, t.vip_badge, t.family_sharing, t.family_members, " +
             "       DATEDIFF(s.end_at, NOW()) as days_remaining " +
             "FROM subscriptions s " +
             "JOIN service_packages p ON s.service_package_id = p.id " +
+            "LEFT JOIN subscription_tiers t ON p.tier_id = t.id " +
             "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.end_at > NOW() " +
             "ORDER BY s.end_at DESC " +
             "LIMIT 1",
@@ -158,22 +220,19 @@ public class SubscriptionService {
         if (!activeSubs.isEmpty()) {
             Map<String, Object> sub = activeSubs.get(0);
             String pkgName = (String) sub.get("package_name");
-            String featuresJson = (String) sub.get("features_json");
-            Map<String, Object> entitlements = parseEntitlements(featuresJson);
+            String tierId = (String) sub.get("tier_id");
+            if (tierId == null || tierId.isBlank()) {
+                tierId = inferTierFromName(pkgName);
+                sub.put("tier_id", tierId);
+            }
 
-            // Ưu tiên tier khai báo trong features_json (phân quyền theo gói),
-            // chỉ fallback về so-tên-gói khi admin chưa cấu hình entitlements.
-            String tier = (String) entitlements.get("tier");
-            if (tier == null || tier.isBlank()) {
-                tier = inferTierFromName(pkgName);
-            }
-            if (!Set.of("FAMILY", "INDIVIDUAL_FULL", "INDIVIDUAL_BASIC").contains(tier)) {
-                tier = inferTierFromName(pkgName);
-            }
-            entitlements.put("tier", tier);
+            Map<String, Object> entitlements = mapTierToEntitlements(sub);
+            String featuresJson = toJsonString(entitlements);
 
             res.put("isPremium", true);
-            res.put("tier", tier);
+            res.put("tier", tierId);
+            res.put("tierId", tierId);
+            res.put("tierName", sub.get("tier_name"));
             res.put("featuresJson", featuresJson);
             res.put("entitlements", entitlements);
             res.put("benefits", deriveBenefits(entitlements));
@@ -185,11 +244,14 @@ public class SubscriptionService {
             res.put("expiresAt", sub.get("end_at") != null ? sub.get("end_at").toString() : null);
             res.put("daysRemaining", sub.get("days_remaining") != null ? ((Number) sub.get("days_remaining")).longValue() : 0L);
         } else {
+            Map<String, Object> freeEnt = getFreeTierEntitlements();
             res.put("isPremium", false);
             res.put("tier", "FREE");
+            res.put("tierId", "FREE");
             res.put("packageName", "Tài khoản Miễn phí");
             res.put("daysRemaining", 0L);
-            res.put("entitlements", freeEntitlements());
+            res.put("entitlements", freeEnt);
+            res.put("featuresJson", toJsonString(freeEnt));
             res.put("benefits", Collections.emptyList());
         }
 
@@ -198,68 +260,36 @@ public class SubscriptionService {
         return res;
     }
 
-    /** Đọc quyền hạn (entitlements) từ cột features_json của gói. */
-    private Map<String, Object> parseEntitlements(String featuresJson) {
-        Map<String, Object> defaults = defaultEntitlements();
-        if (featuresJson == null || featuresJson.isBlank()) {
-            return defaults;
-        }
+    /** Lấy quyền hạn của tầng FREE từ subscription_tiers hoặc mặc định. */
+    private Map<String, Object> getFreeTierEntitlements() {
         try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> parsed = objectMapper.readValue(featuresJson, Map.class);
-            if (parsed.containsKey("features") && parsed.get("features") instanceof List) {
-                // Chỉ chứa mảng bullet mô tả -> không phải entitlements, dùng mặc định
-                return defaults;
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT * FROM subscription_tiers WHERE id = 'FREE' LIMIT 1"
+            );
+            if (!rows.isEmpty()) {
+                return mapTierToEntitlements(rows.get(0));
             }
-            // Ghi đè mặc định bằng giá trị admin cấu hình
-            for (Map.Entry<String, Object> e : parsed.entrySet()) {
-                if (e.getValue() != null) {
-                    defaults.put(e.getKey(), e.getValue());
-                }
-            }
-            return defaults;
-        } catch (Exception e) {
-            return defaults;
-        }
+        } catch (Exception ignored) {}
+        return freeEntitlements();
     }
 
-    /** Entitlements mặc định cho gói premium khi admin chưa cấu hình chi tiết. */
-    private Map<String, Object> defaultEntitlements() {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("tier", null);
-        m.put("adPolicy", "NO_ADS");
-        m.put("adFreeDailyLimit", 0);
-        m.put("adIntervalAfterLimit", 7);
-        m.put("skipPolicy", "UNLIMITED");
-        m.put("skipDailyLimit", 0);
-        m.put("audioQuality", "HQ_320");
-        m.put("offlineAllowed", true);
-        m.put("offlineMaxTracks", 100);
-        m.put("maxDevices", 1);
-        m.put("syncedLyrics", true);
-        m.put("vipBadge", true);
-        m.put("customThemes", true);
-        m.put("familySharing", false);
-        return m;
-    }
-
-    /** Entitlements cho tài khoản FREE (chưa đăng ký gói). */
+    /** Entitlements mặc định cho tài khoản FREE khi chưa có trong DB. */
     private Map<String, Object> freeEntitlements() {
-        Map<String, Object> m = defaultEntitlements();
+        Map<String, Object> m = new LinkedHashMap<>();
         m.put("tier", "FREE");
+        m.put("tierName", "Tài khoản Miễn Phí");
         m.put("adPolicy", "FULL_ADS");
         m.put("adFreeDailyLimit", 0);
         m.put("adIntervalAfterLimit", 2);
         m.put("skipPolicy", "LIMITED");
         m.put("skipDailyLimit", 6);
-        m.put("audioQuality", "STANDARD_128");
         m.put("offlineAllowed", false);
         m.put("offlineMaxTracks", 0);
         m.put("maxDevices", 1);
         m.put("syncedLyrics", false);
         m.put("vipBadge", false);
-        m.put("customThemes", false);
         m.put("familySharing", false);
+        m.put("familyMembers", 0);
         return m;
     }
 
@@ -395,7 +425,7 @@ public class SubscriptionService {
             if (packageId == null) packageId = 1L;
 
             Map<String, Object> pkg = jdbcTemplate.queryForMap(
-                "SELECT id, name, price, duration_days FROM service_packages WHERE id = ?",
+                "SELECT id, name, price, duration_days, tier_id FROM service_packages WHERE id = ?",
                 packageId
             );
 
@@ -415,13 +445,11 @@ public class SubscriptionService {
                 subId
             );
 
-            // Xác định tier trả về
-            String pkgName = (String) pkg.get("name");
-            String tier = "INDIVIDUAL_BASIC";
-            if (pkgName != null && pkgName.contains("Gia Đình")) {
-                tier = "FAMILY";
-            } else if (pkgName != null && (pkgName.contains("FULL") || pkgName.contains("Full"))) {
-                tier = "INDIVIDUAL_FULL";
+            // Xác định tier trả về trực tiếp từ tier_id
+            String tier = (String) pkg.get("tier_id");
+            if (tier == null || tier.isBlank()) {
+                String pkgName = (String) pkg.get("name");
+                tier = inferTierFromName(pkgName);
             }
 
             return Map.of(

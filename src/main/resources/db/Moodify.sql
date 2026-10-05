@@ -197,9 +197,32 @@ CREATE TABLE IF NOT EXISTS platform_traffic_events (
 ) ;
 
 -- ============================================================
--- 10. GÓI DỊCH VỤ
+-- 10. BẬC QUYỀN LỢI THUÊ BAO (SUBSCRIPTION TIERS)
+-- Chuẩn hóa dữ liệu 3NF: Lưu trữ độc lập chính sách quảng cáo,
+-- hạn ngạch chuyển bài, tải offline và số thiết bị.
+-- ============================================================
+CREATE TABLE subscription_tiers (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(255) NULL,
+    ad_policy VARCHAR(20) NOT NULL DEFAULT 'NO_ADS',
+    ad_free_daily_limit INT NOT NULL DEFAULT 0,
+    skip_policy VARCHAR(20) NOT NULL DEFAULT 'UNLIMITED',
+    skip_daily_limit INT NOT NULL DEFAULT 0,
+    offline_allowed BOOLEAN NOT NULL DEFAULT TRUE,
+    offline_max_tracks INT NOT NULL DEFAULT 100,
+    max_devices INT NOT NULL DEFAULT 1,
+    synced_lyrics BOOLEAN NOT NULL DEFAULT TRUE,
+    vip_badge BOOLEAN NOT NULL DEFAULT TRUE,
+    family_sharing BOOLEAN NOT NULL DEFAULT FALSE,
+    family_members INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- 11. GÓI DỊCH VỤ (SERVICE PACKAGES)
 -- Ánh xạ ServicePackage trong sơ đồ lớp.
--- Quyền lợi của gói được chuẩn hóa thành bảng riêng thay vì hard-code thành nhiều cột.
 -- ============================================================
 CREATE TABLE service_packages (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -209,18 +232,21 @@ CREATE TABLE service_packages (
     duration_days INT UNSIGNED NOT NULL,
     display_order INT NOT NULL DEFAULT 0,
     status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    tier_id VARCHAR(50) NOT NULL DEFAULT 'INDIVIDUAL_BASIC',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT chk_service_package_price
-    CHECK (price >= 0),
+        CHECK (price >= 0),
+    CONSTRAINT chk_service_package_duration
+        CHECK (duration_days > 0),
+    CONSTRAINT fk_service_package_tier
+        FOREIGN KEY (tier_id) REFERENCES subscription_tiers(id) ON UPDATE CASCADE,
 
-CONSTRAINT chk_service_package_duration
-    CHECK (duration_days > 0),
-
-INDEX idx_service_package_status (status),
-INDEX idx_service_package_display (display_order)
-) ;
+    INDEX idx_service_package_status (status),
+    INDEX idx_service_package_display (display_order),
+    INDEX idx_service_package_tier (tier_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
 -- 13. ĐĂNG KÝ/GIA HẠN GÓI
@@ -559,17 +585,32 @@ INSERT INTO search_history (
 (6, 1, 'Hôm nay tôi cảm thấy rất buồn và cô đơn', 'EMOTION', 'SADNESS', 0.9234, 'TRACK', '6a8230b53cccfc45cd626cf0', '2026-09-14 19:50:00');
 
 -- ============================================================
+-- 8. BẬC QUYỀN LỢI THUÊ BAO (SUBSCRIPTION TIERS)
+-- ============================================================
+INSERT INTO subscription_tiers (
+    id, name, description, ad_policy, ad_free_daily_limit, skip_policy, skip_daily_limit,
+    offline_allowed, offline_max_tracks, max_devices, synced_lyrics,
+    vip_badge, family_sharing, family_members, created_at, updated_at
+) VALUES
+('FREE', 'Tài khoản Miễn Phí', 'Dành cho người nghe nhạc tiêu chuẩn có kèm quảng cáo tài trợ.', 'FULL_ADS', 0, 'LIMITED', 6, FALSE, 0, 1, FALSE, FALSE, FALSE, 0, '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+('INDIVIDUAL_BASIC', 'Gói Tiết Kiệm (Basic)', 'Tiết kiệm chi phí: 15 bài không quảng cáo mỗi ngày, 30 lượt skip/ngày, tải 50 bài offline.', 'DAILY_QUOTA', 15, 'LIMITED', 30, TRUE, 50, 1, TRUE, TRUE, FALSE, 0, '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+('INDIVIDUAL_FULL', 'Cá Nhân VIP FULL', 'Đặc quyền tối thượng: 100% không quảng cáo 24/7, chuyển bài vô hạn, tải nhạc offline vô hạn.', 'NO_ADS', 0, 'UNLIMITED', 0, TRUE, 9999, 1, TRUE, TRUE, FALSE, 0, '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+('FAMILY', 'Gói Gia Đình VIP', 'Trọn bộ đặc quyền FULL chia sẻ cho tối đa 6 tài khoản/thiết bị đồng thời.', 'NO_ADS', 0, 'UNLIMITED', 0, TRUE, 9999, 6, TRUE, TRUE, TRUE, 6, '2026-01-01 00:00:00', '2026-01-01 00:00:00');
+
+-- ============================================================
 -- 9. SERVICE_PACKAGES
 -- Bao phủ: miễn phí/trả phí, nhiều thời hạn, ACTIVE/INACTIVE.
 -- ============================================================
 INSERT INTO service_packages (
-    id, name, description, price, duration_days, display_order, status, created_at, updated_at
+    id, name, description, price, duration_days, display_order, status, tier_id, created_at, updated_at
 ) VALUES
-(1, 'Moodify Trial 7 Days', 'Gói dùng thử miễn phí trong 7 ngày.', 0, 7, 1, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(2, 'Premium 30 Days', 'Gói Premium trong 30 ngày.', 59000, 30, 2, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(3, 'Premium 90 Days', 'Gói Premium trong 90 ngày.', 149000, 90, 3, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(4, 'Artist Pro 365 Days', 'Gói chuyên nghiệp dành cho Artist trong 365 ngày.', 599000, 365, 4, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(5, 'Legacy 45 Days', 'Gói cũ đã ngừng cho đăng ký mới.', 99000, 45, 5, 'INACTIVE', '2026-01-01 00:00:00', '2026-08-01 00:00:00');
+(1, 'Gói VIP Tiết Kiệm (30 Ngày)', 'Dành cho 1 người: 15 bài hát/ngày không quảng cáo, 30 lượt skip/ngày, tải 50 bài offline.', 29000, 30, 1, 'ACTIVE', 'INDIVIDUAL_BASIC', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(2, 'Gói VIP Tiết Kiệm (1 Năm)', 'Tiết kiệm 20%: Trọn gói 365 ngày nghe nhạc tiết kiệm.', 279000, 365, 2, 'ACTIVE', 'INDIVIDUAL_BASIC', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(3, 'Gói Cá Nhân FULL (30 Ngày)', 'Dành cho 1 người: 100% không quảng cáo vô hạn, chuyển bài và tải nhạc offline vô hạn.', 49000, 30, 3, 'ACTIVE', 'INDIVIDUAL_FULL', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(4, 'Gói Cá Nhân FULL (90 Ngày)', 'Tiết kiệm 12%: 3 tháng âm nhạc không quảng cáo vô hạn.', 129000, 90, 4, 'ACTIVE', 'INDIVIDUAL_FULL', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(5, 'Gói Cá Nhân FULL (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng, trọn bộ đặc quyền cá nhân không giới hạn.', 469000, 365, 5, 'ACTIVE', 'INDIVIDUAL_FULL', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(6, 'Gói Gia Đình (30 Ngày)', 'Tối đa 6 tài khoản/thiết bị đồng thời: Trọn bộ đặc quyền FULL chia sẻ cả gia đình.', 79000, 30, 6, 'ACTIVE', 'FAMILY', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(7, 'Gói Gia Đình (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng cho cả 6 thành viên gia đình.', 790000, 365, 7, 'ACTIVE', 'FAMILY', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
 
 -- ============================================================
 -- 10. SUBSCRIPTIONS

@@ -145,12 +145,33 @@ public class AdminApi {
         return ResponseEntity.ok(Map.of("success", true, "message", "Bài hát đã được khôi phục phát sóng thành công"));
     }
 
+    @PatchMapping("/tracks/{id}/genre")
+    public ResponseEntity<Map<String, Object>> updateTrackGenre(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body
+    ) {
+        String genre = body.get("genre");
+        adminService.updateTrackGenre(id, genre);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Thể loại bài hát đã được cập nhật thành công"));
+    }
+
+    @DeleteMapping("/tracks/{id}")
+    public ResponseEntity<Map<String, Object>> deleteTrack(@PathVariable String id) {
+        adminService.deleteTrack(id);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Bài hát đã được xóa hoàn toàn khỏi kho nhạc"));
+    }
+
     // ==========================================
     // 4. CONTENT MODERATION
     // ==========================================
     @GetMapping("/moderation")
     public ResponseEntity<List<Map<String, Object>>> getModerationQueue() {
         return ResponseEntity.ok(adminService.getModerationQueue());
+    }
+
+    @GetMapping("/moderation/actions")
+    public ResponseEntity<List<Map<String, Object>>> getModerationActions() {
+        return ResponseEntity.ok(adminService.getModerationActions());
     }
 
     @PostMapping("/moderation/{id}/decision")
@@ -212,6 +233,20 @@ public class AdminApi {
         return ResponseEntity.ok(Map.of("success", true, "message", "Gói cước đã được xử lý xóa / vô hiệu hóa thành công"));
     }
 
+    @GetMapping("/subscription-tiers")
+    public ResponseEntity<List<Map<String, Object>>> getSubscriptionTiers() {
+        return ResponseEntity.ok(adminService.getSubscriptionTiers());
+    }
+
+    @PutMapping("/subscription-tiers/{id}")
+    public ResponseEntity<Map<String, Object>> updateSubscriptionTier(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> body
+    ) {
+        adminService.updateSubscriptionTier(id, body);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Cấu hình tầng quyền lợi đã được cập nhật thành công"));
+    }
+
     @GetMapping("/transactions")
     public ResponseEntity<List<Map<String, Object>>> getTransactions() {
         return ResponseEntity.ok(adminService.getTransactions());
@@ -229,6 +264,43 @@ public class AdminApi {
     @GetMapping("/licensing")
     public ResponseEntity<Map<String, Object>> getLicensing() {
         return ResponseEntity.ok(adminService.getLicensingData());
+    }
+
+    @PostMapping("/distributors")
+    public ResponseEntity<Map<String, Object>> createDistributor(@RequestBody Map<String, Object> body) {
+        adminService.createDistributor(body);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã thêm nhà phân phối mới"));
+    }
+
+    @PutMapping("/distributors/{id}")
+    public ResponseEntity<Map<String, Object>> updateDistributor(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        adminService.updateDistributor(id, body);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã cập nhật nhà phân phối"));
+    }
+
+    @PatchMapping("/distributors/{id}/status")
+    public ResponseEntity<Map<String, Object>> toggleDistributorStatus(@PathVariable Long id) {
+        adminService.toggleDistributorStatus(id);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã cập nhật trạng thái nhà phân phối"));
+    }
+
+    @PostMapping("/contracts")
+    public ResponseEntity<Map<String, Object>> createContract(@RequestBody Map<String, Object> body) {
+        adminService.createContract(body);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã lập hợp đồng phân phối mới"));
+    }
+
+    @PutMapping("/contracts/{id}")
+    public ResponseEntity<Map<String, Object>> updateContract(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        adminService.updateContract(id, body);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã cập nhật thông tin hợp đồng"));
+    }
+
+    @PatchMapping("/contracts/{id}/status")
+    public ResponseEntity<Map<String, Object>> updateContractStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String status = body.get("status");
+        adminService.updateContractStatus(id, status);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã cập nhật trạng thái hợp đồng"));
     }
 
 
@@ -362,5 +434,19 @@ public class AdminApi {
     public ResponseEntity<Map<String, Object>> deleteAdCategory(@PathVariable String id) {
         adService.deleteCategory(id);
         return ResponseEntity.ok(Map.of("success", true, "message", "Đã xóa danh mục quảng cáo."));
+    }
+
+    // ==========================================
+    // 10. SYSTEM SETTINGS
+    // ==========================================
+    @GetMapping("/system/config")
+    public ResponseEntity<Map<String, Object>> getSystemConfig() {
+        return ResponseEntity.ok(adminService.getSystemConfig());
+    }
+
+    @PutMapping("/system/config")
+    public ResponseEntity<Map<String, Object>> saveSystemConfig(@RequestBody Map<String, Object> body) {
+        adminService.saveSystemConfig(body);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Cấu hình hệ thống toàn cục đã được lưu thành công"));
     }
 }
