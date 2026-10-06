@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -38,6 +39,7 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final ArtistRepository artistRepository;
+    private final UserDeviceService userDeviceService;
 
     public AuthenticationService(
         UserRepository userRepository,
@@ -45,10 +47,22 @@ public class AuthenticationService {
         JwtService jwtService,
         ArtistRepository artistRepository
     ) {
+        this(userRepository, passwordEncoder, jwtService, artistRepository, null);
+    }
+
+    @Autowired
+    public AuthenticationService(
+        UserRepository userRepository,
+        PasswordEncoder passwordEncoder,
+        JwtService jwtService,
+        ArtistRepository artistRepository,
+        UserDeviceService userDeviceService
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.artistRepository = artistRepository;
+        this.userDeviceService = userDeviceService;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -160,7 +174,52 @@ public class AuthenticationService {
         currentUser.setLastLoginAt(LocalDateTime.now());
         userRepository.save(currentUser);
 
+        if (userDeviceService != null && request.deviceUuid() != null && !request.deviceUuid().isBlank()) {
+            userDeviceService.registerDeviceOnLogin(
+                currentUser.getId(),
+                currentUser.getUsername(),
+                request.deviceUuid(),
+                request.deviceName(),
+                request.platform()
+            );
+        }
+
         return buildAuthResponse(currentUser);
+    }
+
+    public java.util.Map<String, Object> getUserDevices(String username) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (userDeviceService == null) {
+            return java.util.Map.of("devices", java.util.Collections.emptyList(), "maxDevices", 1, "activeCount", 0);
+        }
+        return userDeviceService.getUserDevicesSummary(user.getId(), username);
+    }
+
+    public void registerCurrentDevice(String username, String deviceUuid, String deviceName, String platform) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (userDeviceService != null) {
+            userDeviceService.registerDeviceOnLogin(user.getId(), username, deviceUuid, deviceName, platform);
+        }
+    }
+
+    public boolean revokeUserDevice(String username, Long deviceId) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (userDeviceService == null) {
+            return false;
+        }
+        return userDeviceService.revokeUserDevice(user.getId(), deviceId);
+    }
+
+    public int revokeOtherDevices(String username, String currentDeviceUuid) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (userDeviceService == null) {
+            return 0;
+        }
+        return userDeviceService.revokeOtherDevices(user.getId(), currentDeviceUuid);
     }
 
     public AuthResponse refresh(RefreshTokenRequest request) {

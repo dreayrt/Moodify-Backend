@@ -37,12 +37,13 @@ public class EmotionService {
     private final SearchHistoryRepository searchHistoryRepository;
 
     public EmotionService(
-        @Value("${emotion.service.base-url}") String baseUrl,
+        @Value("${emotion.service.base-url:http://localhost:8000}") String baseUrl,
         MongoTemplate mongoTemplate,
         UserRepository userRepository,
         SearchHistoryRepository searchHistoryRepository
     ) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+        String effectiveUrl = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl.trim() : "http://localhost:8000";
+        this.restClient = RestClient.builder().baseUrl(effectiveUrl).build();
         this.mongoTemplate = mongoTemplate;
         this.userRepository = userRepository;
         this.searchHistoryRepository = searchHistoryRepository;
@@ -56,12 +57,31 @@ public class EmotionService {
         );
 
         log.info("Goi dich vu AI Emotion voi text='{}', strategy='{}'", text, effectiveStrategy);
-        return restClient.post()
-            .uri("/predict")
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(requestBody)
-            .retrieve()
-            .body(EmotionPredictResponse.class);
+        try {
+            return restClient.post()
+                .uri("/predict")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestBody)
+                .retrieve()
+                .body(EmotionPredictResponse.class);
+        } catch (Exception e) {
+            log.warn("Khong the ket noi toi AI Emotion Service: {}. Su dung phan hoi fallback.", e.getMessage());
+            EmotionPredictResponse fallback = new EmotionPredictResponse();
+            fallback.setText(text);
+            fallback.setLabel("neutral");
+            fallback.setEmoji("😐");
+            fallback.setConfidence(0.5);
+            MusicRecommendationInfo rec = new MusicRecommendationInfo();
+            rec.setTargetEnergy(0.5);
+            rec.setMinEnergy(0.2);
+            rec.setMaxEnergy(0.8);
+            rec.setTargetValence(0.5);
+            rec.setMinValence(0.2);
+            rec.setMaxValence(0.8);
+            rec.setSeedGenres(List.of("Pop", "V-Pop", "Indie"));
+            fallback.setMusicRecommendation(rec);
+            return fallback;
+        }
     }
 
     public MoodRecommendationResponse recommendTracksByMood(

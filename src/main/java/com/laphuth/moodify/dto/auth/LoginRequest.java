@@ -7,6 +7,13 @@ public record LoginRequest(
     String identifier,
 
     @NotBlank(message = "Password is required")
-    String password
+    String password,
+
+    String deviceUuid,
+    String deviceName,
+    String platform
 ) {
+    public LoginRequest(String identifier, String password) {
+        this(identifier, password, null, null, null);
+    }
 }

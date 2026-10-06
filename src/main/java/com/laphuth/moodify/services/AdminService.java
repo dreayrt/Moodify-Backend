@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import jakarta.annotation.PostConstruct;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.security.SecureRandom;
 import java.sql.ResultSet;
@@ -34,6 +35,7 @@ public class AdminService {
     private final MongoTemplate mongoTemplate;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String resolveAudioUrl(String localPath) {
         return AudioUrlResolver.resolve(localPath);
@@ -609,6 +611,27 @@ public class AdminService {
         mongoTemplate.updateFirst(q, u, Track.class);
     }
 
+    public void updateTrackGenre(String trackId, String genre) {
+        if (genre == null || genre.isBlank()) return;
+        Query q = new Query(Criteria.where("_id").is(trackId));
+        Update u = new Update().set("genres", List.of(genre.trim()));
+        mongoTemplate.updateFirst(q, u, Track.class);
+    }
+
+    @Transactional
+    public void deleteTrack(String trackId) {
+        try {
+            jdbcTemplate.update("DELETE FROM favorite_songs WHERE track_id = ?", trackId);
+            jdbcTemplate.update("DELETE FROM listening_history WHERE track_id = ?", trackId);
+            jdbcTemplate.update("DELETE FROM playback_events WHERE track_id = ?", trackId);
+            jdbcTemplate.update("DELETE FROM user_library_tracks WHERE track_id = ?", trackId);
+            jdbcTemplate.update("DELETE FROM song_licenses WHERE track_id = ?", trackId);
+        } catch (Exception ignored) {}
+
+        Query q = new Query(Criteria.where("_id").is(trackId));
+        mongoTemplate.remove(q, Track.class);
+    }
+
     private String resolveTrackGenre(Track t) {
         if (t.getGenres() != null) {
             for (String g : t.getGenres()) {
@@ -754,16 +777,44 @@ public class AdminService {
         } catch (Exception ignored) {}
     }
 
+    public List<Map<String, Object>> getModerationActions() {
+        String sql =
+                "SELECT a.id, a.review_request_id, a.moderator_user_id, u.full_name as moderator_name, " +
+                "a.action, a.reason, a.created_at " +
+                "FROM content_review_actions a " +
+                "LEFT JOIN users u ON a.moderator_user_id = u.id " +
+                "ORDER BY a.created_at DESC LIMIT 100";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", rs.getLong("id"));
+            map.put("reviewRequestId", rs.getLong("review_request_id"));
+            map.put("moderatorUserId", rs.getLong("moderator_user_id"));
+            map.put("moderatorName", rs.getString("moderator_name") != null ? rs.getString("moderator_name") : "Hệ thống");
+            map.put("action", rs.getString("action"));
+            map.put("reason", rs.getString("reason"));
+            map.put("createdAt", rs.getTimestamp("created_at") != null
+                    ? rs.getTimestamp("created_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    : "01/09/2026 12:00");
+            return map;
+        });
+    }
+
+    // ==========================================
     // ==========================================
     // 5. PACKAGES & MONETIZATION (MySQL)
     // ==========================================
     public List<Map<String, Object>> getPackages() {
         String sql =
-                "SELECT p.id, p.name, p.description, p.price, p.duration_days, p.display_order, p.status, p.features_json, " +
-                "COUNT(s.id) as subscribers_count " +
+                "SELECT p.id, p.name, p.description, p.price, p.duration_days, p.display_order, p.status, p.tier_id, " +
+                "       t.name as tier_name, t.description as tier_description, t.ad_policy, t.ad_free_daily_limit, " +
+                "       t.skip_policy, t.skip_daily_limit, t.offline_allowed, t.offline_max_tracks, " +
+                "       t.max_devices, t.synced_lyrics, t.vip_badge, t.family_sharing, t.family_members, " +
+                "       COUNT(s.id) as subscribers_count " +
                 "FROM service_packages p " +
+                "LEFT JOIN subscription_tiers t ON p.tier_id = t.id " +
                 "LEFT JOIN subscriptions s ON p.id = s.service_package_id AND s.status = 'ACTIVE' " +
-                "GROUP BY p.id " +
+                "GROUP BY p.id, t.id " +
                 "ORDER BY p.display_order ASC";
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
@@ -775,8 +826,35 @@ public class AdminService {
             p.put("durationDays", rs.getInt("duration_days"));
             p.put("displayOrder", rs.getInt("display_order"));
             p.put("status", rs.getString("status"));
+            p.put("tierId", rs.getString("tier_id"));
+            p.put("tierName", rs.getString("tier_name"));
             p.put("subscribersCount", rs.getInt("subscribers_count"));
-            p.put("featuresJson", rs.getString("features_json"));
+
+            // Ánh xạ quyền lợi từ bảng subscription_tiers
+            Map<String, Object> tierRow = new HashMap<>();
+            tierRow.put("id", rs.getString("tier_id"));
+            tierRow.put("tier_name", rs.getString("tier_name"));
+            tierRow.put("ad_policy", rs.getString("ad_policy"));
+            tierRow.put("ad_free_daily_limit", rs.getInt("ad_free_daily_limit"));
+            tierRow.put("skip_policy", rs.getString("skip_policy"));
+            tierRow.put("skip_daily_limit", rs.getInt("skip_daily_limit"));
+            tierRow.put("offline_allowed", rs.getBoolean("offline_allowed"));
+            tierRow.put("offline_max_tracks", rs.getInt("offline_max_tracks"));
+            tierRow.put("max_devices", rs.getInt("max_devices"));
+            tierRow.put("synced_lyrics", rs.getBoolean("synced_lyrics"));
+            tierRow.put("vip_badge", rs.getBoolean("vip_badge"));
+            tierRow.put("family_sharing", rs.getBoolean("family_sharing"));
+            tierRow.put("family_members", rs.getInt("family_members"));
+
+            Map<String, Object> entitlements = SubscriptionService.mapTierToEntitlements(tierRow);
+            p.put("entitlements", entitlements);
+
+            try {
+                p.put("featuresJson", objectMapper.writeValueAsString(entitlements));
+            } catch (Exception e) {
+                p.put("featuresJson", "{}");
+            }
+
             return p;
         });
     }
@@ -811,11 +889,20 @@ public class AdminService {
         }
 
         String status = (String) data.getOrDefault("status", "ACTIVE");
-        String featuresJson = (String) data.get("featuresJson");
+        String tierId = (String) data.get("tierId");
+        if (tierId == null || tierId.isBlank()) {
+            // Thử lấy từ entitlements nếu có
+            if (data.get("entitlements") instanceof Map) {
+                tierId = (String) ((Map<?, ?>) data.get("entitlements")).get("tier");
+            }
+        }
+        if (tierId == null || tierId.isBlank()) {
+            tierId = "INDIVIDUAL_BASIC";
+        }
 
-        String sql = "INSERT INTO service_packages (name, description, price, duration_days, display_order, status, features_json, created_at, updated_at) " +
+        String sql = "INSERT INTO service_packages (name, description, price, duration_days, display_order, status, tier_id, created_at, updated_at) " +
                      "VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
-        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status.toUpperCase(), featuresJson);
+        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status.toUpperCase(), tierId);
     }
 
     public void updatePackageDetails(Long packageId, Map<String, Object> data) {
@@ -844,7 +931,12 @@ public class AdminService {
         }
 
         String status = (String) data.get("status");
-        String featuresJson = (String) data.get("featuresJson");
+        String tierId = (String) data.get("tierId");
+        if (tierId == null || tierId.isBlank()) {
+            if (data.get("entitlements") instanceof Map) {
+                tierId = (String) ((Map<?, ?>) data.get("entitlements")).get("tier");
+            }
+        }
 
         String sql = "UPDATE service_packages SET " +
                      "name = COALESCE(?, name), " +
@@ -853,15 +945,68 @@ public class AdminService {
                      "duration_days = COALESCE(?, duration_days), " +
                      "display_order = COALESCE(?, display_order), " +
                      "status = COALESCE(?, status), " +
-                     "features_json = COALESCE(?, features_json), " +
+                     "tier_id = COALESCE(?, tier_id), " +
                      "updated_at = NOW() " +
                      "WHERE id = ?";
-        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status != null ? status.toUpperCase() : null, featuresJson, packageId);
+        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status != null ? status.toUpperCase() : null, tierId, packageId);
     }
 
     public void togglePackageStatus(Long packageId) {
         String sql = "UPDATE service_packages SET status = CASE WHEN status = 'ACTIVE' THEN 'INACTIVE' ELSE 'ACTIVE' END, updated_at = NOW() WHERE id = ?";
         jdbcTemplate.update(sql, packageId);
+    }
+
+    /**
+     * Lấy danh sách toàn bộ các tầng quyền hạn (subscription_tiers) đã chuẩn hóa.
+     */
+    public List<Map<String, Object>> getSubscriptionTiers() {
+        String sql = "SELECT * FROM subscription_tiers ORDER BY FIELD(id, 'FREE', 'INDIVIDUAL_BASIC', 'INDIVIDUAL_FULL', 'FAMILY'), id ASC";
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
+        for (Map<String, Object> row : rows) {
+            row.put("entitlements", SubscriptionService.mapTierToEntitlements(row));
+        }
+        return rows;
+    }
+
+    /**
+     * Cập nhật trực tiếp quyền lợi và giới hạn của một tầng dịch vụ (subscription_tiers).
+     * Mọi gói cước gắn tier_id này sẽ ngay lập tức thừa hưởng cấu hình mới nhất mà không bị lệch dữ liệu.
+     */
+    public void updateSubscriptionTier(String tierId, Map<String, Object> data) {
+        String name = (String) data.get("name");
+        String description = (String) data.get("description");
+        String adPolicy = (String) data.get("adPolicy");
+        Integer adFreeDailyLimit = data.get("adFreeDailyLimit") != null ? ((Number) data.get("adFreeDailyLimit")).intValue() : null;
+        String skipPolicy = (String) data.get("skipPolicy");
+        Integer skipDailyLimit = data.get("skipDailyLimit") != null ? ((Number) data.get("skipDailyLimit")).intValue() : null;
+        Boolean offlineAllowed = data.get("offlineAllowed") != null ? Boolean.parseBoolean(data.get("offlineAllowed").toString()) : null;
+        Integer offlineMaxTracks = data.get("offlineMaxTracks") != null ? ((Number) data.get("offlineMaxTracks")).intValue() : null;
+        Integer maxDevices = data.get("maxDevices") != null ? ((Number) data.get("maxDevices")).intValue() : null;
+        Boolean syncedLyrics = data.get("syncedLyrics") != null ? Boolean.parseBoolean(data.get("syncedLyrics").toString()) : null;
+        Boolean vipBadge = data.get("vipBadge") != null ? Boolean.parseBoolean(data.get("vipBadge").toString()) : null;
+        Boolean familySharing = data.get("familySharing") != null ? Boolean.parseBoolean(data.get("familySharing").toString()) : null;
+        Integer familyMembers = data.get("familyMembers") != null ? ((Number) data.get("familyMembers")).intValue() : null;
+
+        String sql = "UPDATE subscription_tiers SET " +
+                "name = COALESCE(?, name), " +
+                "description = COALESCE(?, description), " +
+                "ad_policy = COALESCE(?, ad_policy), " +
+                "ad_free_daily_limit = COALESCE(?, ad_free_daily_limit), " +
+                "skip_policy = COALESCE(?, skip_policy), " +
+                "skip_daily_limit = COALESCE(?, skip_daily_limit), " +
+                "offline_allowed = COALESCE(?, offline_allowed), " +
+                "offline_max_tracks = COALESCE(?, offline_max_tracks), " +
+                "max_devices = COALESCE(?, max_devices), " +
+                "synced_lyrics = COALESCE(?, synced_lyrics), " +
+                "vip_badge = COALESCE(?, vip_badge), " +
+                "family_sharing = COALESCE(?, family_sharing), " +
+                "family_members = COALESCE(?, family_members), " +
+                "updated_at = NOW() " +
+                "WHERE id = ?";
+
+        jdbcTemplate.update(sql, name, description, adPolicy, adFreeDailyLimit, skipPolicy, skipDailyLimit,
+                offlineAllowed, offlineMaxTracks, maxDevices, syncedLyrics, vipBadge,
+                familySharing, familyMembers, tierId);
     }
 
     /**
@@ -1018,6 +1163,81 @@ public class AdminService {
         return result;
     }
 
+    public void createDistributor(Map<String, Object> data) {
+        String companyName = (String) data.getOrDefault("companyName", "Đối Tác Mới");
+        String country = (String) data.getOrDefault("country", "Việt Nam");
+        String contactName = (String) data.get("contactName");
+        String contactEmail = (String) data.get("contactEmail");
+        String contactPhone = (String) data.get("contactPhone");
+        String status = (String) data.getOrDefault("status", "ACTIVE");
+
+        String sql = "INSERT INTO distributors (company_name, country, contact_name, contact_email, contact_phone, status, created_at, updated_at) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
+        jdbcTemplate.update(sql, companyName, country, contactName, contactEmail, contactPhone, status.toUpperCase());
+    }
+
+    public void updateDistributor(Long id, Map<String, Object> data) {
+        String sql = "UPDATE distributors SET " +
+                     "company_name = COALESCE(?, company_name), " +
+                     "country = COALESCE(?, country), " +
+                     "contact_name = COALESCE(?, contact_name), " +
+                     "contact_email = COALESCE(?, contact_email), " +
+                     "contact_phone = COALESCE(?, contact_phone), " +
+                     "status = COALESCE(?, status), " +
+                     "updated_at = NOW() WHERE id = ?";
+        jdbcTemplate.update(sql,
+                data.get("companyName"),
+                data.get("country"),
+                data.get("contactName"),
+                data.get("contactEmail"),
+                data.get("contactPhone"),
+                data.get("status") != null ? data.get("status").toString().toUpperCase() : null,
+                id);
+    }
+
+    public void toggleDistributorStatus(Long id) {
+        jdbcTemplate.update("UPDATE distributors SET status = CASE WHEN status = 'ACTIVE' THEN 'INACTIVE' ELSE 'ACTIVE' END, updated_at = NOW() WHERE id = ?", id);
+    }
+
+    public void createContract(Map<String, Object> data) {
+        Long distributorId = Long.parseLong(data.get("distributorId").toString());
+        String contractCode = (String) data.getOrDefault("contractCode", "CTR-" + System.currentTimeMillis());
+        String title = (String) data.getOrDefault("title", "Hợp đồng phân phối");
+        String signedDate = (String) data.getOrDefault("signedDate", java.time.LocalDate.now().toString());
+        String effectiveFrom = (String) data.getOrDefault("effectiveFrom", signedDate);
+        String effectiveTo = (String) data.getOrDefault("effectiveTo", java.time.LocalDate.now().plusYears(1).toString());
+        Double revenueShare = data.get("revenueShare") != null ? Double.parseDouble(data.get("revenueShare").toString()) : 0.70;
+        String status = (String) data.getOrDefault("status", "ACTIVE");
+        String documentUrl = (String) data.get("documentUrl");
+
+        String sql = "INSERT INTO distribution_contracts (distributor_id, contract_code, title, signed_date, effective_from, effective_to, revenue_share, status, document_url, created_at, updated_at) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+        jdbcTemplate.update(sql, distributorId, contractCode, title, signedDate, effectiveFrom, effectiveTo, revenueShare, status.toUpperCase(), documentUrl);
+    }
+
+    public void updateContract(Long id, Map<String, Object> data) {
+        String sql = "UPDATE distribution_contracts SET " +
+                     "title = COALESCE(?, title), " +
+                     "effective_from = COALESCE(?, effective_from), " +
+                     "effective_to = COALESCE(?, effective_to), " +
+                     "revenue_share = COALESCE(?, revenue_share), " +
+                     "status = COALESCE(?, status), " +
+                     "document_url = COALESCE(?, document_url), " +
+                     "updated_at = NOW() WHERE id = ?";
+        jdbcTemplate.update(sql,
+                data.get("title"),
+                data.get("effectiveFrom"),
+                data.get("effectiveTo"),
+                data.get("revenueShare") != null ? Double.parseDouble(data.get("revenueShare").toString()) : null,
+                data.get("status") != null ? data.get("status").toString().toUpperCase() : null,
+                data.get("documentUrl"),
+                id);
+    }
+
+    public void updateContractStatus(Long id, String status) {
+        jdbcTemplate.update("UPDATE distribution_contracts SET status = ?, updated_at = NOW() WHERE id = ?", status.toUpperCase(), id);
+    }
+
 
 
     // ==========================================
@@ -1153,6 +1373,56 @@ public class AdminService {
         }
         if (deleted == 0) {
             jdbcTemplate.update("DELETE FROM favorite_albums WHERE id = ?", id);
+        }
+    }
+
+    @PostConstruct
+    public void initSystemSettingsTable() {
+        try {
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS system_settings (" +
+                "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
+                "  config_key VARCHAR(100) NOT NULL UNIQUE," +
+                "  config_value LONGTEXT NOT NULL," +
+                "  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+                ")"
+            );
+        } catch (Exception e) {
+            System.err.println("Notice: system_settings table check: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getSystemConfig() {
+        try {
+            List<String> values = jdbcTemplate.query(
+                "SELECT config_value FROM system_settings WHERE config_key = 'main_config' LIMIT 1",
+                (rs, rowNum) -> rs.getString("config_value")
+            );
+            if (!values.isEmpty()) {
+                ObjectMapper mapper = new ObjectMapper();
+                return mapper.readValue(values.get(0), Map.class);
+            }
+        } catch (Exception ignored) {}
+        return Collections.emptyMap();
+    }
+
+    public void saveSystemConfig(Map<String, Object> config) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            String json = mapper.writeValueAsString(config);
+            int updated = jdbcTemplate.update(
+                "UPDATE system_settings SET config_value = ?, updated_at = NOW() WHERE config_key = 'main_config'",
+                json
+            );
+            if (updated == 0) {
+                jdbcTemplate.update(
+                    "INSERT INTO system_settings (config_key, config_value, updated_at) VALUES ('main_config', ?, NOW())",
+                    json
+                );
+            }
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể lưu cấu hình hệ thống: " + e.getMessage());
         }
     }
 }
