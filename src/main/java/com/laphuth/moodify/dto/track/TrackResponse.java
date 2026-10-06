@@ -37,7 +37,7 @@ public record TrackResponse(
             track.getArtistSpotifyId(),
             track.getAlbumSpotifyId(),
             track.getAlbumName(),
-            track.getImageUrl(),
+            AudioUrlResolver.resolveImageUrl(track.getImageUrl()),
             track.getReleaseDate(),
             track.getTrackNumber(),
             track.getDurationMs(),

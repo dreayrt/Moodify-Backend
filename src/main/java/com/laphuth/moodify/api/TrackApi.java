@@ -116,7 +116,13 @@ public class TrackApi {
         Track track = null;
         try {
             track = trackService.getTrackEntity(id);
+            if (!trackService.isTrackPubliclyAvailable(track)) {
+                throw new ResponseStatusException(NOT_FOUND, "Track not found or license expired");
+            }
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception ignored) {
+            throw new ResponseStatusException(NOT_FOUND, "Track not found");
         }
 
         // 1. Luôn ưu tiên phát nhạc trực tiếp từ máy chủ đám mây trực tuyến (Oracle Music Server)

@@ -31,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.jdbc.core.JdbcTemplate;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,6 +41,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
@@ -56,6 +59,7 @@ public class ContentLeadCatalogService {
     private final ContentReviewRequestRepository contentReviewRequestRepository;
     private final ContentReviewActionRepository contentReviewActionRepository;
     private final TrackSyncService trackSyncService;
+    private final JdbcTemplate jdbcTemplate;
 
     public ContentLeadCatalogService(
         UserRepository userRepository,
@@ -66,7 +70,9 @@ public class ContentLeadCatalogService {
         ContentReviewRequestRepository contentReviewRequestRepository,
         ContentReviewActionRepository contentReviewActionRepository,
         @org.springframework.beans.factory.annotation.Autowired(required = false)
-        TrackSyncService trackSyncService
+        TrackSyncService trackSyncService,
+        @org.springframework.beans.factory.annotation.Autowired(required = false)
+        JdbcTemplate jdbcTemplate
     ) {
         this.userRepository = userRepository;
         this.artistRepository = artistRepository;
@@ -76,6 +82,7 @@ public class ContentLeadCatalogService {
         this.contentReviewRequestRepository = contentReviewRequestRepository;
         this.contentReviewActionRepository = contentReviewActionRepository;
         this.trackSyncService = trackSyncService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public ContentLeadCatalogResponse getCurrentCatalog(
@@ -105,9 +112,15 @@ public class ContentLeadCatalogService {
             albumPageable
         );
 
+        List<Track> trackList = tracks.getContent();
+        java.util.Map<String, SongLicense> licenseMap = resolveLicensesForTracks(trackList);
+        List<ContentLeadTrackResponse> trackResponses = trackList.stream()
+            .map(t -> ContentLeadTrackResponse.from(t, licenseMap.get(t.getId())))
+            .toList();
+
         return new ContentLeadCatalogResponse(
             ContentLeadProfileResponse.from(artist),
-            tracks.map(ContentLeadTrackResponse::from).getContent(),
+            trackResponses,
             albums.map(ContentLeadAlbumResponse::from).getContent(),
             tracks.getNumber(),
             tracks.getSize(),
@@ -126,8 +139,14 @@ public class ContentLeadCatalogService {
         Pageable trackPageable = buildTrackPageable(page, size);
         Page<Track> tracks = resolveTracks(artistSpotifyId, query, trackPageable);
 
+        List<Track> trackList = tracks.getContent();
+        java.util.Map<String, SongLicense> licenseMap = resolveLicensesForTracks(trackList);
+        List<ContentLeadTrackResponse> trackResponses = trackList.stream()
+            .map(t -> ContentLeadTrackResponse.from(t, licenseMap.get(t.getId())))
+            .toList();
+
         return new ContentLeadTracksPageResponse(
-            tracks.map(ContentLeadTrackResponse::from).getContent(),
+            trackResponses,
             tracks.getNumber(),
             tracks.getSize(),
             tracks.getTotalElements(),
@@ -238,12 +257,15 @@ public class ContentLeadCatalogService {
         SongLicense license = new SongLicense();
         license.setTrackId(savedTrack.getId());
         license.setLicenseType(request.getLicenseType() != null ? request.getLicenseType() : "DIGITAL_STREAMING");
+
+        Long validDistributorId = resolveValidDistributorId(request.getDistributorId());
+        Long validContractId = resolveValidContractId(validDistributorId, request.getDistributionContractId());
+
         // Satisfy MySQL chk_song_license_owner:
         // (distributor_id IS NOT NULL AND copyright_owner IS NULL) OR (distributor_id IS NULL AND copyright_owner IS NOT NULL)
-        if (request.getDistributorId() != null && request.getDistributorId() > 0) {
-            license.setDistributorId(request.getDistributorId());
-            Long contractId = request.getDistributionContractId();
-            license.setDistributionContractId(contractId != null && contractId > 0 ? contractId : null);
+        if (validDistributorId != null) {
+            license.setDistributorId(validDistributorId);
+            license.setDistributionContractId(validContractId);
             license.setCopyrightOwner(null);
         } else {
             license.setDistributorId(null);
@@ -256,16 +278,13 @@ public class ContentLeadCatalogService {
         license.setDocumentSonglicensesUrl(licenseDocUrl);
         license.setStatus(com.laphuth.moodify.entities.enums.LicenseStatus.ACTIVE);
 
-        if (request.getIssueDate() != null && !request.getIssueDate().isBlank()) {
-            try {
-                license.setIssueDate(LocalDate.parse(request.getIssueDate().trim()));
-            } catch (DateTimeParseException ignored) {}
+        LocalDate issueDate = parseDateSafely(request.getIssueDate());
+        LocalDate expiryDate = request.isPerpetual() ? null : parseDateSafely(request.getExpiryDate());
+        if (issueDate != null && expiryDate != null && expiryDate.isBefore(issueDate)) {
+            expiryDate = issueDate.plusYears(1);
         }
-        if (request.getExpiryDate() != null && !request.getExpiryDate().isBlank() && !request.isPerpetual()) {
-            try {
-                license.setExpiryDate(LocalDate.parse(request.getExpiryDate().trim()));
-            } catch (DateTimeParseException ignored) {}
-        }
+        license.setIssueDate(issueDate);
+        license.setExpiryDate(expiryDate);
         songLicenseRepository.save(license);
 
         // 4. Save ContentReviewRequest
@@ -336,7 +355,30 @@ public class ContentLeadCatalogService {
         if (request.getLyricsPlain() != null) {
             track.setLyricsPlain(emptyToNull(request.getLyricsPlain()));
         }
-        track.setStatus(normalizeTrackStatus(request.getStatus()));
+
+        String targetStatus = normalizeTrackStatus(request.getStatus());
+        // RÀNG BUỘC PHÁP LÝ BẢN QUYỀN: Không cho phép phát hành công khai nếu hợp đồng đã hết hạn hoặc chưa đến ngày bắt đầu
+        SongLicense currentLicense = songLicenseRepository.findByTrackId(trackId).orElse(null);
+        if ("published".equals(targetStatus) && currentLicense != null) {
+            LocalDate today = LocalDate.now();
+            if (currentLicense.getStatus() == com.laphuth.moodify.entities.enums.LicenseStatus.EXPIRED ||
+                (currentLicense.getExpiryDate() != null && currentLicense.getExpiryDate().isBefore(today))) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Bài hát đã hết hạn hợp đồng bản quyền (ngày hết hạn: " + currentLicense.getExpiryDate() + 
+                    "). Vui lòng nộp phụ lục/hợp đồng gia hạn trước khi phát hành lại."
+                );
+            }
+            if (currentLicense.getIssueDate() != null && currentLicense.getIssueDate().isAfter(today)) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Hợp đồng bản quyền chưa đến ngày có hiệu lực (ngày bắt đầu: " + currentLicense.getIssueDate() + 
+                    "). Chưa thể phát hành công khai bài hát trước thời điểm này."
+                );
+            }
+        }
+
+        track.setStatus(targetStatus);
         track.setVisibility(normalizeTrackVisibility(request.getVisibility()));
         track.setModerationStatus("pending");
         track.setUpdatedAt(Instant.now());
@@ -363,7 +405,7 @@ public class ContentLeadCatalogService {
                 contentReviewRequestRepository.save(reviewRequest);
             });
 
-        return ContentLeadTrackResponse.from(savedTrack);
+        return ContentLeadTrackResponse.from(savedTrack, currentLicense);
     }
 
     @Transactional
@@ -386,6 +428,29 @@ public class ContentLeadCatalogService {
         trackRepository.delete(track);
     }
 
+    private java.util.Map<String, SongLicense> resolveLicensesForTracks(List<Track> trackList) {
+        if (trackList == null || trackList.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        List<String> trackIds = trackList.stream()
+            .map(Track::getId)
+            .filter(id -> id != null && !id.isBlank())
+            .toList();
+        if (trackIds.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        try {
+            List<SongLicense> licenses = songLicenseRepository.findByTrackIdIn(trackIds);
+            return licenses.stream().collect(java.util.stream.Collectors.toMap(
+                SongLicense::getTrackId,
+                l -> l,
+                (a, b) -> a
+            ));
+        } catch (Exception e) {
+            return java.util.Collections.emptyMap();
+        }
+    }
+
     private Track resolveOwnedTrack(String trackId, String artistSpotifyId) {
         Track track = trackRepository.findById(trackId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Track not found"));
@@ -399,7 +464,7 @@ public class ContentLeadCatalogService {
 
     private String normalizeTrackStatus(String status) {
         String normalized = emptyToDefault(status, "draft").toLowerCase();
-        if (!List.of("draft", "published", "scheduled").contains(normalized)) {
+        if (!List.of("draft", "published", "scheduled", "archived", "disabled").contains(normalized)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid track status");
         }
         return normalized;
@@ -425,5 +490,76 @@ public class ContentLeadCatalogService {
             return defaultValue;
         }
         return value.trim();
+    }
+
+    private Long resolveValidDistributorId(Long distributorId) {
+        if (distributorId == null || distributorId <= 0) {
+            return null;
+        }
+        if (jdbcTemplate == null) {
+            return distributorId;
+        }
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM distributors WHERE id = ?",
+                Integer.class,
+                distributorId
+            );
+            return (count != null && count > 0) ? distributorId : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Long resolveValidContractId(Long distributorId, Long contractId) {
+        if (jdbcTemplate == null) {
+            return contractId;
+        }
+        try {
+            if (contractId != null && contractId > 0) {
+                Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM distribution_contracts WHERE id = ?",
+                    Integer.class,
+                    contractId
+                );
+                if (count != null && count > 0) {
+                    return contractId;
+                }
+            }
+            if (distributorId != null && distributorId > 0) {
+                List<Long> contracts = jdbcTemplate.query(
+                    "SELECT id FROM distribution_contracts WHERE distributor_id = ? ORDER BY id DESC LIMIT 1",
+                    (rs, rowNum) -> rs.getLong("id"),
+                    distributorId
+                );
+                if (!contracts.isEmpty()) {
+                    return contracts.get(0);
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private LocalDate parseDateSafely(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) {
+            return null;
+        }
+        String clean = dateStr.trim();
+        List<DateTimeFormatter> formatters = List.of(
+            DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+            DateTimeFormatter.ofPattern("d/M/yyyy"),
+            DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+            DateTimeFormatter.ofPattern("d-M-yyyy"),
+            DateTimeFormatter.ofPattern("yyyy/MM/dd")
+        );
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                return LocalDate.parse(clean, formatter);
+            } catch (DateTimeParseException ignored) {}
+        }
+        return null;
     }
 }

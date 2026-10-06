@@ -102,6 +102,8 @@ public class EmotionService {
         // 1. Lay danh sach ung vien tu MongoDB
         Query query = new Query();
         query.addCriteria(Criteria.where("moderationStatus").nin("rejected", "REJECTED"));
+        query.addCriteria(Criteria.where("visibility").nin("private", "unlisted"));
+        query.addCriteria(Criteria.where("status").nin("archived", "disabled", "draft"));
         query.with(Sort.by(Sort.Direction.DESC, "popularity"));
         query.limit(250);
 

@@ -105,13 +105,6 @@ public class SecurityConfig {
                     .filter(origin -> !origin.isEmpty())
                     .toList());
         }
-        origins.add("http://localhost:[*]");
-        origins.add("http://127.0.0.1:[*]");
-        origins.add("http://localhost:3000");
-        origins.add("http://localhost:3001");
-        origins.add("http://127.0.0.1:3000");
-        origins.add("http://127.0.0.1:3001");
-        origins.add("http://26.22.194.47:[*]");
 
         configuration.setAllowedOriginPatterns(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));

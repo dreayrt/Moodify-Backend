@@ -3,21 +3,62 @@ package com.laphuth.moodify.services;
 import com.laphuth.moodify.dto.track.TrackPageResponse;
 import com.laphuth.moodify.dto.track.TrackResponse;
 import com.laphuth.moodify.entities.Track;
+import com.laphuth.moodify.repositories.SongLicenseRepository;
 import com.laphuth.moodify.repositories.TrackRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.*;
 
 @Service
 public class TrackService {
     private static final int MAX_PAGE_SIZE = 500;
 
     private final TrackRepository trackRepository;
+    private final SongLicenseRepository songLicenseRepository;
 
-    public TrackService(TrackRepository trackRepository) {
+    public TrackService(TrackRepository trackRepository, SongLicenseRepository songLicenseRepository) {
         this.trackRepository = trackRepository;
+        this.songLicenseRepository = songLicenseRepository;
+    }
+
+    public Set<String> getIneligibleTrackIds() {
+        try {
+            return new HashSet<>(songLicenseRepository.findIneligibleTrackIds());
+        } catch (Exception e) {
+            return Collections.emptySet();
+        }
+    }
+
+    public boolean isTrackPubliclyAvailable(Track track, Set<String> ineligibleIds) {
+        if (track == null) {
+            return false;
+        }
+        if (ineligibleIds != null && track.getId() != null && ineligibleIds.contains(track.getId())) {
+            return false;
+        }
+        String visibility = track.getVisibility();
+        if (visibility != null && ("private".equalsIgnoreCase(visibility) || "unlisted".equalsIgnoreCase(visibility))) {
+            return false;
+        }
+        String status = track.getStatus();
+        if (status != null && ("archived".equalsIgnoreCase(status) || "disabled".equalsIgnoreCase(status) || "draft".equalsIgnoreCase(status))) {
+            return false;
+        }
+        String modStatus = track.getModerationStatus();
+        if (modStatus != null && "rejected".equalsIgnoreCase(modStatus)) {
+            return false;
+        }
+        return true;
+    }
+
+    public boolean isTrackPubliclyAvailable(Track track) {
+        return isTrackPubliclyAvailable(track, getIneligibleTrackIds());
     }
 
     public static String removeAccents(String text) {
@@ -37,17 +78,28 @@ public class TrackService {
             Sort.by(Sort.Direction.ASC, "name")
         );
 
+        Set<String> ineligibleIds = getIneligibleTrackIds();
+
         Page<Track> tracks;
         if (query == null || query.isBlank()) {
             tracks = trackRepository.findAll(pageable);
+            List<Track> valid = tracks.getContent().stream()
+                .filter(t -> isTrackPubliclyAvailable(t, ineligibleIds))
+                .toList();
+            tracks = new PageImpl<>(valid, pageable, tracks.getTotalElements() - (tracks.getNumberOfElements() - valid.size()));
         } else {
             String trimmed = query.trim();
             tracks = findByQuery(trimmed, pageable);
-            // If standard repository search returned 0 results, try unaccented Vietnamese matching
-            if (tracks.isEmpty()) {
+            List<Track> valid = tracks.getContent().stream()
+                .filter(t -> isTrackPubliclyAvailable(t, ineligibleIds))
+                .toList();
+
+            // If standard repository search returned 0 results or all were ineligible, try unaccented Vietnamese matching
+            if (valid.isEmpty()) {
                 String normQuery = removeAccents(trimmed);
-                java.util.List<Track> all = trackRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
-                java.util.List<Track> matched = all.stream()
+                List<Track> all = trackRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
+                List<Track> matched = all.stream()
+                    .filter(t -> isTrackPubliclyAvailable(t, ineligibleIds))
                     .filter(t -> removeAccents(t.getName()).contains(normQuery)
                         || removeAccents(t.getArtistName()).contains(normQuery)
                         || (t.getAlbumName() != null && removeAccents(t.getAlbumName()).contains(normQuery)))
@@ -55,8 +107,10 @@ public class TrackService {
 
                 int start = Math.min(safePage * safeSize, matched.size());
                 int end = Math.min(start + safeSize, matched.size());
-                java.util.List<Track> paged = matched.subList(start, end);
-                tracks = new org.springframework.data.domain.PageImpl<>(paged, pageable, matched.size());
+                List<Track> paged = matched.subList(start, end);
+                tracks = new PageImpl<>(paged, pageable, matched.size());
+            } else {
+                tracks = new PageImpl<>(valid, pageable, tracks.getTotalElements() - (tracks.getNumberOfElements() - valid.size()));
             }
         }
 
@@ -77,6 +131,9 @@ public class TrackService {
 
     public TrackResponse getTrack(String id) {
         Track track = getTrackEntity(id);
+        if (!isTrackPubliclyAvailable(track)) {
+            throw new TrackNotFoundException(id);
+        }
         return TrackResponse.from(track);
     }
 
@@ -91,12 +148,16 @@ public class TrackService {
         );
         
         Page<Track> tracks = trackRepository.findByGenresContaining(genre, pageable);
+        Set<String> ineligibleIds = getIneligibleTrackIds();
+        List<Track> valid = tracks.getContent().stream()
+            .filter(t -> isTrackPubliclyAvailable(t, ineligibleIds))
+            .toList();
         
         return new TrackPageResponse(
-            tracks.map(TrackResponse::from).getContent(),
+            valid.stream().map(TrackResponse::from).toList(),
             tracks.getNumber(),
             tracks.getSize(),
-            tracks.getTotalElements(),
+            tracks.getTotalElements() - (tracks.getNumberOfElements() - valid.size()),
             tracks.getTotalPages()
         );
     }
@@ -112,12 +173,16 @@ public class TrackService {
         );
         
         Page<Track> tracks = trackRepository.findByArtistSpotifyId(artistSpotifyId, pageable);
+        Set<String> ineligibleIds = getIneligibleTrackIds();
+        List<Track> valid = tracks.getContent().stream()
+            .filter(t -> isTrackPubliclyAvailable(t, ineligibleIds))
+            .toList();
         
         return new TrackPageResponse(
-            tracks.map(TrackResponse::from).getContent(),
+            valid.stream().map(TrackResponse::from).toList(),
             tracks.getNumber(),
             tracks.getSize(),
-            tracks.getTotalElements(),
+            tracks.getTotalElements() - (tracks.getNumberOfElements() - valid.size()),
             tracks.getTotalPages()
         );
     }

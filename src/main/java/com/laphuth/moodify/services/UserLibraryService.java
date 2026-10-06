@@ -122,7 +122,7 @@ public class UserLibraryService {
                 response.setDurationMs(track.getDurationMs());
                 response.setPopularity(track.getPopularity());
                 response.setPreviewUrl(null);
-                response.setImageUrl(track.getImageUrl());
+                response.setImageUrl(AudioUrlResolver.resolveImageUrl(track.getImageUrl()));
                 response.setGenres(track.getGenres());
                 response.setLyricsPlain(track.getLyricsPlain());
                 response.setLyricsSynced(track.getLyricsSynced());
