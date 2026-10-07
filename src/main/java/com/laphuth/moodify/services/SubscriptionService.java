@@ -1,18 +1,24 @@
 package com.laphuth.moodify.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.laphuth.moodify.dto.payment.SepayWebhookDto;
 import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.repositories.UserRepository;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class SubscriptionService {
@@ -21,9 +27,23 @@ public class SubscriptionService {
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public SubscriptionService(JdbcTemplate jdbcTemplate, UserRepository userRepository) {
+    // ===== Cấu hình SePay Payment (VietQR) =====
+    private final String sepayBankAccount;
+    private final String sepayBankName;
+    private final String sepayAccountName;
+
+    public SubscriptionService(
+        JdbcTemplate jdbcTemplate,
+        UserRepository userRepository,
+        @Value("${sepay.bank-account:}") String sepayBankAccount,
+        @Value("${sepay.bank-name:MBBank}") String sepayBankName,
+        @Value("${sepay.account-name:}") String sepayAccountName
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.userRepository = userRepository;
+        this.sepayBankAccount = sepayBankAccount;
+        this.sepayBankName = sepayBankName;
+        this.sepayAccountName = sepayAccountName;
     }
 
     /**
@@ -361,9 +381,8 @@ public class SubscriptionService {
         LocalDateTime endAt;
         if (!currentActive.isEmpty()) {
             // Gia hạn cộng dồn thời gian
-            java.sql.Timestamp existingEnd = (java.sql.Timestamp) currentActive.get(0).get("end_at");
-            LocalDateTime currentEndDate = existingEnd.toLocalDateTime();
-            endAt = currentEndDate.plusDays(durationDays);
+            LocalDateTime currentEndDate = toLocalDateTime(currentActive.get(0).get("end_at"));
+            endAt = (currentEndDate != null ? currentEndDate : startAt).plusDays(durationDays);
         } else {
             endAt = startAt.plusDays(durationDays);
         }
@@ -472,11 +491,490 @@ public class SubscriptionService {
         }
     }
 
+    // ======================================================================
+    //  SEPAY PAYMENT: Luồng thanh toán chuyển khoản ngân hàng qua VietQR
+    // ======================================================================
+
+    /**
+     * Tạo đơn thanh toán PENDING và sinh mã QR VietQR để người dùng chuyển khoản.
+     * Hỗ trợ cơ chế Idempotency: nếu client gửi idempotencyKey hoặc có đơn PENDING cùng gói chưa hết hạn,
+     * sẽ trả về kết quả cũ thay vì tạo trùng đơn hàng.
+     */
+    @Transactional
+    public Map<String, Object> createPendingPayment(String principal, Long packageId) {
+        return createPendingPayment(principal, packageId, null);
+    }
+
+    /**
+     * Tạo đơn thanh toán PENDING kèm theo Idempotency-Key từ client.
+     */
+    @Transactional
+    public Map<String, Object> createPendingPayment(String principal, Long packageId, String idempotencyKey) {
+        User user = findUserByPrincipal(principal);
+
+        // 0. Kiểm tra Idempotency Key nếu client có gửi
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            List<Map<String, Object>> existingKeys = jdbcTemplate.queryForList(
+                "SELECT response_payload FROM payment_idempotency_keys WHERE user_id = ? AND idempotency_key = ?",
+                user.getId(), idempotencyKey.trim()
+            );
+            if (!existingKeys.isEmpty()) {
+                try {
+                    String cachedJson = (String) existingKeys.get(0).get("response_payload");
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> cachedResult = objectMapper.readValue(cachedJson, Map.class);
+                    // Cập nhật lại status thực tế từ DB nếu có thay đổi
+                    String orderCode = (String) cachedResult.get("orderCode");
+                    if (orderCode != null) {
+                        try {
+                            Map<String, Object> currentStatus = getPaymentStatus(orderCode);
+                            cachedResult.put("status", currentStatus.get("status"));
+                        } catch (Exception ignored) {}
+                    }
+                    cachedResult.put("idempotentReplay", true);
+                    System.out.println("[SePay Checkout Idempotency] Trả về cached response cho key: " + idempotencyKey);
+                    return cachedResult;
+                } catch (Exception e) {
+                    System.err.println("[SePay Checkout Idempotency] Lỗi đọc cached response: " + e.getMessage());
+                }
+            }
+        }
+
+        // 1. Lấy thông tin gói dịch vụ
+        List<Map<String, Object>> pkgs = jdbcTemplate.queryForList(
+            "SELECT id, name, price, duration_days FROM service_packages WHERE id = ? AND status = 'ACTIVE'",
+            packageId
+        );
+        if (pkgs.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Gói dịch vụ không tồn tại hoặc đã ngừng cung cấp.");
+        }
+        Map<String, Object> pkg = pkgs.get(0);
+        double amount = ((Number) pkg.get("price")).doubleValue();
+        int durationDays = ((Number) pkg.get("duration_days")).intValue();
+
+        // 2. Tự nhiên chống click đúp: nếu user có đơn PENDING cùng gói vừa tạo trong 10 phút gần đây và chưa hết hạn,
+        // trả về luôn đơn đó mà không cần tạo mới
+        List<Map<String, Object>> activePending = jdbcTemplate.queryForList(
+            "SELECT pt.id as payment_id, pt.subscription_id, pt.amount, pt.provider_transaction_id, pt.created_at " +
+            "FROM payment_transactions pt " +
+            "JOIN subscriptions s ON pt.subscription_id = s.id " +
+            "WHERE s.user_id = ? AND s.service_package_id = ? AND pt.status = 'PENDING' AND s.status = 'PENDING' " +
+            "  AND pt.created_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE) " +
+            "ORDER BY pt.id DESC LIMIT 1",
+            user.getId(), packageId
+        );
+
+        if (!activePending.isEmpty()) {
+            Map<String, Object> existingTx = activePending.get(0);
+            Long existingPaymentId = ((Number) existingTx.get("payment_id")).longValue();
+            Long existingSubscriptionId = ((Number) existingTx.get("subscription_id")).longValue();
+            String existingOrderCode = "MD" + existingPaymentId;
+            long amountLong = (long) amount;
+
+            String qrUrl = String.format(
+                "https://qr.sepay.vn/img?acc=%s&bank=%s&amount=%d&des=%s&template=compact",
+                URLEncoder.encode(sepayBankAccount, StandardCharsets.UTF_8),
+                URLEncoder.encode(sepayBankName, StandardCharsets.UTF_8),
+                amountLong,
+                URLEncoder.encode(existingOrderCode, StandardCharsets.UTF_8)
+            );
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("success", true);
+            result.put("orderCode", existingOrderCode);
+            result.put("paymentId", existingPaymentId);
+            result.put("subscriptionId", existingSubscriptionId);
+            result.put("packageId", packageId);
+            result.put("packageName", pkg.get("name"));
+            result.put("amount", amountLong);
+            result.put("bankAccount", sepayBankAccount);
+            result.put("bankName", sepayBankName);
+            result.put("accountName", sepayAccountName);
+            result.put("transferContent", existingOrderCode);
+            result.put("qrUrl", qrUrl);
+            result.put("status", "PENDING");
+            result.put("idempotentReplay", true);
+            result.put("message", "Đơn hàng đang chờ thanh toán. Vui lòng quét mã QR hoặc chuyển khoản với nội dung: " + existingOrderCode);
+
+            saveIdempotencyKey(user.getId(), idempotencyKey, packageId, result);
+            System.out.println("[SePay Checkout] Tái sử dụng đơn PENDING còn hiệu lực: " + existingOrderCode + " cho user: " + user.getUsername());
+            return result;
+        }
+
+        // Hủy các đơn PENDING cũ khác của user để tránh xung đột
+        jdbcTemplate.update(
+            "UPDATE payment_transactions SET status = 'CANCELLED' " +
+            "WHERE subscription_id IN (SELECT id FROM subscriptions WHERE user_id = ? AND status = 'PENDING') " +
+            "AND status = 'PENDING'",
+            user.getId()
+        );
+        jdbcTemplate.update(
+            "UPDATE subscriptions SET status = 'CANCELLED' WHERE user_id = ? AND status = 'PENDING'",
+            user.getId()
+        );
+
+        // 3. Tạo subscription trạng thái PENDING
+        LocalDateTime now = LocalDateTime.now();
+        jdbcTemplate.update(
+            "INSERT INTO subscriptions (user_id, service_package_id, start_at, end_at, auto_renew, status) " +
+            "VALUES (?, ?, ?, ?, FALSE, 'PENDING')",
+            user.getId(), packageId, now, now.plusDays(durationDays)
+        );
+        Long subscriptionId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+
+        // 4. Tạo payment_transaction trạng thái PENDING
+        jdbcTemplate.update(
+            "INSERT INTO payment_transactions (subscription_id, amount, payment_method, provider, status) " +
+            "VALUES (?, ?, 'QR_TRANSFER', 'SEPAY', 'PENDING')",
+            subscriptionId, amount
+        );
+        Long paymentId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+
+        // 5. Sinh mã đơn hàng: MD + paymentId (ví dụ: MD1001)
+        String orderCode = "MD" + paymentId;
+
+        // Cập nhật provider_transaction_id = orderCode để tra cứu sau
+        jdbcTemplate.update(
+            "UPDATE payment_transactions SET provider_transaction_id = ? WHERE id = ?",
+            orderCode, paymentId
+        );
+
+        // 6. Sinh URL ảnh mã QR VietQR từ SePay
+        long amountLong = (long) amount;
+        String qrContent = orderCode; // Nội dung chuyển khoản = mã đơn hàng
+        String qrUrl = String.format(
+            "https://qr.sepay.vn/img?acc=%s&bank=%s&amount=%d&des=%s&template=compact",
+            URLEncoder.encode(sepayBankAccount, StandardCharsets.UTF_8),
+            URLEncoder.encode(sepayBankName, StandardCharsets.UTF_8),
+            amountLong,
+            URLEncoder.encode(qrContent, StandardCharsets.UTF_8)
+        );
+
+        // 7. Trả kết quả về Frontend
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("orderCode", orderCode);
+        result.put("paymentId", paymentId);
+        result.put("subscriptionId", subscriptionId);
+        result.put("packageId", packageId);
+        result.put("packageName", pkg.get("name"));
+        result.put("amount", amountLong);
+        result.put("bankAccount", sepayBankAccount);
+        result.put("bankName", sepayBankName);
+        result.put("accountName", sepayAccountName);
+        result.put("transferContent", qrContent);
+        result.put("qrUrl", qrUrl);
+        result.put("status", "PENDING");
+        result.put("message", "Vui lòng quét mã QR hoặc chuyển khoản với nội dung: " + orderCode);
+
+        // Lưu idempotency key nếu client có gửi
+        saveIdempotencyKey(user.getId(), idempotencyKey, packageId, result);
+
+        System.out.println("[SePay Checkout] Tạo đơn thanh toán: " + orderCode +
+            " | Gói: " + pkg.get("name") + " | Số tiền: " + amountLong + "đ" +
+            " | User: " + user.getUsername());
+
+        return result;
+    }
+
+    /**
+     * Xử lý webhook callback từ SePay khi có giao dịch tiền vào tài khoản ngân hàng.
+     * Tích hợp toàn diện cơ chế Idempotency chống retry trùng lặp và race-condition.
+     */
+    @Transactional
+    public Map<String, Object> processSepayWebhook(SepayWebhookDto webhook) {
+        return processSepayWebhook(webhook, null);
+    }
+
+    /**
+     * Xử lý webhook callback từ SePay kèm raw payload để lưu audit log.
+     */
+    @Transactional
+    public Map<String, Object> processSepayWebhook(SepayWebhookDto webhook, String rawPayload) {
+        Long sepayTxId = webhook.getId();
+
+        // 1. Kiểm tra Idempotency tầng Webhook qua payment_webhook_logs:
+        // Nếu giao dịch này đã từng được xử lý trước đó từ cổng SePay (do SePay retry)
+        if (sepayTxId != null) {
+            List<Map<String, Object>> existingLogs = jdbcTemplate.queryForList(
+                "SELECT id, status, order_code, message FROM payment_webhook_logs WHERE provider = 'SEPAY' AND provider_transaction_id = ?",
+                String.valueOf(sepayTxId)
+            );
+            if (!existingLogs.isEmpty()) {
+                Map<String, Object> logRow = existingLogs.get(0);
+                String logStatus = (String) logRow.get("status");
+                String loggedOrderCode = (String) logRow.get("order_code");
+                System.out.println("[Payment Webhook Idempotency] ⚠️ Webhook lặp lại! Provider=SEPAY, TxId=" + sepayTxId +
+                    " đã được xử lý với status=" + logStatus + " (orderCode=" + loggedOrderCode + ")");
+
+                return Map.of(
+                    "success", true,
+                    "isDuplicate", true,
+                    "message", "Giao dịch đã được ghi nhận trước đó (Idempotent response).",
+                    "orderCode", (loggedOrderCode != null ? loggedOrderCode : ""),
+                    "provider", "SEPAY",
+                    "sepayTransactionId", sepayTxId
+                );
+            }
+        }
+
+        // 2. Chỉ xử lý giao dịch tiền vào
+        if (webhook.getTransferType() == null || !webhook.getTransferType().equalsIgnoreCase("in")) {
+            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), null, null,
+                webhook.getTransferAmount(), "out", rawPayload, "IGNORED", "Bỏ qua giao dịch tiền ra.");
+            return Map.of("success", false, "message", "Bỏ qua giao dịch tiền ra.");
+        }
+
+        String content = webhook.getContent();
+        if (content == null || content.isBlank()) {
+            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), null, null,
+                webhook.getTransferAmount(), "in", rawPayload, "FAILED", "Nội dung chuyển khoản trống.");
+            return Map.of("success", false, "message", "Nội dung chuyển khoản trống.");
+        }
+
+        // 3. Tìm mã đơn hàng MD<id> trong nội dung chuyển khoản
+        Pattern pattern = Pattern.compile("MD(\\d+)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(content);
+        if (!matcher.find()) {
+            System.out.println("[SePay Webhook] Không tìm thấy mã đơn hàng (MD...) trong nội dung: " + content);
+            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), null, null,
+                webhook.getTransferAmount(), "in", rawPayload, "FAILED", "Không tìm thấy mã đơn hàng trong nội dung chuyển khoản.");
+            return Map.of("success", false, "message", "Không tìm thấy mã đơn hàng trong nội dung chuyển khoản.");
+        }
+
+        String orderCode = matcher.group(0).toUpperCase(); // "MD1001"
+        Long paymentId = Long.valueOf(matcher.group(1));     // 1001
+
+        System.out.println("[SePay Webhook] Tìm thấy mã đơn hàng: " + orderCode + " (paymentId=" + paymentId + ")");
+
+        // 4. Pessimistic Lock (FOR UPDATE) để ngăn chặn Race Condition khi 2 webhook đồng thời đến
+        List<Map<String, Object>> txRows = jdbcTemplate.queryForList(
+            "SELECT pt.id, pt.subscription_id, pt.amount, pt.status, " +
+            "       s.user_id, s.service_package_id, sp.duration_days, sp.name as package_name " +
+            "FROM payment_transactions pt " +
+            "JOIN subscriptions s ON pt.subscription_id = s.id " +
+            "JOIN service_packages sp ON s.service_package_id = sp.id " +
+            "WHERE pt.id = ? FOR UPDATE",
+            paymentId
+        );
+
+        if (txRows.isEmpty()) {
+            System.out.println("[SePay Webhook] Không tìm thấy giao dịch với paymentId=" + paymentId);
+            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), orderCode, paymentId,
+                webhook.getTransferAmount(), "in", rawPayload, "FAILED", "Không tìm thấy đơn hàng " + orderCode);
+            return Map.of("success", false, "message", "Không tìm thấy đơn hàng " + orderCode);
+        }
+
+        Map<String, Object> tx = txRows.get(0);
+        String currentStatus = (String) tx.get("status");
+
+        // 5. Kiểm tra Idempotency trạng thái: Nếu đơn hàng đã SUCCESS trước đó
+        if ("SUCCESS".equals(currentStatus)) {
+            System.out.println("[SePay Webhook Idempotency] Đơn " + orderCode + " đã SUCCESS trước đó. Trả về kết quả an toàn.");
+            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), orderCode, paymentId,
+                webhook.getTransferAmount(), "in", rawPayload, "DUPLICATE", "Đơn hàng đã thanh toán thành công trước đó.");
+            return Map.of(
+                "success", true,
+                "isDuplicate", true,
+                "message", "Đơn hàng đã được thanh toán thành công trước đó (Idempotent response).",
+                "orderCode", orderCode
+            );
+        }
+
+        if (!"PENDING".equals(currentStatus)) {
+            System.out.println("[SePay Webhook] Đơn " + orderCode + " ở trạng thái không thể xử lý: " + currentStatus);
+            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), orderCode, paymentId,
+                webhook.getTransferAmount(), "in", rawPayload, "FAILED", "Trạng thái đơn hàng không hợp lệ: " + currentStatus);
+            return Map.of("success", false, "message", "Đơn hàng " + orderCode + " đang ở trạng thái: " + currentStatus);
+        }
+
+        // 6. Kiểm tra số tiền
+        double expectedAmount = ((Number) tx.get("amount")).doubleValue();
+        double receivedAmount = webhook.getTransferAmount() != null ? webhook.getTransferAmount() : 0;
+
+        if (receivedAmount < expectedAmount) {
+            System.out.println("[SePay Webhook] ❌ Số tiền không đủ: nhận " + receivedAmount + " < cần " + expectedAmount);
+            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), orderCode, paymentId,
+                receivedAmount, "in", rawPayload, "FAILED", "Số tiền không đủ: cần " + expectedAmount + ", nhận " + receivedAmount);
+            return Map.of(
+                "success", false,
+                "message", "Số tiền chuyển khoản (" + (long) receivedAmount + "đ) không đủ so với giá gói (" + (long) expectedAmount + "đ).",
+                "orderCode", orderCode
+            );
+        }
+
+        // 7. ✅ Thanh toán thành công → Cập nhật payment_transaction
+        String sepayRefCode = webhook.getReferenceCode() != null ? webhook.getReferenceCode() : "SEPAY-" + sepayTxId;
+        jdbcTemplate.update(
+            "UPDATE payment_transactions SET status = 'SUCCESS', provider_transaction_id = ?, paid_at = NOW() WHERE id = ?",
+            orderCode + "|" + sepayRefCode, paymentId
+        );
+
+        // 8. Kích hoạt subscription → ACTIVE, tính lại end_at
+        Long subscriptionId = ((Number) tx.get("subscription_id")).longValue();
+        Long userId = ((Number) tx.get("user_id")).longValue();
+        int durationDays = ((Number) tx.get("duration_days")).intValue();
+
+        // Kiểm tra xem user có gói ACTIVE nào đang chạy không → cộng dồn
+        List<Map<String, Object>> currentActive = jdbcTemplate.queryForList(
+            "SELECT end_at FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' AND end_at > NOW() ORDER BY end_at DESC LIMIT 1",
+            userId
+        );
+
+        LocalDateTime startAt = LocalDateTime.now();
+        LocalDateTime endAt;
+        if (!currentActive.isEmpty()) {
+            LocalDateTime existingEnd = toLocalDateTime(currentActive.get(0).get("end_at"));
+            endAt = (existingEnd != null ? existingEnd : startAt).plusDays(durationDays);
+        } else {
+            endAt = startAt.plusDays(durationDays);
+        }
+
+        jdbcTemplate.update(
+            "UPDATE subscriptions SET status = 'ACTIVE', start_at = ?, end_at = ? WHERE id = ?",
+            startAt, endAt, subscriptionId
+        );
+
+        String packageName = (String) tx.get("package_name");
+        System.out.println("[SePay Webhook] ✅ THÀNH CÔNG! Đã kích hoạt gói " + packageName +
+            " cho userId=" + userId + " | Hạn đến: " + endAt);
+
+        // 9. Lưu vào log Webhook để khóa idempotency
+        saveWebhookLog(sepayTxId, webhook.getReferenceCode(), orderCode, paymentId,
+            receivedAmount, "in", rawPayload, "SUCCESS", "Kích hoạt gói " + packageName + " thành công");
+
+        return Map.of(
+            "success", true,
+            "message", "Thanh toán thành công! Đã kích hoạt " + packageName,
+            "orderCode", orderCode,
+            "packageName", packageName,
+            "expiresAt", endAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+        );
+    }
+
+    private void saveIdempotencyKey(Long userId, String key, Long packageId, Map<String, Object> payload) {
+        if (key == null || key.isBlank() || userId == null) return;
+        try {
+            String json = objectMapper.writeValueAsString(payload);
+            jdbcTemplate.update(
+                "INSERT INTO payment_idempotency_keys (idempotency_key, user_id, provider, endpoint, package_id, response_payload) " +
+                "VALUES (?, ?, 'SEPAY', 'CHECKOUT', ?, ?) ON DUPLICATE KEY UPDATE response_payload = VALUES(response_payload)",
+                key.trim(), userId, packageId, json
+            );
+        } catch (Exception e) {
+            System.err.println("[Payment Idempotency] Không thể lưu Idempotency Key: " + e.getMessage());
+        }
+    }
+
+    private void saveWebhookLog(Long sepayTxId, String refCode, String orderCode, Long paymentId,
+                                Double amount, String transferType, String rawPayload, String status, String message) {
+        if (sepayTxId == null) return;
+        try {
+            jdbcTemplate.update(
+                "INSERT INTO payment_webhook_logs (provider, provider_transaction_id, reference_code, order_code, payment_id, amount, transfer_type, raw_payload, status, message) " +
+                "VALUES ('SEPAY', ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE status = VALUES(status), message = VALUES(message)",
+                String.valueOf(sepayTxId), refCode, orderCode, paymentId, (amount != null ? amount : 0),
+                (transferType != null ? transferType : "in"), rawPayload, status, message
+            );
+        } catch (Exception e) {
+            System.err.println("[Payment Idempotency] Không thể lưu Webhook Log: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Kiểm tra trạng thái thanh toán của một đơn hàng (polling từ Frontend).
+     *
+     * @param orderCode Mã đơn hàng (ví dụ: MD1001)
+     * @return Map chứa status (PENDING/SUCCESS/CANCELLED/EXPIRED), thông tin gói...
+     */
+    public Map<String, Object> getPaymentStatus(String orderCode) {
+        // Tách paymentId từ orderCode: "MD1001" → 1001
+        String idStr = orderCode.replaceAll("(?i)^MD", "");
+        Long paymentId;
+        try {
+            paymentId = Long.valueOf(idStr);
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã đơn hàng không hợp lệ: " + orderCode);
+        }
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT pt.id, pt.status, pt.amount, pt.paid_at, " +
+            "       s.status as sub_status, s.end_at, sp.name as package_name, sp.duration_days " +
+            "FROM payment_transactions pt " +
+            "JOIN subscriptions s ON pt.subscription_id = s.id " +
+            "JOIN service_packages sp ON s.service_package_id = sp.id " +
+            "WHERE pt.id = ?",
+            paymentId
+        );
+
+        if (rows.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đơn hàng " + orderCode);
+        }
+
+        Map<String, Object> row = rows.get(0);
+        String paymentStatus = (String) row.get("status");
+
+        // Kiểm tra nếu đơn PENDING quá 15 phút → tự động hết hạn
+        if ("PENDING".equals(paymentStatus)) {
+            // Kiểm tra thời gian tạo đơn
+            List<Map<String, Object>> createdRows = jdbcTemplate.queryForList(
+                "SELECT created_at FROM payment_transactions WHERE id = ?", paymentId
+            );
+            if (!createdRows.isEmpty()) {
+                LocalDateTime created = toLocalDateTime(createdRows.get(0).get("created_at"));
+                if (created != null && created.plusMinutes(15).isBefore(LocalDateTime.now())) {
+                    // Đơn đã quá 15 phút → đánh dấu hết hạn
+                    jdbcTemplate.update("UPDATE payment_transactions SET status = 'CANCELLED' WHERE id = ?", paymentId);
+                    jdbcTemplate.update(
+                        "UPDATE subscriptions SET status = 'CANCELLED' WHERE id = (SELECT subscription_id FROM payment_transactions WHERE id = ?)",
+                        paymentId
+                    );
+                    paymentStatus = "EXPIRED";
+                }
+            }
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("orderCode", orderCode);
+        result.put("status", paymentStatus);
+        result.put("amount", row.get("amount"));
+        result.put("packageName", row.get("package_name"));
+
+        if ("SUCCESS".equals(paymentStatus)) {
+            result.put("paidAt", row.get("paid_at") != null ? row.get("paid_at").toString() : null);
+            result.put("expiresAt", row.get("end_at") != null ? row.get("end_at").toString() : null);
+            result.put("isPremium", true);
+        } else {
+            result.put("isPremium", false);
+        }
+
+        return result;
+    }
+
     private User findUserByPrincipal(String principal) {
         return userRepository.findByEmailOrUsername(principal, principal)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "Không tìm thấy thông tin tài khoản người dùng."
             ));
+    }
+
+    private LocalDateTime toLocalDateTime(Object dateObj) {
+        if (dateObj == null) return null;
+        if (dateObj instanceof LocalDateTime) {
+            return (LocalDateTime) dateObj;
+        }
+        if (dateObj instanceof java.sql.Timestamp) {
+            return ((java.sql.Timestamp) dateObj).toLocalDateTime();
+        }
+        if (dateObj instanceof java.util.Date) {
+            return new java.sql.Timestamp(((java.util.Date) dateObj).getTime()).toLocalDateTime();
+        }
+        try {
+            return LocalDateTime.parse(dateObj.toString().replace(" ", "T"));
+        } catch (Exception e) {
+            return LocalDateTime.now();
+        }
     }
 }

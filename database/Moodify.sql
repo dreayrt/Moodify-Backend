@@ -18,7 +18,7 @@ CREATE TABLE users (
     phone VARCHAR(20) UNIQUE,
     email VARCHAR(150) NOT NULL UNIQUE,
     username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NULL, -- Cho phép NULL đối với tài khoản đăng nhập mạng xã hội (Google OAuth2)
     avatar_url VARCHAR(500) NULL,
     role ENUM('USER','CONTENT_LEAD','MODERATOR','ADMIN') NOT NULL DEFAULT 'USER',
     artist_spotify_id VARCHAR(80) NULL UNIQUE,  -- Cột liên kết mã catalog / Spotify artist ID do Content Lead phụ trách
@@ -273,6 +273,50 @@ CREATE TABLE payment_transactions (
     UNIQUE KEY uk_payment_provider_tx (provider, provider_transaction_id),
     INDEX idx_payment_subscription_time (subscription_id, created_at),
     INDEX idx_payment_status_time (status, created_at)
+) ;
+
+-- ============================================================
+-- 14.1 NHẬT KÝ WEBHOOK CỔNG THANH TOÁN (PAYMENT WEBHOOK AUDIT & IDEMPOTENCY)
+-- Đảm bảo mỗi webhook từ bất kỳ cổng thanh toán nào (SePay, VNPay, MoMo, Stripe...)
+-- chỉ được xử lý đúng 1 lần duy nhất, chống race condition và retry lặp lại.
+-- ============================================================
+CREATE TABLE payment_webhook_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    provider VARCHAR(50) NOT NULL DEFAULT 'SEPAY',
+    provider_transaction_id VARCHAR(150) NOT NULL,
+    reference_code VARCHAR(100) NULL,
+    order_code VARCHAR(50) NULL,
+    payment_id BIGINT NULL,
+    amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    transfer_type VARCHAR(20) NOT NULL DEFAULT 'in',
+    raw_payload LONGTEXT NULL,
+    status VARCHAR(30) NOT NULL,
+    message VARCHAR(255) NULL,
+    processed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uk_payment_webhook_provider_tx (provider, provider_transaction_id),
+    INDEX idx_payment_webhook_order (order_code),
+    INDEX idx_payment_webhook_provider (provider)
+) ;
+
+-- ============================================================
+-- 14.2 KHÓA IDEMPOTENCY THANH TOÁN (PAYMENT IDEMPOTENCY KEYS)
+-- Ngăn người dùng click đúp hoặc gửi nhiều yêu cầu tạo đơn/thanh toán trùng lặp,
+-- hỗ trợ đa nền tảng cổng thanh toán và endpoint khác nhau.
+-- ============================================================
+CREATE TABLE payment_idempotency_keys (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    idempotency_key VARCHAR(120) NOT NULL,
+    user_id BIGINT NOT NULL,
+    provider VARCHAR(50) NULL DEFAULT 'SEPAY',
+    endpoint VARCHAR(100) NULL DEFAULT 'CHECKOUT',
+    package_id BIGINT NULL,
+    response_payload LONGTEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uk_user_idemp_key UNIQUE (user_id, idempotency_key),
+    INDEX idx_payment_idemp_created (created_at),
+    INDEX idx_payment_idemp_provider (provider)
 ) ;
 
 -- ============================================================
