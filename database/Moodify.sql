@@ -197,12 +197,38 @@ CREATE TABLE IF NOT EXISTS platform_traffic_events (
 ) ;
 
 -- ============================================================
--- 10. GÓI DỊCH VỤ
+-- 10. BẬC QUYỀN LỢI DỊCH VỤ (SUBSCRIPTION TIERS)
+-- Lưu các chính sách thực tế mà Moodify hỗ trợ:
+-- - Quảng cáo: ad_policy, ad_free_daily_limit
+-- - Giới hạn skip bài: skip_policy, skip_daily_limit
+-- - Nghe offline: offline_allowed, offline_max_tracks
+-- - Thiết bị & gia đình: max_devices, family_sharing, family_members
+-- - Tiện ích VIP: synced_lyrics, vip_badge
+-- ============================================================
+CREATE TABLE subscription_tiers (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(255) NULL,
+    ad_policy VARCHAR(20) NOT NULL DEFAULT 'NO_ADS',
+    ad_free_daily_limit INT NOT NULL DEFAULT 0,
+    skip_policy VARCHAR(20) NOT NULL DEFAULT 'UNLIMITED',
+    skip_daily_limit INT NOT NULL DEFAULT 0,
+    offline_allowed BOOLEAN NOT NULL DEFAULT TRUE,
+    offline_max_tracks INT NOT NULL DEFAULT 100,
+    max_devices INT NOT NULL DEFAULT 1,
+    synced_lyrics BOOLEAN NOT NULL DEFAULT TRUE,
+    vip_badge BOOLEAN NOT NULL DEFAULT TRUE,
+    family_sharing BOOLEAN NOT NULL DEFAULT FALSE,
+    family_members INT NOT NULL DEFAULT 0
+);
+
+-- ============================================================
+-- 11. GÓI DỊCH VỤ (SERVICE PACKAGES)
 -- Ánh xạ ServicePackage trong sơ đồ lớp.
--- Quyền lợi của gói được chuẩn hóa thành bảng riêng thay vì hard-code thành nhiều cột.
 -- ============================================================
 CREATE TABLE service_packages (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tier_id VARCHAR(50) NOT NULL DEFAULT 'INDIVIDUAL_BASIC',
     name VARCHAR(100) NOT NULL,
     description VARCHAR(1000) NULL, 
     price DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -213,14 +239,18 @@ CREATE TABLE service_packages (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT chk_service_package_price
-    CHECK (price >= 0),
+        CHECK (price >= 0),
 
-CONSTRAINT chk_service_package_duration
-    CHECK (duration_days > 0),
+    CONSTRAINT chk_service_package_duration
+        CHECK (duration_days > 0),
 
-INDEX idx_service_package_status (status),
-INDEX idx_service_package_display (display_order)
-) ;
+    CONSTRAINT fk_service_packages_tier
+        FOREIGN KEY (tier_id) REFERENCES subscription_tiers(id) ON UPDATE CASCADE,
+
+    INDEX idx_service_package_tier (tier_id),
+    INDEX idx_service_package_status (status),
+    INDEX idx_service_package_display (display_order)
+);
 
 -- ============================================================
 -- 13. ĐĂNG KÝ/GIA HẠN GÓI
@@ -559,17 +589,26 @@ INSERT INTO search_history (
 (6, 1, 'Hôm nay tôi cảm thấy rất buồn và cô đơn', 'EMOTION', 'SADNESS', 0.9234, 'TRACK', '6a8230b53cccfc45cd626cf0', '2026-09-14 19:50:00');
 
 -- ============================================================
--- 9. SERVICE_PACKAGES
--- Bao phủ: miễn phí/trả phí, nhiều thời hạn, ACTIVE/INACTIVE.
+-- 9. SUBSCRIPTION_TIERS & SERVICE_PACKAGES
 -- ============================================================
-INSERT INTO service_packages (
-    id, name, description, price, duration_days, display_order, status, created_at, updated_at
+INSERT INTO subscription_tiers (
+    id, name, description, ad_policy, ad_free_daily_limit, skip_policy, skip_daily_limit,
+    offline_allowed, offline_max_tracks, max_devices, synced_lyrics,
+    vip_badge, family_sharing, family_members
 ) VALUES
-(1, 'Moodify Trial 7 Days', 'Gói dùng thử miễn phí trong 7 ngày.', 0, 7, 1, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(2, 'Premium 30 Days', 'Gói Premium trong 30 ngày.', 59000, 30, 2, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(3, 'Premium 90 Days', 'Gói Premium trong 90 ngày.', 149000, 90, 3, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(4, 'Content Lead Pro 365 Days', 'Gói chuyên nghiệp dành cho Content Lead trong 365 ngày.', 599000, 365, 4, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(5, 'Legacy 45 Days', 'Gói cũ đã ngừng cho đăng ký mới.', 99000, 45, 5, 'INACTIVE', '2026-01-01 00:00:00', '2026-08-01 00:00:00');
+('FREE', 'Tài Khoản Miễn Phí', 'Dành cho người nghe thông thường kèm quảng cáo', 'FULL_ADS', 0, 'LIMITED', 6, FALSE, 0, 1, FALSE, FALSE, FALSE, 0),
+('INDIVIDUAL_BASIC', 'VIP Tiết Kiệm', '15 bài không quảng cáo mỗi ngày, 30 lượt skip/ngày, tải 50 bài offline', 'DAILY_QUOTA', 15, 'LIMITED', 30, TRUE, 50, 1, TRUE, TRUE, FALSE, 0),
+('INDIVIDUAL_FULL', 'VIP Cá Nhân FULL', '100% không quảng cáo 24/7, chuyển bài và tải nhạc offline vô hạn', 'NO_ADS', 0, 'UNLIMITED', 0, TRUE, 9999, 1, TRUE, TRUE, FALSE, 0),
+('FAMILY', 'VIP Gia Đình', 'Tối đa 6 tài khoản/thiết bị đồng thời, chia sẻ cả gia đình', 'NO_ADS', 0, 'UNLIMITED', 0, TRUE, 9999, 6, TRUE, TRUE, TRUE, 6);
+
+INSERT INTO service_packages (
+    id, tier_id, name, description, price, duration_days, display_order, status, created_at, updated_at
+) VALUES
+(1, 'FREE', 'Moodify Miễn Phí', 'Gói nghe nhạc cơ bản có quảng cáo.', 0, 365, 1, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(2, 'INDIVIDUAL_BASIC', 'Gói VIP Tiết Kiệm (30 Ngày)', '15 bài hát/ngày không quảng cáo, 30 lượt skip/ngày, tải 50 bài offline.', 29000, 30, 2, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(3, 'INDIVIDUAL_FULL', 'Gói Cá Nhân FULL (30 Ngày)', '100% không quảng cáo vô hạn, tải nhạc offline vô hạn.', 49000, 30, 3, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(4, 'INDIVIDUAL_FULL', 'Gói Cá Nhân FULL (1 Năm)', 'Tiết kiệm tối đa: Trọn bộ đặc quyền cá nhân không giới hạn 365 ngày.', 469000, 365, 4, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
+(5, 'FAMILY', 'Gói Gia Đình (30 Ngày)', 'Tối đa 6 tài khoản/thiết bị đồng thời: Trọn bộ đặc quyền FULL chia sẻ cả gia đình.', 79000, 30, 5, 'ACTIVE', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
 
 -- ============================================================
 -- 10. SUBSCRIPTIONS
