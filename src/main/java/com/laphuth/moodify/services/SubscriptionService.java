@@ -53,31 +53,6 @@ public class SubscriptionService {
     @PostConstruct
     public void initDefaultPackages() {
         try {
-            // 0. Tự động tạo bảng subscription_tiers nếu chưa có (Hỗ trợ teammate pull code chạy được ngay)
-            jdbcTemplate.execute(
-                "CREATE TABLE IF NOT EXISTS subscription_tiers (" +
-                "    id VARCHAR(50) PRIMARY KEY, " +
-                "    name VARCHAR(100) NOT NULL, " +
-                "    description VARCHAR(255) NULL, " +
-                "    ad_policy VARCHAR(20) NOT NULL DEFAULT 'NO_ADS', " +
-                "    ad_free_daily_limit INT NOT NULL DEFAULT 0, " +
-                "    skip_policy VARCHAR(20) NOT NULL DEFAULT 'UNLIMITED', " +
-                "    skip_daily_limit INT NOT NULL DEFAULT 0, " +
-                "    offline_allowed BOOLEAN NOT NULL DEFAULT TRUE, " +
-                "    offline_max_tracks INT NOT NULL DEFAULT 100, " +
-                "    max_devices INT NOT NULL DEFAULT 1, " +
-                "    synced_lyrics BOOLEAN NOT NULL DEFAULT TRUE, " +
-                "    vip_badge BOOLEAN NOT NULL DEFAULT TRUE, " +
-                "    family_sharing BOOLEAN NOT NULL DEFAULT FALSE, " +
-                "    family_members INT NOT NULL DEFAULT 0" +
-                ")"
-            );
-
-            // Tự động thêm cột tier_id vào service_packages nếu chưa có
-            try {
-                jdbcTemplate.execute("ALTER TABLE service_packages ADD COLUMN tier_id VARCHAR(50) NOT NULL DEFAULT 'INDIVIDUAL_BASIC'");
-            } catch (Exception ignored) {}
-
             // 1. Đảm bảo bảng subscription_tiers có đủ 4 bậc tiêu chuẩn
             jdbcTemplate.update(
                 "INSERT INTO subscription_tiers (id, name, description, ad_policy, ad_free_daily_limit, skip_policy, skip_daily_limit, offline_allowed, offline_max_tracks, max_devices, synced_lyrics, vip_badge, family_sharing, family_members) " +

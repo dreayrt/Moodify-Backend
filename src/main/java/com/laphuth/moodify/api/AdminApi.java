@@ -96,10 +96,9 @@ public class AdminApi {
         return ResponseEntity.ok(Map.of("success", true, "message", "Người dùng mới đã được tạo thành công"));
     }
 
-    @DeleteMapping("/users/{id}")
-    public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable Long id) {
-        adminService.deleteUser(id);
-        return ResponseEntity.ok(Map.of("success", true, "message", "Tài khoản người dùng đã được xóa / vô hiệu hóa"));
+    @GetMapping("/users/{id}/subscriptions")
+    public ResponseEntity<List<Map<String, Object>>> getUserSubscriptions(@PathVariable Long id) {
+        return ResponseEntity.ok(adminService.getUserSubscriptions(id));
     }
 
     @PutMapping("/users/{id}")
@@ -252,10 +251,15 @@ public class AdminApi {
         return ResponseEntity.ok(adminService.getTransactions());
     }
 
-    @PostMapping("/transactions/{id}/refund")
-    public ResponseEntity<Map<String, Object>> refundTransaction(@PathVariable Long id) {
-        adminService.refundTransaction(id);
-        return ResponseEntity.ok(Map.of("success", true, "message", "Giao dịch đã được hoàn tiền thành công"));
+    @GetMapping("/subscriptions")
+    public ResponseEntity<List<Map<String, Object>>> getSubscriptions() {
+        return ResponseEntity.ok(adminService.getSubscriptions());
+    }
+
+    @PostMapping("/subscriptions/{id}/cancel")
+    public ResponseEntity<Map<String, Object>> cancelSubscription(@PathVariable Long id) {
+        adminService.cancelSubscription(id);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Gói dịch vụ người dùng đã được hủy thành công"));
     }
 
     // ==========================================
@@ -437,16 +441,45 @@ public class AdminApi {
     }
 
     // ==========================================
-    // 10. SYSTEM SETTINGS
+    // LISTENING HISTORY & BEHAVIOR TELEMETRY
     // ==========================================
-    @GetMapping("/system/config")
-    public ResponseEntity<Map<String, Object>> getSystemConfig() {
-        return ResponseEntity.ok(adminService.getSystemConfig());
+    @GetMapping("/listening-history")
+    public ResponseEntity<Map<String, Object>> getListeningHistory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String deviceType,
+            @RequestParam(required = false) String source,
+            @RequestParam(required = false) Long userId
+    ) {
+        return ResponseEntity.ok(adminService.getListeningHistory(page, size, search, deviceType, source, userId));
     }
 
-    @PutMapping("/system/config")
-    public ResponseEntity<Map<String, Object>> saveSystemConfig(@RequestBody Map<String, Object> body) {
-        adminService.saveSystemConfig(body);
-        return ResponseEntity.ok(Map.of("success", true, "message", "Cấu hình hệ thống toàn cục đã được lưu thành công"));
+    @GetMapping("/listening-history/{id}/events")
+    public ResponseEntity<List<Map<String, Object>>> getPlaybackEvents(@PathVariable Long id) {
+        return ResponseEntity.ok(adminService.getPlaybackEventsForSession(id));
     }
+
+    @GetMapping("/listening-history/summary")
+    public ResponseEntity<Map<String, Object>> getListeningSummary() {
+        return ResponseEntity.ok(adminService.getListeningSummaryMetrics());
+    }
+
+    @GetMapping("/playback-events")
+    public ResponseEntity<Map<String, Object>> getAllPlaybackEvents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String eventType,
+            @RequestParam(required = false) String search
+    ) {
+        return ResponseEntity.ok(adminService.getAllPlaybackEvents(page, size, eventType, search));
+    }
+
+    @GetMapping("/tracks/retention-metrics")
+    public ResponseEntity<List<Map<String, Object>>> getTrackRetentionMetrics(
+            @RequestParam(defaultValue = "15") int limit
+    ) {
+        return ResponseEntity.ok(adminService.getTrackPerformanceMetrics(limit));
+    }
+
 }

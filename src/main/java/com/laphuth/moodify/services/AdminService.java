@@ -121,7 +121,7 @@ public class AdminService {
         Long activeSubscriptions = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE'", Long.class);
 
-        // 2. Streams & Favorites counts from real DB
+        // 2. Streams & Favorites & Listening Duration counts from real DB
         Long totalStreams = 0L;
         try {
             totalStreams = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM listening_history", Long.class);
@@ -130,6 +130,39 @@ public class AdminService {
         Long totalFavorites = 0L;
         try {
             totalFavorites = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM favorite_songs", Long.class);
+        } catch (Exception ignored) {}
+
+        Long totalListenedMs = 0L;
+        try {
+            totalListenedMs = jdbcTemplate.queryForObject("SELECT COALESCE(SUM(listened_duration_ms), 0) FROM listening_history", Long.class);
+        } catch (Exception ignored) {}
+        double listenedHours = totalListenedMs != null ? Math.round((totalListenedMs / 3600000.0) * 10.0) / 10.0 : 0.0;
+
+        Long activeDevices = 0L;
+        try {
+            activeDevices = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM user_devices WHERE status = 'ACTIVE'", Long.class);
+        } catch (Exception ignored) {}
+
+        List<Map<String, Object>> streamsByPlatform = new ArrayList<>();
+        try {
+            String platSql = "SELECT device_type, COUNT(*) as cnt FROM listening_history GROUP BY device_type ORDER BY cnt DESC";
+            streamsByPlatform = jdbcTemplate.query(platSql, (rs, rowNum) -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("platform", rs.getString("device_type"));
+                m.put("count", rs.getLong("cnt"));
+                return m;
+            });
+        } catch (Exception ignored) {}
+
+        List<Map<String, Object>> streamsBySource = new ArrayList<>();
+        try {
+            String srcSql = "SELECT source, COUNT(*) as cnt FROM listening_history GROUP BY source ORDER BY cnt DESC";
+            streamsBySource = jdbcTemplate.query(srcSql, (rs, rowNum) -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("source", rs.getString("source"));
+                m.put("count", rs.getLong("cnt"));
+                return m;
+            });
         } catch (Exception ignored) {}
 
         // 3. MongoDB metrics
@@ -151,10 +184,19 @@ public class AdminService {
         overview.put("pendingReviews", pendingReviews);
         overview.put("totalStreams", totalStreams != null ? totalStreams : 0);
         overview.put("totalFavorites", totalFavorites != null ? totalFavorites : 0);
+        overview.put("totalListenedDurationMs", totalListenedMs != null ? totalListenedMs : 0);
+        overview.put("totalListenedHours", listenedHours);
+        overview.put("activeDevices", activeDevices != null ? activeDevices : 0);
+        overview.put("streamsByPlatform", streamsByPlatform);
+        overview.put("streamsBySource", streamsBySource);
 
         // 4. Top listened tracks from real listening_history joined with MongoDB track metadata
         List<Map<String, Object>> topListened = getTopListenedTracks(5);
         overview.put("topListenedTracks", topListened);
+
+        // 4b. Per-track completion rate, skip rate & retention metrics
+        List<Map<String, Object>> performanceMetrics = getTrackPerformanceMetrics(10);
+        overview.put("trackPerformanceMetrics", performanceMetrics);
 
         // 5. Top favorited tracks from real favorite_songs joined with MongoDB track metadata
         List<Map<String, Object>> topFavorited = getTopFavoritedTracks(5);
@@ -478,17 +520,6 @@ public class AdminService {
         userRepository.save(user);
     }
 
-    @Transactional
-    public void deleteUser(Long userId) {
-        try {
-            jdbcTemplate.update("DELETE FROM moderation_reviews WHERE moderator_user_id = ?", userId);
-            jdbcTemplate.update("DELETE FROM payment_transactions WHERE subscription_id IN (SELECT id FROM subscriptions WHERE user_id = ?)", userId);
-            jdbcTemplate.update("DELETE FROM subscriptions WHERE user_id = ?", userId);
-            jdbcTemplate.update("DELETE FROM user_devices WHERE user_id = ?", userId);
-        } catch (Exception ignored) {}
-        userRepository.deleteById(userId);
-    }
-
     public List<Map<String, Object>> getUserDevices(Long userId) {
         String sql = "SELECT id, user_id, device_uuid, platform, device_name, status, created_at FROM user_devices WHERE user_id = ?";
         return jdbcTemplate.query(sql, new Object[]{userId}, (rs, rowNum) -> {
@@ -540,6 +571,29 @@ public class AdminService {
         List<Track> list = mongoTemplate.find(q, Track.class);
         List<Map<String, Object>> result = new ArrayList<>();
 
+        List<String> trackIds = list.stream().map(Track::getId).filter(Objects::nonNull).toList();
+        Map<String, Long> playsMap = new HashMap<>();
+        Map<String, Long> likesMap = new HashMap<>();
+
+        if (!trackIds.isEmpty()) {
+            String inSql = String.join(",", Collections.nCopies(trackIds.size(), "?"));
+            try {
+                String playsSql = "SELECT track_id, COUNT(*) as cnt FROM listening_history WHERE track_id IN (" + inSql + ") GROUP BY track_id";
+                jdbcTemplate.query(playsSql, trackIds.toArray(), (rs, rowNum) -> {
+                    playsMap.put(rs.getString("track_id"), rs.getLong("cnt"));
+                    return null;
+                });
+            } catch (Exception ignored) {}
+
+            try {
+                String likesSql = "SELECT track_id, COUNT(*) as cnt FROM favorite_songs WHERE track_id IN (" + inSql + ") GROUP BY track_id";
+                jdbcTemplate.query(likesSql, trackIds.toArray(), (rs, rowNum) -> {
+                    likesMap.put(rs.getString("track_id"), rs.getLong("cnt"));
+                    return null;
+                });
+            } catch (Exception ignored) {}
+        }
+
         for (Track t : list) {
             Map<String, Object> map = new HashMap<>();
             map.put("id", t.getId());
@@ -551,8 +605,8 @@ public class AdminService {
             map.put("duration", t.getDurationFormatted() != null ? t.getDurationFormatted() : "3:30");
             map.put("coverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
             map.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
-            map.put("plays", t.getPopularity() != null ? t.getPopularity() * 1250 : 5000);
-            map.put("likes", t.getPopularity() != null ? t.getPopularity() * 85 : 420);
+            map.put("plays", playsMap.getOrDefault(t.getId(), 0L));
+            map.put("likes", likesMap.getOrDefault(t.getId(), 0L));
 
             // Moderation & Audio Features
             String modStatus = t.getModerationStatus() != null ? t.getModerationStatus().toLowerCase().trim() : "published";
@@ -622,10 +676,12 @@ public class AdminService {
     public void deleteTrack(String trackId) {
         try {
             jdbcTemplate.update("DELETE FROM favorite_songs WHERE track_id = ?", trackId);
-            jdbcTemplate.update("DELETE FROM listening_history WHERE track_id = ?", trackId);
-            jdbcTemplate.update("DELETE FROM playback_events WHERE track_id = ?", trackId);
             jdbcTemplate.update("DELETE FROM user_library_tracks WHERE track_id = ?", trackId);
+            jdbcTemplate.update("DELETE FROM offline_downloads WHERE track_id = ?", trackId);
+            jdbcTemplate.update("DELETE FROM platform_traffic_events WHERE target_id = ?", trackId);
             jdbcTemplate.update("DELETE FROM song_licenses WHERE track_id = ?", trackId);
+            // listening_history tự động cascade xóa playback_events
+            jdbcTemplate.update("DELETE FROM listening_history WHERE track_id = ?", trackId);
         } catch (Exception ignored) {}
 
         Query q = new Query(Criteria.where("_id").is(trackId));
@@ -1058,24 +1114,88 @@ public class AdminService {
         });
     }
 
+    public List<Map<String, Object>> getSubscriptions() {
+        String sql =
+                "SELECT s.id, s.user_id, s.service_package_id, s.start_at, s.end_at, s.auto_renew, s.status, s.created_at, " +
+                "u.full_name as user_name, u.email as user_email, " +
+                "p.name as package_name, p.tier_id, p.price, t.name as tier_name " +
+                "FROM subscriptions s " +
+                "JOIN users u ON s.user_id = u.id " +
+                "JOIN service_packages p ON s.service_package_id = p.id " +
+                "LEFT JOIN subscription_tiers t ON p.tier_id = t.id " +
+                "ORDER BY s.created_at DESC LIMIT 100";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Map<String, Object> sub = new HashMap<>();
+            sub.put("id", rs.getLong("id"));
+            sub.put("userId", rs.getLong("user_id"));
+            sub.put("userName", rs.getString("user_name"));
+            sub.put("userEmail", rs.getString("user_email"));
+            sub.put("servicePackageId", rs.getLong("service_package_id"));
+            sub.put("packageName", rs.getString("package_name"));
+            sub.put("tierId", rs.getString("tier_id") != null ? rs.getString("tier_id") : "INDIVIDUAL_BASIC");
+            sub.put("tierName", rs.getString("tier_name") != null ? rs.getString("tier_name") : "Gói Tiết Kiệm");
+            sub.put("price", rs.getDouble("price"));
+            sub.put("autoRenew", rs.getBoolean("auto_renew"));
+            sub.put("status", rs.getString("status"));
+            sub.put("startAt", rs.getTimestamp("start_at") != null
+                    ? rs.getTimestamp("start_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    : "");
+            sub.put("endAt", rs.getTimestamp("end_at") != null
+                    ? rs.getTimestamp("end_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    : "");
+            sub.put("createdAt", rs.getTimestamp("created_at") != null
+                    ? rs.getTimestamp("created_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    : "");
+            return sub;
+        });
+    }
+
+    public List<Map<String, Object>> getUserSubscriptions(Long userId) {
+        String sql =
+                "SELECT s.id, s.user_id, s.service_package_id, s.start_at, s.end_at, s.auto_renew, s.status, s.created_at, " +
+                "p.name as package_name, p.tier_id, p.price, t.name as tier_name " +
+                "FROM subscriptions s " +
+                "JOIN service_packages p ON s.service_package_id = p.id " +
+                "LEFT JOIN subscription_tiers t ON p.tier_id = t.id " +
+                "WHERE s.user_id = ? " +
+                "ORDER BY s.created_at DESC";
+
+        return jdbcTemplate.query(sql, new Object[]{userId}, (rs, rowNum) -> {
+            Map<String, Object> sub = new HashMap<>();
+            sub.put("id", rs.getLong("id"));
+            sub.put("userId", rs.getLong("user_id"));
+            sub.put("servicePackageId", rs.getLong("service_package_id"));
+            sub.put("packageName", rs.getString("package_name"));
+            sub.put("tierId", rs.getString("tier_id") != null ? rs.getString("tier_id") : "INDIVIDUAL_BASIC");
+            sub.put("tierName", rs.getString("tier_name") != null ? rs.getString("tier_name") : "Gói Tiết Kiệm");
+            sub.put("price", rs.getDouble("price"));
+            sub.put("autoRenew", rs.getBoolean("auto_renew"));
+            sub.put("status", rs.getString("status"));
+            sub.put("startAt", rs.getTimestamp("start_at") != null
+                    ? rs.getTimestamp("start_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    : "");
+            sub.put("endAt", rs.getTimestamp("end_at") != null
+                    ? rs.getTimestamp("end_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    : "");
+            sub.put("createdAt", rs.getTimestamp("created_at") != null
+                    ? rs.getTimestamp("created_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    : "");
+            return sub;
+        });
+    }
+
     /**
-     * Hoàn tiền: chỉ cho phép với giao dịch thanh toán THÀNH CÔNG,
-     * tránh hoàn lại giao dịch PENDING/FAILED hoặc đã hoàn tiền.
+     * Hủy gói dịch vụ người dùng (chuyển trạng thái sang CANCELLED).
      */
     @Transactional
-    public void refundTransaction(Long transactionId) {
-        String currentStatus = jdbcTemplate.queryForObject(
-                "SELECT status FROM payment_transactions WHERE id = ?", String.class, transactionId);
-        if (currentStatus == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy giao dịch.");
+    public void cancelSubscription(Long subscriptionId) {
+        int updated = jdbcTemplate.update(
+                "UPDATE subscriptions SET status = 'CANCELLED', updated_at = NOW() WHERE id = ?",
+                subscriptionId);
+        if (updated == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy gói đăng ký #" + subscriptionId);
         }
-        if (!"SUCCESS".equalsIgnoreCase(currentStatus)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Chỉ có thể hoàn tiền giao dịch ở trạng thái SUCCESS (trạng thái hiện tại: " + currentStatus + ").");
-        }
-        jdbcTemplate.update(
-                "UPDATE payment_transactions SET status = 'REFUNDED', updated_at = NOW() WHERE id = ?",
-                transactionId);
     }
 
     // ==========================================
@@ -1376,53 +1496,352 @@ public class AdminService {
         }
     }
 
-    @PostConstruct
-    public void initSystemSettingsTable() {
-        try {
-            jdbcTemplate.execute(
-                "CREATE TABLE IF NOT EXISTS system_settings (" +
-                "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
-                "  config_key VARCHAR(100) NOT NULL UNIQUE," +
-                "  config_value LONGTEXT NOT NULL," +
-                "  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
-                ")"
-            );
-        } catch (Exception e) {
-            System.err.println("Notice: system_settings table check: " + e.getMessage());
+    // ==========================================
+    // LISTENING HISTORY & BEHAVIOR TELEMETRY
+    // ==========================================
+    public Map<String, Object> getListeningHistory(
+            int page, int size, String search, String deviceType, String source, Long userId
+    ) {
+        StringBuilder whereClause = new StringBuilder(" WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+
+        if (userId != null) {
+            whereClause.append(" AND lh.user_id = ? ");
+            params.add(userId);
         }
-    }
+        if (deviceType != null && !deviceType.isBlank() && !"ALL".equalsIgnoreCase(deviceType)) {
+            whereClause.append(" AND lh.device_type = ? ");
+            params.add(deviceType.trim().toUpperCase());
+        }
+        if (source != null && !source.isBlank() && !"ALL".equalsIgnoreCase(source)) {
+            whereClause.append(" AND lh.source = ? ");
+            params.add(source.trim().toUpperCase());
+        }
+        if (search != null && !search.isBlank()) {
+            whereClause.append(" AND (u.username LIKE ? OR u.full_name LIKE ? OR u.email LIKE ? OR lh.track_id LIKE ?) ");
+            String term = "%" + search.trim() + "%";
+            params.add(term);
+            params.add(term);
+            params.add(term);
+            params.add(term);
+        }
 
-    @SuppressWarnings("unchecked")
-    public Map<String, Object> getSystemConfig() {
-        try {
-            List<String> values = jdbcTemplate.query(
-                "SELECT config_value FROM system_settings WHERE config_key = 'main_config' LIMIT 1",
-                (rs, rowNum) -> rs.getString("config_value")
-            );
-            if (!values.isEmpty()) {
-                ObjectMapper mapper = new ObjectMapper();
-                return mapper.readValue(values.get(0), Map.class);
+        String countSql = "SELECT COUNT(*) FROM listening_history lh LEFT JOIN users u ON lh.user_id = u.id " + whereClause;
+        Long totalElements = jdbcTemplate.queryForObject(countSql, params.toArray(), Long.class);
+        if (totalElements == null) totalElements = 0L;
+
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(100, size));
+        int offset = safePage * safeSize;
+
+        String selectSql = """
+            SELECT lh.id, lh.user_id, u.username, u.full_name, u.email,
+                   lh.track_id, lh.started_at, lh.ended_at,
+                   lh.listened_duration_ms, lh.last_position_ms,
+                   lh.source, lh.source_id, lh.device_type,
+                   (SELECT COUNT(*) FROM playback_events pe WHERE pe.listening_history_id = lh.id) as event_count
+            FROM listening_history lh
+            LEFT JOIN users u ON lh.user_id = u.id
+        """ + whereClause + " ORDER BY lh.started_at DESC LIMIT ? OFFSET ?";
+
+        List<Object> queryParams = new ArrayList<>(params);
+        queryParams.add(safeSize);
+        queryParams.add(offset);
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        List<Map<String, Object>> items = jdbcTemplate.query(selectSql, queryParams.toArray(), (rs, rowNum) -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", rs.getLong("id"));
+            m.put("userId", rs.getObject("user_id") != null ? rs.getLong("user_id") : null);
+            m.put("username", rs.getString("username") != null ? rs.getString("username") : "Khách vãng lai");
+            m.put("fullName", rs.getString("full_name") != null ? rs.getString("full_name") : "Người nghe ẩn danh");
+            m.put("email", rs.getString("email") != null ? rs.getString("email") : "");
+            
+            String trackId = rs.getString("track_id");
+            m.put("trackId", trackId);
+            
+            java.sql.Timestamp startedAtTs = rs.getTimestamp("started_at");
+            java.sql.Timestamp endedAtTs = rs.getTimestamp("ended_at");
+            m.put("startedAt", startedAtTs != null ? startedAtTs.toLocalDateTime().format(dtf) : "");
+            m.put("endedAt", endedAtTs != null ? endedAtTs.toLocalDateTime().format(dtf) : "");
+            
+            long durMs = rs.getLong("listened_duration_ms");
+            long posMs = rs.getLong("last_position_ms");
+            m.put("listenedDurationMs", durMs);
+            m.put("listenedDurationSeconds", Math.round(durMs / 1000.0));
+            m.put("lastPositionMs", posMs);
+            m.put("lastPositionSeconds", Math.round(posMs / 1000.0));
+            m.put("source", rs.getString("source"));
+            m.put("sourceId", rs.getString("source_id"));
+            m.put("deviceType", rs.getString("device_type"));
+            m.put("eventCount", rs.getInt("event_count"));
+            return m;
+        });
+
+        // Enrich with MongoDB Track Metadata
+        for (Map<String, Object> item : items) {
+            String trackId = (String) item.get("trackId");
+            if (trackId != null) {
+                Track t = trackRepository.findById(trackId).orElse(null);
+                if (t != null) {
+                    item.put("trackTitle", t.getName());
+                    item.put("artistName", t.getArtistName() != null ? t.getArtistName() : "Moodify Artist");
+                    item.put("coverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    item.put("totalDuration", t.getDurationFormatted() != null ? t.getDurationFormatted() : "N/A");
+                    item.put("genre", resolveTrackGenre(t));
+                } else {
+                    item.put("trackTitle", "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
+                    item.put("artistName", "Moodify Artist");
+                    item.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    item.put("totalDuration", "N/A");
+                    item.put("genre", "V-Pop");
+                }
             }
-        } catch (Exception ignored) {}
-        return Collections.emptyMap();
+        }
+
+        int totalPages = (int) Math.ceil((double) totalElements / safeSize);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", items);
+        result.put("totalElements", totalElements);
+        result.put("totalPages", totalPages);
+        result.put("currentPage", safePage);
+        result.put("pageSize", safeSize);
+        return result;
     }
 
-    public void saveSystemConfig(Map<String, Object> config) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            String json = mapper.writeValueAsString(config);
-            int updated = jdbcTemplate.update(
-                "UPDATE system_settings SET config_value = ?, updated_at = NOW() WHERE config_key = 'main_config'",
-                json
-            );
-            if (updated == 0) {
-                jdbcTemplate.update(
-                    "INSERT INTO system_settings (config_key, config_value, updated_at) VALUES ('main_config', ?, NOW())",
-                    json
+    public List<Map<String, Object>> getPlaybackEventsForSession(Long listeningHistoryId) {
+        String sql = """
+            SELECT id, listening_history_id, event_type, position_ms, target_position_ms, occurred_at
+            FROM playback_events
+            WHERE listening_history_id = ?
+            ORDER BY occurred_at ASC, id ASC
+        """;
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        return jdbcTemplate.query(sql, new Object[]{listeningHistoryId}, (rs, rowNum) -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", rs.getLong("id"));
+            m.put("listeningHistoryId", rs.getLong("listening_history_id"));
+            m.put("eventType", rs.getString("event_type"));
+            long posMs = rs.getLong("position_ms");
+            long targetPosMs = rs.getLong("target_position_ms");
+            m.put("positionMs", posMs);
+            m.put("positionSeconds", Math.round(posMs / 1000.0));
+            m.put("targetPositionMs", targetPosMs);
+            m.put("targetPositionSeconds", Math.round(targetPosMs / 1000.0));
+            java.sql.Timestamp occurredTs = rs.getTimestamp("occurred_at");
+            m.put("occurredAt", occurredTs != null ? occurredTs.toLocalDateTime().format(dtf) : "");
+            return m;
+        });
+    }
+
+    public Map<String, Object> getListeningSummaryMetrics() {
+        Map<String, Object> summary = new HashMap<>();
+
+        Long totalSessions = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM listening_history", Long.class);
+        Long totalDurationMs = jdbcTemplate.queryForObject("SELECT COALESCE(SUM(listened_duration_ms), 0) FROM listening_history", Long.class);
+        Long sessionsLast24h = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM listening_history WHERE started_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)", Long.class
+        );
+        Long completeEvents = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM playback_events WHERE event_type = 'COMPLETE'", Long.class
+        );
+
+        summary.put("totalSessions", totalSessions != null ? totalSessions : 0L);
+        summary.put("totalDurationMs", totalDurationMs != null ? totalDurationMs : 0L);
+        summary.put("totalHours", totalDurationMs != null ? Math.round((totalDurationMs / 3600000.0) * 10.0) / 10.0 : 0.0);
+        summary.put("sessionsLast24h", sessionsLast24h != null ? sessionsLast24h : 0L);
+        summary.put("completeEvents", completeEvents != null ? completeEvents : 0L);
+        
+        double completionRate = (totalSessions != null && totalSessions > 0)
+            ? Math.round(((double) (completeEvents != null ? completeEvents : 0) / totalSessions) * 100.0)
+            : 0.0;
+        summary.put("completionRatePercent", completionRate);
+
+        return summary;
+    }
+
+    public List<Map<String, Object>> getTrackPerformanceMetrics(int limit) {
+        String sql = """
+            SELECT 
+                lh.track_id, 
+                COUNT(*) as stream_count,
+                COUNT(DISTINCT lh.user_id) as unique_listeners,
+                COALESCE(AVG(lh.listened_duration_ms), 0) as avg_duration_ms,
+                COALESCE(SUM(CASE WHEN lh.listened_duration_ms < 30000 THEN 1 ELSE 0 END), 0) as early_drop_count
+            FROM listening_history lh
+            GROUP BY lh.track_id
+            ORDER BY stream_count DESC
+            LIMIT ?
+        """;
+
+        List<Map<String, Object>> rows = jdbcTemplate.query(sql, new Object[]{limit}, (rs, rowNum) -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("trackId", rs.getString("track_id"));
+            m.put("streamCount", rs.getLong("stream_count"));
+            m.put("uniqueListeners", rs.getLong("unique_listeners"));
+            m.put("avgDurationMs", Math.round(rs.getDouble("avg_duration_ms")));
+            m.put("earlyDropCount", rs.getLong("early_drop_count"));
+            return m;
+        });
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> r : rows) {
+            String trackId = (String) r.get("trackId");
+            long streamCount = (long) r.get("streamCount");
+            long earlyDropCount = (long) r.get("earlyDropCount");
+            long avgDurationMs = (long) r.get("avgDurationMs");
+
+            Long favCount = 0L;
+            try {
+                favCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM favorite_songs WHERE track_id = ?",
+                    new Object[]{trackId},
+                    Long.class
                 );
+            } catch (Exception ignored) {}
+            r.put("favoriteCount", favCount != null ? favCount : 0L);
+
+            Track t = trackRepository.findById(trackId).orElse(null);
+            int trackDurationMs = (t != null && t.getDurationMs() != null && t.getDurationMs() > 0)
+                ? t.getDurationMs()
+                : 210000;
+
+            double completionRate = Math.min(100.0, Math.round(((double) avgDurationMs / trackDurationMs * 100.0) * 10.0) / 10.0);
+            double skipRate = (streamCount > 0)
+                ? Math.min(100.0, Math.round(((double) earlyDropCount / streamCount * 100.0) * 10.0) / 10.0)
+                : 0.0;
+
+            r.put("trackDurationMs", trackDurationMs);
+            r.put("completionRatePercent", completionRate);
+            r.put("skipRatePercent", skipRate);
+            r.put("avgDurationFormatted", formatDurationSeconds((int) (avgDurationMs / 1000)));
+
+            if (t != null) {
+                r.put("title", t.getName());
+                r.put("artist", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ ẩn danh");
+                r.put("coverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                r.put("duration", t.getDurationFormatted() != null ? t.getDurationFormatted() : formatDurationSeconds(trackDurationMs / 1000));
+                r.put("genre", resolveTrackGenre(t));
+                r.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
+            } else {
+                r.put("title", "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
+                r.put("artist", "Moodify Artist");
+                r.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                r.put("duration", formatDurationSeconds(trackDurationMs / 1000));
+                r.put("genre", "V-Pop");
+                r.put("audioUrl", resolveAudioUrl(null));
             }
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể lưu cấu hình hệ thống: " + e.getMessage());
+
+            result.add(r);
         }
+        return result;
+    }
+
+    public Map<String, Object> getAllPlaybackEvents(int page, int size, String eventType, String search) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(100, size));
+        int offset = safePage * safeSize;
+
+        StringBuilder whereSql = new StringBuilder(" WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+
+        if (eventType != null && !eventType.isBlank() && !"ALL".equalsIgnoreCase(eventType)) {
+            whereSql.append(" AND pe.event_type = ? ");
+            params.add(eventType.trim().toUpperCase());
+        }
+
+        if (search != null && !search.isBlank()) {
+            whereSql.append(" AND (lh.track_id LIKE ? OR u.username LIKE ? OR u.full_name LIKE ?) ");
+            String term = "%" + search.trim() + "%";
+            params.add(term);
+            params.add(term);
+            params.add(term);
+        }
+
+        String countSql = "SELECT COUNT(*) FROM playback_events pe JOIN listening_history lh ON pe.listening_history_id = lh.id LEFT JOIN users u ON lh.user_id = u.id " + whereSql;
+        Long totalElements = jdbcTemplate.queryForObject(countSql, params.toArray(), Long.class);
+        if (totalElements == null) totalElements = 0L;
+
+        String selectSql = """
+            SELECT 
+                pe.id, pe.listening_history_id, pe.event_type, pe.position_ms, pe.target_position_ms, pe.occurred_at,
+                lh.track_id, lh.user_id, lh.device_type, lh.source,
+                u.username, u.full_name
+            FROM playback_events pe
+            JOIN listening_history lh ON pe.listening_history_id = lh.id
+            LEFT JOIN users u ON lh.user_id = u.id
+        """ + whereSql + " ORDER BY pe.occurred_at DESC, pe.id DESC LIMIT ? OFFSET ?";
+
+        List<Object> queryParams = new ArrayList<>(params);
+        queryParams.add(safeSize);
+        queryParams.add(offset);
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        List<Map<String, Object>> items = jdbcTemplate.query(selectSql, queryParams.toArray(), (rs, rowNum) -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", rs.getLong("id"));
+            item.put("listeningHistoryId", rs.getLong("listening_history_id"));
+            item.put("eventType", rs.getString("event_type"));
+            long posMs = rs.getLong("position_ms");
+            long targetPosMs = rs.getLong("target_position_ms");
+            item.put("positionMs", posMs);
+            item.put("positionFormatted", formatDurationSeconds((int) (posMs / 1000)));
+            item.put("targetPositionMs", targetPosMs);
+            item.put("targetPositionFormatted", formatDurationSeconds((int) (targetPosMs / 1000)));
+
+            java.sql.Timestamp occurredTs = rs.getTimestamp("occurred_at");
+            item.put("occurredAt", occurredTs != null ? occurredTs.toLocalDateTime().format(dtf) : "");
+
+            item.put("trackId", rs.getString("track_id"));
+            item.put("userId", rs.getLong("user_id"));
+            item.put("username", rs.getString("username") != null ? rs.getString("username") : "guest");
+            item.put("fullName", rs.getString("full_name") != null ? rs.getString("full_name") : "Khách vãng lai");
+            item.put("deviceType", rs.getString("device_type"));
+            item.put("source", rs.getString("source"));
+
+            return item;
+        });
+
+        for (Map<String, Object> it : items) {
+            String trackId = (String) it.get("trackId");
+            Track t = trackRepository.findById(trackId).orElse(null);
+            if (t != null) {
+                it.put("trackTitle", t.getName());
+                it.put("artistName", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ");
+                it.put("coverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+            } else {
+                it.put("trackTitle", "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
+                it.put("artistName", "Moodify Artist");
+                it.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+            }
+        }
+
+        Map<String, Long> distribution = new HashMap<>();
+        try {
+            jdbcTemplate.query("SELECT event_type, COUNT(*) as cnt FROM playback_events GROUP BY event_type", (rs) -> {
+                distribution.put(rs.getString("event_type"), rs.getLong("cnt"));
+            });
+        } catch (Exception ignored) {}
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("items", items);
+        resp.put("totalElements", totalElements);
+        resp.put("page", safePage);
+        resp.put("size", safeSize);
+        resp.put("totalPages", (int) Math.ceil((double) totalElements / safeSize));
+        resp.put("distribution", distribution);
+
+        return resp;
+    }
+
+    private String formatDurationSeconds(int seconds) {
+        if (seconds <= 0) return "0:00";
+        int mins = seconds / 60;
+        int secs = seconds % 60;
+        return String.format("%d:%02d", mins, secs);
     }
 }
