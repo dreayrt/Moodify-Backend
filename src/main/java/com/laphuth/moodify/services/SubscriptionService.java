@@ -31,19 +31,22 @@ public class SubscriptionService {
     private final String sepayBankAccount;
     private final String sepayBankName;
     private final String sepayAccountName;
+    private final boolean maintenanceEnabled;
 
     public SubscriptionService(
         JdbcTemplate jdbcTemplate,
         UserRepository userRepository,
         @Value("${sepay.bank-account:}") String sepayBankAccount,
         @Value("${sepay.bank-name:MBBank}") String sepayBankName,
-        @Value("${sepay.account-name:}") String sepayAccountName
+        @Value("${sepay.account-name:}") String sepayAccountName,
+        @Value("${app.maintenance.enabled:true}") boolean maintenanceEnabled
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.userRepository = userRepository;
         this.sepayBankAccount = sepayBankAccount;
         this.sepayBankName = sepayBankName;
         this.sepayAccountName = sepayAccountName;
+        this.maintenanceEnabled = maintenanceEnabled;
     }
 
     /**
@@ -52,6 +55,7 @@ public class SubscriptionService {
      */
     @PostConstruct
     public void initDefaultPackages() {
+        if (!maintenanceEnabled) return;
         try {
             // 1. Đảm bảo bảng subscription_tiers có đủ 4 bậc tiêu chuẩn
             jdbcTemplate.update(

@@ -3,7 +3,7 @@ package com.laphuth.moodify.api;
 import com.laphuth.moodify.dto.emotion.EmotionPredictRequest;
 import com.laphuth.moodify.dto.emotion.EmotionPredictResponse;
 import com.laphuth.moodify.dto.emotion.MoodRecommendationResponse;
-import com.laphuth.moodify.entities.SearchHistory;
+import com.laphuth.moodify.dto.searchhistory.SearchHistoryResponse;
 import com.laphuth.moodify.services.EmotionService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -37,19 +37,15 @@ public class EmotionApi {
 
     /**
      * Goi y bai hat phu hop theo tam trang (Text -> Emotion -> Track Playlist).
-     * Neu nguoi dung da dang nhap, he thong se tu dong ghi nhan vao search_history.
      */
     @PostMapping("/recommend")
     public ResponseEntity<MoodRecommendationResponse> recommendTracks(
-        @Valid @RequestBody EmotionPredictRequest request,
-        Authentication authentication
+        @Valid @RequestBody EmotionPredictRequest request
     ) {
-        String principal = (authentication != null) ? authentication.getName() : null;
         MoodRecommendationResponse response = emotionService.recommendTracksByMood(
             request.getText(),
             request.getStrategy(),
-            request.getLimit(),
-            principal
+            request.getLimit()
         );
         return ResponseEntity.ok(response);
     }
@@ -58,7 +54,7 @@ public class EmotionApi {
      * Lay lich su tim kiem theo tam trang cua nguoi dung hien tai.
      */
     @GetMapping("/history")
-    public ResponseEntity<Page<SearchHistory>> getHistory(
+    public ResponseEntity<Page<SearchHistoryResponse>> getHistory(
         Authentication authentication,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
@@ -66,7 +62,7 @@ public class EmotionApi {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
         }
-        Page<SearchHistory> history = emotionService.getUserSearchHistory(
+        Page<SearchHistoryResponse> history = emotionService.getUserSearchHistory(
             authentication.getName(),
             page,
             size

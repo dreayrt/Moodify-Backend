@@ -41,6 +41,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -202,6 +203,7 @@ public class ContentLeadCatalogService {
         );
     }
 
+    @Transactional
     public ContentLeadTrackResponse uploadTrack(
         String principal,
         TrackUploadRequest request,
@@ -214,6 +216,40 @@ public class ContentLeadCatalogService {
 
         if (currentUser.getRole() != UserRole.CONTENT_LEAD) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Content Lead accounts can upload tracks");
+        }
+
+        if (licenseDocFile == null || licenseDocFile.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng tải lên hợp đồng hoặc giấy phép bản quyền.");
+        }
+        if (request.getLicenseType() == null || request.getLicenseType().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại bản quyền / giấy phép là bắt buộc.");
+        }
+        if (request.getDistributorId() == null &&
+            (request.getCopyrightOwner() == null || request.getCopyrightOwner().isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chủ sở hữu quyền tác giả là bắt buộc.");
+        }
+        if (request.getDistributorId() != null && request.getDistributorId() > 0 &&
+            request.getDistributionContractId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã hợp đồng là bắt buộc khi chọn đơn vị phân phối.");
+        }
+
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        LocalDate issueDate = parseDateSafely(request.getIssueDate());
+        LocalDate expiryDate = request.isPerpetual() ? null : parseDateSafely(request.getExpiryDate());
+        if (issueDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày cấp / bắt đầu không hợp lệ hoặc đang để trống.");
+        }
+        if (issueDate.isAfter(today)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày cấp / bắt đầu không được nằm trong tương lai.");
+        }
+        if (!request.isPerpetual() && expiryDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày hết hạn không hợp lệ hoặc đang để trống.");
+        }
+        if (expiryDate != null && expiryDate.isBefore(today)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giấy phép đã hết hạn. Vui lòng kiểm tra lại ngày hết hạn.");
+        }
+        if (expiryDate != null && expiryDate.isBefore(issueDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày hết hạn không được trước ngày cấp / bắt đầu.");
         }
 
         String artistSpotifyId = currentUser.getArtistSpotifyId();
@@ -278,11 +314,6 @@ public class ContentLeadCatalogService {
         license.setDocumentSonglicensesUrl(licenseDocUrl);
         license.setStatus(com.laphuth.moodify.entities.enums.LicenseStatus.ACTIVE);
 
-        LocalDate issueDate = parseDateSafely(request.getIssueDate());
-        LocalDate expiryDate = request.isPerpetual() ? null : parseDateSafely(request.getExpiryDate());
-        if (issueDate != null && expiryDate != null && expiryDate.isBefore(issueDate)) {
-            expiryDate = issueDate.plusYears(1);
-        }
         license.setIssueDate(issueDate);
         license.setExpiryDate(expiryDate);
         songLicenseRepository.save(license);
@@ -360,7 +391,7 @@ public class ContentLeadCatalogService {
         // RÀNG BUỘC PHÁP LÝ BẢN QUYỀN: Không cho phép phát hành công khai nếu hợp đồng đã hết hạn hoặc chưa đến ngày bắt đầu
         SongLicense currentLicense = songLicenseRepository.findByTrackId(trackId).orElse(null);
         if ("published".equals(targetStatus) && currentLicense != null) {
-            LocalDate today = LocalDate.now();
+            LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
             if (currentLicense.getStatus() == com.laphuth.moodify.entities.enums.LicenseStatus.EXPIRED ||
                 (currentLicense.getExpiryDate() != null && currentLicense.getExpiryDate().isBefore(today))) {
                 throw new ResponseStatusException(

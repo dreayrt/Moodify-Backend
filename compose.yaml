@@ -32,7 +32,10 @@ services:
           cpus: '2.0'
 
   ocr-service:
-    image: 'dreayrt/ocr-service:latest'
+    build:
+      context: ../ocr-service
+      dockerfile: Dockerfile
+    image: 'moodify-ocr-service:local'
     container_name: 'moodify-ocr-service'
     restart: 'unless-stopped'
     ports:

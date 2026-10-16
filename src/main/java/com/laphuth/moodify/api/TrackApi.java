@@ -78,12 +78,10 @@ public class TrackApi {
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(required = false) String query,
         @RequestParam(required = false) String genre,
-        @RequestParam(required = false) String mode,
-        org.springframework.security.core.Authentication authentication
+        @RequestParam(required = false) String mode
     ) {
         if ("mood".equalsIgnoreCase(mode) && query != null && !query.isBlank()) {
-            String principal = (authentication != null) ? authentication.getName() : null;
-            var moodRec = emotionService.recommendTracksByMood(query.trim(), "empathy", size, principal);
+            var moodRec = emotionService.recommendTracksByMood(query.trim(), "empathy", size);
             var trackList = moodRec.getTracks();
             return ResponseEntity.ok(new TrackPageResponse(
                 trackList,
