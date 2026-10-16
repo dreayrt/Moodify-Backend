@@ -61,6 +61,7 @@ public class ContentLeadCatalogService {
     private final ContentReviewActionRepository contentReviewActionRepository;
     private final TrackSyncService trackSyncService;
     private final JdbcTemplate jdbcTemplate;
+    private final AudioAnalysisService audioAnalysisService;
 
     public ContentLeadCatalogService(
         UserRepository userRepository,
@@ -73,7 +74,9 @@ public class ContentLeadCatalogService {
         @org.springframework.beans.factory.annotation.Autowired(required = false)
         TrackSyncService trackSyncService,
         @org.springframework.beans.factory.annotation.Autowired(required = false)
-        JdbcTemplate jdbcTemplate
+        JdbcTemplate jdbcTemplate,
+        @org.springframework.beans.factory.annotation.Autowired(required = false)
+        AudioAnalysisService audioAnalysisService
     ) {
         this.userRepository = userRepository;
         this.artistRepository = artistRepository;
@@ -84,6 +87,7 @@ public class ContentLeadCatalogService {
         this.contentReviewActionRepository = contentReviewActionRepository;
         this.trackSyncService = trackSyncService;
         this.jdbcTemplate = jdbcTemplate;
+        this.audioAnalysisService = audioAnalysisService;
     }
 
     public ContentLeadCatalogResponse getCurrentCatalog(
@@ -283,6 +287,14 @@ public class ContentLeadCatalogService {
         track.setCreatedAt(Instant.now());
         track.setUpdatedAt(Instant.now());
         track.setModerationStatus("pending");
+
+        // Tự động phân tích đặc trưng âm học bằng Essentia Service
+        if (audioAnalysisService != null && audioFile != null && !audioFile.isEmpty()) {
+            Track.AudioFeatures af = audioAnalysisService.analyze(audioFile);
+            if (af != null) {
+                track.setAudioFeatures(af);
+            }
+        }
 
         Track savedTrack = trackRepository.save(track);
         if (trackSyncService != null) {

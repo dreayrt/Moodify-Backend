@@ -34,12 +34,33 @@ public class PlaylistApi {
             .body(playlistService.createPlaylist(authentication.getName(), request));
     }
 
+    @GetMapping
+    public ResponseEntity<List<PlaylistResponse>> getPublicPlaylists(@RequestParam(required = false) String q) {
+        return ResponseEntity.ok(playlistService.searchPublicPlaylists(q));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<List<PlaylistResponse>> getUserPlaylists(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
         return ResponseEntity.ok(playlistService.getUserPlaylists(authentication.getName()));
+    }
+
+    @PatchMapping("/{id}/visibility")
+    public ResponseEntity<PlaylistResponse> updateVisibility(
+        Authentication authentication,
+        @PathVariable String id,
+        @RequestParam boolean isPublic
+    ) {
+        if (authentication == null || authentication.getName() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        try {
+            return ResponseEntity.ok(playlistService.updatePlaylistVisibility(id, authentication.getName(), isPublic));
+        } catch (PlaylistService.PlaylistNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
     }
 
     @GetMapping("/{id}")

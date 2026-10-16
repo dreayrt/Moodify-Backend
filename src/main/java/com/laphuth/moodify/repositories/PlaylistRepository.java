@@ -9,6 +9,10 @@ import java.util.Optional;
 public interface PlaylistRepository extends MongoRepository<Playlist, String> {
     List<Playlist> findByUsernameOrderByCreatedAtDesc(String username);
 
+    List<Playlist> findByIsPublicTrueOrderByCreatedAtDesc();
+
+    List<Playlist> findByIsPublicTrueAndNameContainingIgnoreCaseOrderByCreatedAtDesc(String name);
+
     Optional<Playlist> findByIdAndUsername(String id, String username);
 
     void deleteByIdAndUsername(String id, String username);

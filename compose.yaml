@@ -48,3 +48,19 @@ services:
           memory: 4G
           cpus: '2.0'
 
+  audio-analysis-service:
+    build:
+      context: ../Moodify-Audio-Service
+    container_name: 'moodify-audio-analysis'
+    restart: 'unless-stopped'
+    ports:
+      - '8002:8000'
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+
+

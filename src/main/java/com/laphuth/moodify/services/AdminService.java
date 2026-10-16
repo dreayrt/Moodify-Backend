@@ -1,9 +1,13 @@
 package com.laphuth.moodify.services;
 
+import com.laphuth.moodify.entities.Album;
+import com.laphuth.moodify.entities.Artist;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.entities.enums.UserRole;
 import com.laphuth.moodify.entities.enums.UserStatus;
+import com.laphuth.moodify.repositories.AlbumRepository;
+import com.laphuth.moodify.repositories.ArtistRepository;
 import com.laphuth.moodify.repositories.TrackRepository;
 import com.laphuth.moodify.repositories.UserRepository;
 import org.springframework.data.domain.Sort;
@@ -26,6 +30,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class AdminService {
@@ -35,6 +40,8 @@ public class AdminService {
     private final MongoTemplate mongoTemplate;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AlbumRepository albumRepository;
+    private final ArtistRepository artistRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String resolveAudioUrl(String localPath) {
@@ -94,13 +101,17 @@ public class AdminService {
             TrackRepository trackRepository,
             MongoTemplate mongoTemplate,
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            AlbumRepository albumRepository,
+            ArtistRepository artistRepository
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.trackRepository = trackRepository;
         this.mongoTemplate = mongoTemplate;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.albumRepository = albumRepository;
+        this.artistRepository = artistRepository;
     }
 
     // ==========================================
@@ -1395,10 +1406,50 @@ public class AdminService {
         }
 
         if (query != null && !query.isBlank()) {
-            sql.append("AND (LOWER(u.full_name) LIKE ? OR LOWER(u.email) LIKE ?) ");
             String q = "%" + query.toLowerCase().trim() + "%";
-            params.add(q);
-            params.add(q);
+            List<String> matchedTargetIds = new ArrayList<>();
+            try {
+                if ("ALBUM".equals(favType)) {
+                    List<Album> matchedAlbums = albumRepository.findByNameContainingIgnoreCase(query.trim());
+                    for (Album a : matchedAlbums) {
+                        if (a.getId() != null) matchedTargetIds.add(a.getId());
+                        if (a.getSpotifyId() != null) matchedTargetIds.add(a.getSpotifyId());
+                    }
+                    try {
+                        List<String> mysqlIds = jdbcTemplate.query(
+                            "SELECT a.id FROM albums a LEFT JOIN users u ON a.user_id = u.id WHERE LOWER(a.title) LIKE ? OR LOWER(u.full_name) LIKE ?",
+                            (rs, rowNum) -> String.valueOf(rs.getLong("id")),
+                            q, q
+                        );
+                        matchedTargetIds.addAll(mysqlIds);
+                    } catch (Exception ignored) {}
+                } else if ("ARTIST".equals(favType)) {
+                    List<Artist> matchedArtists = artistRepository.findByNameContainingIgnoreCase(query.trim());
+                    for (Artist a : matchedArtists) {
+                        if (a.getId() != null) matchedTargetIds.add(a.getId());
+                        if (a.getSpotifyId() != null) matchedTargetIds.add(a.getSpotifyId());
+                    }
+                } else {
+                    List<Track> matchedTracks = trackRepository.findByNameContainingIgnoreCase(query.trim());
+                    for (Track t : matchedTracks) {
+                        if (t.getId() != null) matchedTargetIds.add(t.getId());
+                        if (t.getSpotifyId() != null) matchedTargetIds.add(t.getSpotifyId());
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            if (!matchedTargetIds.isEmpty()) {
+                String targetCol = "ALBUM".equals(favType) ? "f.album_id" : "ARTIST".equals(favType) ? "f.artist_id" : "f.track_id";
+                String inSql = matchedTargetIds.stream().map(id -> "?").collect(Collectors.joining(", "));
+                sql.append("AND (LOWER(u.full_name) LIKE ? OR LOWER(u.email) LIKE ? OR " + targetCol + " IN (" + inSql + ")) ");
+                params.add(q);
+                params.add(q);
+                params.addAll(matchedTargetIds);
+            } else {
+                sql.append("AND (LOWER(u.full_name) LIKE ? OR LOWER(u.email) LIKE ?) ");
+                params.add(q);
+                params.add(q);
+            }
         }
 
         String countSql = "SELECT COUNT(*) FROM (" + sql.toString() + ") AS c_tbl";
@@ -1425,25 +1476,49 @@ public class AdminService {
 
             if ("SONG".equals(itType)) {
                 Track t = trackRepository.findById(targetId).orElse(null);
+                if (t == null) {
+                    t = trackRepository.findBySpotifyId(targetId).orElse(null);
+                }
                 if (t != null) {
                     m.put("targetTitle", t.getName());
-                    m.put("targetSubtitle", t.getArtistName());
-                    m.put("targetCoverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    m.put("targetSubtitle", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ Moodify");
+                    m.put("targetCoverUrl", t.getImageUrl() != null && !t.getImageUrl().isBlank()
+                            ? t.getImageUrl()
+                            : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
                     m.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
                 } else {
-                    m.put("targetTitle", "Bài hát #" + targetId.substring(Math.max(0, targetId.length() - 6)));
+                    m.put("targetTitle", "Bài hát #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
                     m.put("targetSubtitle", "V-Pop");
                     m.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
                     m.put("audioUrl", resolveAudioUrl(null));
                 }
             } else if ("ARTIST".equals(itType)) {
-                m.put("targetTitle", "Nghệ sĩ #" + targetId.substring(Math.max(0, targetId.length() - 6)));
-                m.put("targetSubtitle", "Nghệ sĩ đã xác minh");
-                m.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-            } else {
-                m.put("targetTitle", "Album #" + targetId.substring(Math.max(0, targetId.length() - 6)));
-                m.put("targetSubtitle", "Album tuyển chọn");
-                m.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                Artist a = artistRepository.findById(targetId).orElse(null);
+                if (a == null) {
+                    a = artistRepository.findBySpotifyId(targetId).orElse(null);
+                }
+                if (a != null) {
+                    m.put("targetTitle", a.getName());
+                    String subtitle = (a.getGenres() != null && !a.getGenres().isEmpty())
+                            ? String.join(", ", a.getGenres())
+                            : "Nghệ sĩ đã xác minh";
+                    if (a.getFollowers() != null && a.getFollowers() > 0) {
+                        subtitle += " • " + a.getFollowers() + " người theo dõi";
+                    }
+                    m.put("targetSubtitle", subtitle);
+                    m.put("targetCoverUrl", a.getImageUrl() != null && !a.getImageUrl().isBlank()
+                            ? a.getImageUrl()
+                            : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                } else {
+                    m.put("targetTitle", "Nghệ sĩ #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
+                    m.put("targetSubtitle", "Nghệ sĩ đã xác minh");
+                    m.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                }
+            } else { // ALBUM
+                Map<String, Object> albInfo = resolveAlbumDetail(targetId);
+                m.put("targetTitle", albInfo.get("title"));
+                m.put("targetSubtitle", albInfo.get("subtitle"));
+                m.put("targetCoverUrl", albInfo.get("coverUrl"));
             }
             return m;
         });
@@ -1458,32 +1533,139 @@ public class AdminService {
     }
 
     public List<Map<String, Object>> getFavoriteLeaderboard() {
-        String sql = "SELECT track_id, COUNT(*) as fav_count FROM favorite_songs GROUP BY track_id ORDER BY fav_count DESC LIMIT 10";
+        return getFavoriteLeaderboard("SONG");
+    }
+
+    public List<Map<String, Object>> getFavoriteLeaderboard(String type) {
+        String favType = (type != null && !type.isBlank()) ? type.toUpperCase().trim() : "SONG";
+        String targetCol = "track_id";
+        String tableName = "favorite_songs";
+
+        if ("ALBUM".equals(favType)) {
+            targetCol = "album_id";
+            tableName = "favorite_albums";
+        } else if ("ARTIST".equals(favType)) {
+            targetCol = "artist_id";
+            tableName = "favorite_artists";
+        }
+
+        String sql = "SELECT " + targetCol + " as target_id, COUNT(*) as fav_count FROM " + tableName + " GROUP BY " + targetCol + " ORDER BY fav_count DESC LIMIT 10";
         List<Map<String, Object>> rows = jdbcTemplate.query(sql, (rs, rowNum) -> {
             Map<String, Object> m = new HashMap<>();
-            String trackId = rs.getString("track_id");
-            m.put("targetId", trackId);
+            String targetId = rs.getString("target_id");
+            m.put("targetId", targetId);
             m.put("favoriteCount", rs.getLong("fav_count"));
-            m.put("type", "SONG");
+            m.put("type", favType);
             return m;
         });
 
         for (Map<String, Object> r : rows) {
-            String trackId = (String) r.get("targetId");
-            Track t = trackRepository.findById(trackId).orElse(null);
-            if (t != null) {
-                r.put("targetTitle", t.getName());
-                r.put("targetSubtitle", t.getArtistName());
-                r.put("targetCoverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                r.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
-            } else {
-                r.put("targetTitle", "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
-                r.put("targetSubtitle", "Moodify Artist");
-                r.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                r.put("audioUrl", resolveAudioUrl(null));
+            String targetId = (String) r.get("targetId");
+            if ("SONG".equals(favType)) {
+                Track t = trackRepository.findById(targetId).orElse(null);
+                if (t == null) t = trackRepository.findBySpotifyId(targetId).orElse(null);
+                if (t != null) {
+                    r.put("targetTitle", t.getName());
+                    r.put("targetSubtitle", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ Moodify");
+                    r.put("targetCoverUrl", t.getImageUrl() != null && !t.getImageUrl().isBlank() ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    r.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
+                } else {
+                    r.put("targetTitle", "Bài hát #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
+                    r.put("targetSubtitle", "Moodify Artist");
+                    r.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    r.put("audioUrl", resolveAudioUrl(null));
+                }
+            } else if ("ARTIST".equals(favType)) {
+                Artist a = artistRepository.findById(targetId).orElse(null);
+                if (a == null) a = artistRepository.findBySpotifyId(targetId).orElse(null);
+                if (a != null) {
+                    r.put("targetTitle", a.getName());
+                    String sub = (a.getGenres() != null && !a.getGenres().isEmpty()) ? String.join(", ", a.getGenres()) : "Nghệ sĩ đã xác minh";
+                    if (a.getFollowers() != null && a.getFollowers() > 0) {
+                        sub += " • " + a.getFollowers() + " người theo dõi";
+                    }
+                    r.put("targetSubtitle", sub);
+                    r.put("targetCoverUrl", a.getImageUrl() != null && !a.getImageUrl().isBlank() ? a.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                } else {
+                    r.put("targetTitle", "Nghệ sĩ #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
+                    r.put("targetSubtitle", "Nghệ sĩ nổi bật");
+                    r.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                }
+            } else { // ALBUM
+                Map<String, Object> albInfo = resolveAlbumDetail(targetId);
+                r.put("targetTitle", albInfo.get("title"));
+                r.put("targetSubtitle", albInfo.get("subtitle"));
+                r.put("targetCoverUrl", albInfo.get("coverUrl"));
             }
         }
         return rows;
+    }
+
+    private Map<String, Object> resolveAlbumDetail(String targetId) {
+        Map<String, Object> detail = new HashMap<>();
+        // 1. Check MongoDB Album
+        try {
+            Album alb = albumRepository.findById(targetId).orElse(null);
+            if (alb == null) {
+                alb = albumRepository.findBySpotifyId(targetId).orElse(null);
+            }
+            if (alb != null) {
+                detail.put("title", alb.getName());
+                String subtitle = alb.getArtistName() != null ? alb.getArtistName() : "Album tuyển chọn";
+                if (alb.getTotalTracks() != null && alb.getTotalTracks() > 0) {
+                    subtitle += " • " + alb.getTotalTracks() + " bài hát";
+                }
+                if (alb.getReleaseDate() != null && !alb.getReleaseDate().isBlank()) {
+                    subtitle += " (" + alb.getReleaseDate() + ")";
+                }
+                detail.put("subtitle", subtitle);
+                detail.put("coverUrl", alb.getImageUrl() != null && !alb.getImageUrl().isBlank()
+                        ? alb.getImageUrl()
+                        : "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300");
+                return detail;
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Check MySQL albums table
+        try {
+            List<Map<String, Object>> mysqlAlbums = jdbcTemplate.query(
+                "SELECT a.id, a.title, a.description, a.cover_url, a.release_date, u.full_name as artist_name, " +
+                "(SELECT COUNT(*) FROM album_tracks at WHERE at.album_id = a.id) as track_count " +
+                "FROM albums a " +
+                "LEFT JOIN users u ON a.user_id = u.id " +
+                "WHERE a.id = ?",
+                (rs, rowNum) -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("title", rs.getString("title"));
+                    String artistName = rs.getString("artist_name") != null ? rs.getString("artist_name") : "Moodify Artist";
+                    int trackCount = rs.getInt("track_count");
+                    String subtitle = artistName;
+                    if (trackCount > 0) {
+                        subtitle += " • " + trackCount + " bài hát";
+                    }
+                    java.sql.Date relDate = rs.getDate("release_date");
+                    if (relDate != null) {
+                        subtitle += " (" + relDate.toString() + ")";
+                    }
+                    m.put("subtitle", subtitle);
+                    String coverUrl = rs.getString("cover_url");
+                    m.put("coverUrl", coverUrl != null && !coverUrl.isBlank()
+                            ? coverUrl
+                            : "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300");
+                    return m;
+                },
+                targetId
+            );
+            if (!mysqlAlbums.isEmpty()) {
+                return mysqlAlbums.get(0);
+            }
+        } catch (Exception ignored) {}
+
+        // 3. Fallback
+        detail.put("title", "Album #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
+        detail.put("subtitle", "Album tuyển chọn");
+        detail.put("coverUrl", "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300");
+        return detail;
     }
 
     public void deleteFavorite(Long id) {
