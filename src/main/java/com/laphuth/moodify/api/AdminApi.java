@@ -318,8 +318,10 @@ public class AdminApi {
     }
 
     @GetMapping("/favorites/leaderboard")
-    public ResponseEntity<List<Map<String, Object>>> getFavoriteLeaderboard() {
-        return ResponseEntity.ok(adminService.getFavoriteLeaderboard());
+    public ResponseEntity<List<Map<String, Object>>> getFavoriteLeaderboard(
+            @RequestParam(required = false, defaultValue = "SONG") String type
+    ) {
+        return ResponseEntity.ok(adminService.getFavoriteLeaderboard(type));
     }
 
     @DeleteMapping("/favorites/{id}")
