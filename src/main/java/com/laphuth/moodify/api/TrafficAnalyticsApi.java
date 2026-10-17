@@ -19,15 +19,18 @@ public class TrafficAnalyticsApi {
     private final PlatformTrafficService platformTrafficService;
     private final UserRepository userRepository;
     private final TrackRepository trackRepository;
+    private final com.laphuth.moodify.services.UserDeviceService userDeviceService;
 
     public TrafficAnalyticsApi(
         PlatformTrafficService platformTrafficService,
         UserRepository userRepository,
-        TrackRepository trackRepository
+        TrackRepository trackRepository,
+        com.laphuth.moodify.services.UserDeviceService userDeviceService
     ) {
         this.platformTrafficService = platformTrafficService;
         this.userRepository = userRepository;
         this.trackRepository = trackRepository;
+        this.userDeviceService = userDeviceService;
     }
 
     @PostMapping("/track-visit")
@@ -53,6 +56,7 @@ public class TrafficAnalyticsApi {
     @PostMapping("/listening-session")
     public ResponseEntity<Map<String, Object>> recordListeningSession(
         @RequestBody Map<String, Object> body,
+        @RequestHeader(value = "X-Device-Uuid", required = false) String headerDeviceUuid,
         Authentication authentication
     ) {
         Long userId = null;
@@ -60,6 +64,17 @@ public class TrafficAnalyticsApi {
             Optional<User> u = userRepository.findByEmailOrUsername(authentication.getName(), authentication.getName());
             if (u.isPresent()) {
                 userId = u.get().getId();
+            }
+        }
+
+        String deviceUuid = body.get("deviceUuid") != null ? (String) body.get("deviceUuid") : headerDeviceUuid;
+        if (userId != null && deviceUuid != null && !deviceUuid.isBlank()) {
+            if (!userDeviceService.isDeviceActive(userId, deviceUuid)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success", false,
+                    "error", "DEVICE_REVOKED",
+                    "message", "Thiết bị này đã bị thu hồi quyền truy cập do tài khoản đã đăng nhập trên thiết bị khác vượt quá hạn mức thiết bị của gói cước."
+                ));
             }
         }
 

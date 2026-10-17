@@ -494,7 +494,7 @@ public class AuthenticationService {
         User user = userRepository.findByUsername(username)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         if (userDeviceService != null) {
-            userDeviceService.registerDeviceOnLogin(user.getId(), username, deviceUuid, deviceName, platform);
+            userDeviceService.syncCurrentDevice(user.getId(), username, deviceUuid, deviceName, platform);
         }
     }
 
