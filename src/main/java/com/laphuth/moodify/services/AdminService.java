@@ -1605,10 +1605,6 @@ public class AdminService {
         return result;
     }
 
-    public List<Map<String, Object>> getFavoriteLeaderboard(String type) {
-        return getFavoriteLeaderboard();
-    }
-
     public List<Map<String, Object>> getFavoriteLeaderboard() {
         return getFavoriteLeaderboard("SONG");
     }
