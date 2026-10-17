@@ -6,13 +6,12 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
-import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import jakarta.annotation.PostConstruct;
 import java.util.TimeZone;
 
 @SpringBootApplication
-@EnableScheduling
 public class MoodifyApplication {
 
     public static void main(String[] args) {
@@ -26,6 +25,7 @@ public class MoodifyApplication {
 
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnBean(SeedDataApi.class)
+    @ConditionalOnProperty(name = "app.seed.tracks-on-startup", havingValue = "true", matchIfMissing = true)
     CommandLineRunner seedOnStartup(SeedDataApi seedDataApi) {
         return args -> {
             // Auto-seed tracks on startup if database is empty

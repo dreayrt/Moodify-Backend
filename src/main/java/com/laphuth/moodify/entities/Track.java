@@ -59,6 +59,9 @@ public class Track {
     @Field("genres_raw")
     private List<String> genresRaw;
 
+    @Field("mood_tags")
+    private List<String> moodTags;
+
     @Field("popularity")
     private Integer popularity;
 
@@ -130,6 +133,8 @@ public class Track {
     public void setGenres(List<String> genres) { this.genres = genres; }
     public List<String> getGenresRaw() { return genresRaw; }
     public void setGenresRaw(List<String> genresRaw) { this.genresRaw = genresRaw; }
+    public List<String> getMoodTags() { return moodTags; }
+    public void setMoodTags(List<String> moodTags) { this.moodTags = moodTags; }
     public Integer getPopularity() { return popularity; }
     public void setPopularity(Integer popularity) { this.popularity = popularity; }
     public String getLyricsPlain() { return lyricsPlain; }

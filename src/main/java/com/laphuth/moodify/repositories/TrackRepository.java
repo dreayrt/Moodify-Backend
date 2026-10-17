@@ -35,4 +35,6 @@ public interface TrackRepository extends MongoRepository<Track, String> {
         String albumName,
         Pageable pageable
     );
+
+    List<Track> findByNameContainingIgnoreCase(String name);
 }

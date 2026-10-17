@@ -44,6 +44,29 @@ public class PlaylistService {
         }).collect(Collectors.toList());
     }
 
+    public List<PlaylistResponse> searchPublicPlaylists(String query) {
+        List<Playlist> playlists;
+        if (query != null && !query.isBlank()) {
+            playlists = playlistRepository.findByIsPublicTrueAndNameContainingIgnoreCaseOrderByCreatedAtDesc(query.trim());
+        } else {
+            playlists = playlistRepository.findByIsPublicTrueOrderByCreatedAtDesc();
+        }
+        return playlists.stream().map(p -> {
+            List<TrackResponse> tracks = loadTracksInOrder(p.getTrackSpotifyIds());
+            return PlaylistResponse.from(p, tracks);
+        }).collect(Collectors.toList());
+    }
+
+    public PlaylistResponse updatePlaylistVisibility(String id, String username, boolean isPublic) {
+        Playlist playlist = playlistRepository.findByIdAndUsername(id, username)
+            .orElseThrow(() -> new PlaylistNotFoundException("Playlist not found or access denied: " + id));
+        playlist.setIsPublic(isPublic);
+        playlist.setUpdatedAt(Instant.now());
+        Playlist saved = playlistRepository.save(playlist);
+        List<TrackResponse> tracks = loadTracksInOrder(saved.getTrackSpotifyIds());
+        return PlaylistResponse.from(saved, tracks);
+    }
+
     public PlaylistResponse getPlaylist(String id) {
         Playlist playlist = playlistRepository.findById(id)
             .orElseThrow(() -> new PlaylistNotFoundException("Playlist not found: " + id));

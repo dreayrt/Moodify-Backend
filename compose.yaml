@@ -32,7 +32,10 @@ services:
           cpus: '2.0'
 
   ocr-service:
-    image: 'dreayrt/ocr-service:latest'
+    build:
+      context: ../ocr-service
+      dockerfile: Dockerfile
+    image: 'moodify-ocr-service:local'
     container_name: 'moodify-ocr-service'
     restart: 'unless-stopped'
     ports:
@@ -44,4 +47,20 @@ services:
         limits:
           memory: 4G
           cpus: '2.0'
+
+  audio-analysis-service:
+    build:
+      context: ../Moodify-Audio-Service
+    container_name: 'moodify-audio-analysis'
+    restart: 'unless-stopped'
+    ports:
+      - '8002:8000'
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+
 

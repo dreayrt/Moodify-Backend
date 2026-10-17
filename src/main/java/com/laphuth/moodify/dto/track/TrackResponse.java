@@ -2,9 +2,11 @@ package com.laphuth.moodify.dto.track;
 
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.services.AudioUrlResolver;
+import com.laphuth.moodify.services.MoodTrackScorer;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 public record TrackResponse(
     String id,
@@ -26,7 +28,11 @@ public record TrackResponse(
     String audioUrl,
     String downloadStatus,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    Double moodMatchDistance,
+    Double moodFeatureCoverage,
+    List<String> moodMatchedTags,
+    Map<String, MoodTrackScorer.FeatureDistance> moodFeatureDistances
 ) {
     public static TrackResponse from(Track track) {
         return new TrackResponse(
@@ -49,7 +55,41 @@ public record TrackResponse(
             AudioUrlResolver.resolve(track.getLocalPath()),
             track.getDownloadStatus(),
             track.getCreatedAt(),
-            track.getUpdatedAt()
+            track.getUpdatedAt(),
+            null,
+            null,
+            null,
+            null
+        );
+    }
+
+    public static TrackResponse fromMood(Track track, MoodTrackScorer.Score score) {
+        TrackResponse response = from(track);
+        return new TrackResponse(
+            response.id(),
+            response.spotifyId(),
+            response.name(),
+            response.artistName(),
+            response.artistSpotifyId(),
+            response.albumSpotifyId(),
+            response.albumName(),
+            response.imageUrl(),
+            response.releaseDate(),
+            response.trackNumber(),
+            response.durationMs(),
+            response.explicit(),
+            response.genres(),
+            response.lyricsPlain(),
+            response.lyricsSynced(),
+            response.localPath(),
+            response.audioUrl(),
+            response.downloadStatus(),
+            response.createdAt(),
+            response.updatedAt(),
+            score.distance(),
+            score.featureCoverage(),
+            score.matchedTags(),
+            score.featureDistances()
         );
     }
 }
