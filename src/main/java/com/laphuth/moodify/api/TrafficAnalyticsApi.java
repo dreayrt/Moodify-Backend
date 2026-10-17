@@ -6,6 +6,7 @@ import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.repositories.TrackRepository;
 import com.laphuth.moodify.repositories.UserRepository;
 import com.laphuth.moodify.services.PlatformTrafficService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
