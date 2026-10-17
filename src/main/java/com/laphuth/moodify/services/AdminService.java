@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.security.SecureRandom;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -147,7 +148,17 @@ public class AdminService {
         try {
             totalListenedMs = jdbcTemplate.queryForObject("SELECT COALESCE(SUM(listened_duration_ms), 0) FROM listening_history", Long.class);
         } catch (Exception ignored) {}
-        double listenedHours = totalListenedMs != null ? Math.round((totalListenedMs / 3600000.0) * 10.0) / 10.0 : 0.0;
+        double listenedHours = totalListenedMs != null ? Math.round((totalListenedMs / 3600000.0) * 100.0) / 100.0 : 0.0;
+        String listenedFormatted = formatTotalDuration(totalListenedMs != null ? totalListenedMs : 0L);
+
+        Long completedSessions = 0L;
+        try {
+            completedSessions = jdbcTemplate.queryForObject(
+                "SELECT COUNT(DISTINCT pe.listening_history_id) FROM playback_events pe WHERE pe.event_type = 'COMPLETE'", Long.class);
+        } catch (Exception ignored) {}
+        double avgCompletionRate = (totalStreams != null && totalStreams > 0)
+            ? Math.round(((double) (completedSessions != null ? completedSessions : 0) / totalStreams) * 1000.0) / 10.0
+            : 0.0;
 
         Long activeDevices = 0L;
         try {
@@ -156,7 +167,7 @@ public class AdminService {
 
         List<Map<String, Object>> streamsByPlatform = new ArrayList<>();
         try {
-            String platSql = "SELECT device_type, COUNT(*) as cnt FROM listening_history GROUP BY device_type ORDER BY cnt DESC";
+            String platSql = "SELECT COALESCE(device_type, 'WEB') as device_type, COUNT(*) as cnt FROM listening_history GROUP BY device_type ORDER BY cnt DESC";
             streamsByPlatform = jdbcTemplate.query(platSql, (rs, rowNum) -> {
                 Map<String, Object> m = new HashMap<>();
                 m.put("platform", rs.getString("device_type"));
@@ -167,7 +178,7 @@ public class AdminService {
 
         List<Map<String, Object>> streamsBySource = new ArrayList<>();
         try {
-            String srcSql = "SELECT source, COUNT(*) as cnt FROM listening_history GROUP BY source ORDER BY cnt DESC";
+            String srcSql = "SELECT COALESCE(source, 'HOME') as source, COUNT(*) as cnt FROM listening_history GROUP BY source ORDER BY cnt DESC";
             streamsBySource = jdbcTemplate.query(srcSql, (rs, rowNum) -> {
                 Map<String, Object> m = new HashMap<>();
                 m.put("source", rs.getString("source"));
@@ -197,6 +208,9 @@ public class AdminService {
         overview.put("totalFavorites", totalFavorites != null ? totalFavorites : 0);
         overview.put("totalListenedDurationMs", totalListenedMs != null ? totalListenedMs : 0);
         overview.put("totalListenedHours", listenedHours);
+        overview.put("totalListenedFormatted", listenedFormatted);
+        overview.put("completedSessions", completedSessions != null ? completedSessions : 0);
+        overview.put("avgCompletionRate", avgCompletionRate);
         overview.put("activeDevices", activeDevices != null ? activeDevices : 0);
         overview.put("streamsByPlatform", streamsByPlatform);
         overview.put("streamsBySource", streamsBySource);
@@ -213,11 +227,15 @@ public class AdminService {
         List<Map<String, Object>> topFavorited = getTopFavoritedTracks(5);
         overview.put("topFavoritedTracks", topFavorited);
 
-        // 6. Listening trend by date from real listening_history
+        // 6. Listening trend by date from real listening_history (most recent up to 90 days, chronological)
         List<Map<String, Object>> trend = getListeningTrend();
         overview.put("listeningTrend", trend);
 
-        // 7. Recent platform activities (real transactions, reviews, favorites)
+        // 6b. User registration trend by date (most recent 14 days, chronological)
+        List<Map<String, Object>> userTrend = getUserRegistrationTrend();
+        overview.put("userTrend", userTrend);
+
+        // 7. Recent platform activities (real transactions, listening sessions, favorites)
         List<Map<String, Object>> recentActivities = getRecentActivities();
         overview.put("recentActivities", recentActivities);
 
@@ -293,18 +311,48 @@ public class AdminService {
     }
 
     public List<Map<String, Object>> getListeningTrend() {
-        String sql = "SELECT DATE_FORMAT(started_at, '%d/%m') as day_label, DATE(started_at) as day_date, COUNT(*) as count_val " +
-                     "FROM listening_history " +
-                     "GROUP BY DATE(started_at), DATE_FORMAT(started_at, '%d/%m') " +
-                     "ORDER BY day_date ASC LIMIT 14";
+        String sql = """
+            SELECT 
+                DATE_FORMAT(lh.started_at, '%d/%m') as day_label, 
+                DATE(lh.started_at) as day_date, 
+                COUNT(DISTINCT lh.id) as count_val,
+                COUNT(DISTINCT CASE WHEN pe.event_type = 'COMPLETE' THEN lh.id END) as completed_val
+            FROM listening_history lh
+            LEFT JOIN playback_events pe ON pe.listening_history_id = lh.id AND pe.event_type = 'COMPLETE'
+            GROUP BY DATE(lh.started_at), DATE_FORMAT(lh.started_at, '%d/%m')
+            ORDER BY day_date DESC LIMIT 90
+        """;
         try {
-            return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            List<Map<String, Object>> list = jdbcTemplate.query(sql, (rs, rowNum) -> {
                 Map<String, Object> m = new HashMap<>();
                 m.put("date", rs.getString("day_date"));
                 m.put("label", rs.getString("day_label"));
                 m.put("streams", rs.getInt("count_val"));
+                m.put("completed", rs.getInt("completed_val"));
                 return m;
             });
+            Collections.reverse(list);
+            return list;
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+    }
+
+    public List<Map<String, Object>> getUserRegistrationTrend() {
+        String sql = "SELECT DATE_FORMAT(created_at, '%d/%m') as day_label, DATE(created_at) as day_date, COUNT(*) as count_val " +
+                     "FROM users " +
+                     "GROUP BY DATE(created_at), DATE_FORMAT(created_at, '%d/%m') " +
+                     "ORDER BY day_date DESC LIMIT 14";
+        try {
+            List<Map<String, Object>> list = jdbcTemplate.query(sql, (rs, rowNum) -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("date", rs.getString("day_date"));
+                m.put("label", rs.getString("day_label"));
+                m.put("count", rs.getInt("count_val"));
+                return m;
+            });
+            Collections.reverse(list);
+            return list;
         } catch (Exception e) {
             return Collections.emptyList();
         }
@@ -313,34 +361,59 @@ public class AdminService {
     public List<Map<String, Object>> getRecentActivities() {
         List<Map<String, Object>> list = new ArrayList<>();
 
-        // Recent payments
+        // 1. Recent payments
         try {
-            String paySql = "SELECT t.id, u.full_name, p.name as pkg_name, t.amount, t.paid_at " +
+            String paySql = "SELECT t.id, u.full_name, p.name as pkg_name, t.amount, t.paid_at, t.created_at " +
                             "FROM payment_transactions t " +
                             "JOIN subscriptions s ON t.subscription_id = s.id " +
                             "JOIN users u ON s.user_id = u.id " +
                             "JOIN service_packages p ON s.service_package_id = p.id " +
-                            "ORDER BY t.created_at DESC LIMIT 3";
+                            "ORDER BY t.created_at DESC LIMIT 5";
             jdbcTemplate.query(paySql, (rs, rowNum) -> {
                 Map<String, Object> a = new HashMap<>();
                 a.put("id", "pay-" + rs.getLong("id"));
                 a.put("type", "PAYMENT");
                 a.put("title", rs.getString("full_name") + " đã đăng ký gói " + rs.getString("pkg_name"));
                 a.put("detail", "Thanh toán thành công: " + String.format("%,.0f đ", rs.getDouble("amount")));
-                a.put("timestamp", rs.getTimestamp("paid_at") != null
-                        ? rs.getTimestamp("paid_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                Timestamp ts = rs.getTimestamp("paid_at") != null ? rs.getTimestamp("paid_at") : rs.getTimestamp("created_at");
+                a.put("timestamp", ts != null
+                        ? ts.toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
                         : "Hôm nay");
                 list.add(a);
                 return null;
             });
         } catch (Exception ignored) {}
 
-        // Recent favorites
+        // 2. Recent listening sessions from listening_history
+        try {
+            String listenSql = "SELECT lh.id, u.full_name, lh.track_id, lh.device_type, lh.started_at " +
+                               "FROM listening_history lh " +
+                               "JOIN users u ON lh.user_id = u.id " +
+                               "ORDER BY lh.started_at DESC LIMIT 5";
+            jdbcTemplate.query(listenSql, (rs, rowNum) -> {
+                Map<String, Object> a = new HashMap<>();
+                a.put("id", "listen-" + rs.getLong("id"));
+                a.put("type", "STREAM");
+                String trackId = rs.getString("track_id");
+                Track t = trackRepository.findById(trackId).orElse(null);
+                String trackName = t != null ? t.getName() : "Bài hát";
+                a.put("title", rs.getString("full_name") + " đã nghe " + trackName);
+                a.put("detail", "Nền tảng: " + (rs.getString("device_type") != null ? rs.getString("device_type") : "Web"));
+                Timestamp ts = rs.getTimestamp("started_at");
+                a.put("timestamp", ts != null
+                        ? ts.toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                        : "Vừa xong");
+                list.add(a);
+                return null;
+            });
+        } catch (Exception ignored) {}
+
+        // 3. Recent favorites
         try {
             String favSql = "SELECT f.id, u.full_name, f.track_id, f.created_at " +
                             "FROM favorite_songs f " +
                             "JOIN users u ON f.user_id = u.id " +
-                            "ORDER BY f.created_at DESC LIMIT 3";
+                            "ORDER BY f.created_at DESC LIMIT 5";
             jdbcTemplate.query(favSql, (rs, rowNum) -> {
                 Map<String, Object> a = new HashMap<>();
                 a.put("id", "fav-" + rs.getLong("id"));
@@ -1532,6 +1605,10 @@ public class AdminService {
         return result;
     }
 
+    public List<Map<String, Object>> getFavoriteLeaderboard(String type) {
+        return getFavoriteLeaderboard();
+    }
+
     public List<Map<String, Object>> getFavoriteLeaderboard() {
         return getFavoriteLeaderboard("SONG");
     }
@@ -1828,17 +1905,18 @@ public class AdminService {
             "SELECT COUNT(*) FROM listening_history WHERE started_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)", Long.class
         );
         Long completeEvents = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM playback_events WHERE event_type = 'COMPLETE'", Long.class
+            "SELECT COUNT(DISTINCT listening_history_id) FROM playback_events WHERE event_type = 'COMPLETE'", Long.class
         );
 
         summary.put("totalSessions", totalSessions != null ? totalSessions : 0L);
         summary.put("totalDurationMs", totalDurationMs != null ? totalDurationMs : 0L);
-        summary.put("totalHours", totalDurationMs != null ? Math.round((totalDurationMs / 3600000.0) * 10.0) / 10.0 : 0.0);
+        summary.put("totalHours", totalDurationMs != null ? Math.round((totalDurationMs / 3600000.0) * 100.0) / 100.0 : 0.0);
+        summary.put("totalDurationFormatted", formatTotalDuration(totalDurationMs != null ? totalDurationMs : 0L));
         summary.put("sessionsLast24h", sessionsLast24h != null ? sessionsLast24h : 0L);
         summary.put("completeEvents", completeEvents != null ? completeEvents : 0L);
         
         double completionRate = (totalSessions != null && totalSessions > 0)
-            ? Math.round(((double) (completeEvents != null ? completeEvents : 0) / totalSessions) * 100.0)
+            ? Math.round(((double) (completeEvents != null ? completeEvents : 0) / totalSessions) * 1000.0) / 10.0
             : 0.0;
         summary.put("completionRatePercent", completionRate);
 
@@ -2025,5 +2103,20 @@ public class AdminService {
         int mins = seconds / 60;
         int secs = seconds % 60;
         return String.format("%d:%02d", mins, secs);
+    }
+
+    public String formatTotalDuration(long totalMs) {
+        if (totalMs <= 0) return "0 giây";
+        long totalSecs = totalMs / 1000;
+        long hours = totalSecs / 3600;
+        long minutes = (totalSecs % 3600) / 60;
+        long seconds = totalSecs % 60;
+        if (hours > 0) {
+            return hours + " giờ " + minutes + " phút";
+        } else if (minutes > 0) {
+            return minutes + " phút " + seconds + " giây";
+        } else {
+            return seconds + " giây";
+        }
     }
 }

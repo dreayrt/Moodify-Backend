@@ -66,13 +66,13 @@ ALTER TABLE service_packages DROP COLUMN IF EXISTS features_json;
 INSERT INTO service_packages (
     id, name, description, price, duration_days, display_order, status, tier_id
 ) VALUES
-(1, 'Gói VIP Tiết Kiệm (30 Ngày)', 'Dành cho 1 người: 15 bài hát/ngày không quảng cáo, 30 lượt skip/ngày, tải 50 bài offline.', 29000, 30, 1, 'ACTIVE', 'INDIVIDUAL_BASIC'),
-(2, 'Gói VIP Tiết Kiệm (1 Năm)', 'Tiết kiệm 20%: Trọn gói 365 ngày nghe nhạc tiết kiệm.', 279000, 365, 2, 'ACTIVE', 'INDIVIDUAL_BASIC'),
-(3, 'Gói Cá Nhân FULL (30 Ngày)', 'Dành cho 1 người: 100% không quảng cáo vô hạn, chuyển bài và tải nhạc offline vô hạn.', 49000, 30, 3, 'ACTIVE', 'INDIVIDUAL_FULL'),
-(4, 'Gói Cá Nhân FULL (90 Ngày)', 'Tiết kiệm 12%: 3 tháng âm nhạc không quảng cáo vô hạn.', 129000, 90, 4, 'ACTIVE', 'INDIVIDUAL_FULL'),
-(5, 'Gói Cá Nhân FULL (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng, trọn bộ đặc quyền cá nhân không giới hạn.', 469000, 365, 5, 'ACTIVE', 'INDIVIDUAL_FULL'),
-(6, 'Gói Gia Đình (30 Ngày)', 'Tối đa 6 tài khoản/thiết bị đồng thời: Trọn bộ đặc quyền FULL chia sẻ cả gia đình.', 79000, 30, 6, 'ACTIVE', 'FAMILY'),
-(7, 'Gói Gia Đình (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng cho cả 6 thành viên gia đình.', 790000, 365, 7, 'ACTIVE', 'FAMILY')
+(1, 'Gói VIP Tiết Kiệm (30 Ngày)', 'Đã ngưng cung cấp.', 29000, 30, 1, 'INACTIVE', 'INDIVIDUAL_BASIC'),
+(2, 'Gói VIP Tiết Kiệm (1 Năm)', 'Đã ngưng cung cấp.', 279000, 365, 2, 'INACTIVE', 'INDIVIDUAL_BASIC'),
+(3, 'Gói Cá Nhân FULL (30 Ngày)', 'Dành cho 1 người: 100% không quảng cáo vô hạn, chuyển bài và tải nhạc offline vô hạn.', 29000, 30, 3, 'ACTIVE', 'INDIVIDUAL_FULL'),
+(4, 'Gói Cá Nhân FULL (90 Ngày)', 'Tiết kiệm 9%: 3 tháng âm nhạc không quảng cáo vô hạn.', 79000, 90, 4, 'ACTIVE', 'INDIVIDUAL_FULL'),
+(5, 'Gói Cá Nhân FULL (1 Năm)', 'Tiết kiệm tối đa: Trọn bộ đặc quyền cá nhân không giới hạn 365 ngày.', 279000, 365, 5, 'ACTIVE', 'INDIVIDUAL_FULL'),
+(6, 'Gói Gia Đình (30 Ngày)', 'Tối đa 6 tài khoản/thiết bị đồng thời: Trọn bộ đặc quyền FULL chia sẻ cả gia đình.', 59000, 30, 6, 'ACTIVE', 'FAMILY'),
+(7, 'Gói Gia Đình (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng cho cả 6 thành viên gia đình.', 590000, 365, 7, 'ACTIVE', 'FAMILY')
 ON DUPLICATE KEY UPDATE 
     name = VALUES(name), 
     description = VALUES(description), 

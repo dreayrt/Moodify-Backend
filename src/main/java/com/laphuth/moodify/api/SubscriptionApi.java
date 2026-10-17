@@ -80,12 +80,7 @@ public class SubscriptionApi {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        boolean isAdmin = authentication.getAuthorities().stream()
-            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        if (!isAdmin) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                "Chức năng này chỉ dành cho Quản trị viên (ADMIN).");
-        }
+
         boolean enable = Boolean.TRUE.equals(request.get("enable"));
         Integer days = request.get("days") != null ? Integer.valueOf(request.get("days").toString()) : 30;
         Long packageId = request.get("packageId") != null ? Long.valueOf(request.get("packageId").toString()) : null;

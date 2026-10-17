@@ -201,6 +201,11 @@ public class PlatformTrafficService {
     }
 
     public int seedTrafficData(List<String> targetIds, int countPerTrack) {
+        log.info("seedTrafficData is disabled to preserve 100% real platform telemetry data.");
+        return 0;
+    }
+
+    private int unused_seedTrafficData(List<String> targetIds, int countPerTrack) {
         if (targetIds == null || targetIds.isEmpty()) return 0;
 
         // Chỉ 3 nền tảng chính: Web, Android, iOS
