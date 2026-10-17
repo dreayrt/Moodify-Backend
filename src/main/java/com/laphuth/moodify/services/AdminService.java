@@ -1638,10 +1638,19 @@ public class AdminService {
             String trackId = rs.getString("track_id");
             m.put("trackId", trackId);
             
+            String rawStartedAt = rs.getString("started_at");
+            if (rawStartedAt != null && rawStartedAt.length() > 19) {
+                rawStartedAt = rawStartedAt.substring(0, 19);
+            }
             java.sql.Timestamp startedAtTs = rs.getTimestamp("started_at");
+            m.put("startedAt", rawStartedAt != null && !rawStartedAt.isBlank() ? rawStartedAt : (startedAtTs != null ? startedAtTs.toLocalDateTime().format(dtf) : ""));
+
+            String rawEndedAt = rs.getString("ended_at");
+            if (rawEndedAt != null && rawEndedAt.length() > 19) {
+                rawEndedAt = rawEndedAt.substring(0, 19);
+            }
             java.sql.Timestamp endedAtTs = rs.getTimestamp("ended_at");
-            m.put("startedAt", startedAtTs != null ? startedAtTs.toLocalDateTime().format(dtf) : "");
-            m.put("endedAt", endedAtTs != null ? endedAtTs.toLocalDateTime().format(dtf) : "");
+            m.put("endedAt", rawEndedAt != null && !rawEndedAt.isBlank() ? rawEndedAt : (endedAtTs != null ? endedAtTs.toLocalDateTime().format(dtf) : ""));
             
             long durMs = rs.getLong("listened_duration_ms");
             long posMs = rs.getLong("last_position_ms");
@@ -1708,8 +1717,12 @@ public class AdminService {
             m.put("positionSeconds", Math.round(posMs / 1000.0));
             m.put("targetPositionMs", targetPosMs);
             m.put("targetPositionSeconds", Math.round(targetPosMs / 1000.0));
+            String rawOccurredAt = rs.getString("occurred_at");
+            if (rawOccurredAt != null && rawOccurredAt.length() > 19) {
+                rawOccurredAt = rawOccurredAt.substring(0, 19);
+            }
             java.sql.Timestamp occurredTs = rs.getTimestamp("occurred_at");
-            m.put("occurredAt", occurredTs != null ? occurredTs.toLocalDateTime().format(dtf) : "");
+            m.put("occurredAt", rawOccurredAt != null && !rawOccurredAt.isBlank() ? rawOccurredAt : (occurredTs != null ? occurredTs.toLocalDateTime().format(dtf) : ""));
             return m;
         });
     }
@@ -1871,8 +1884,12 @@ public class AdminService {
             item.put("targetPositionMs", targetPosMs);
             item.put("targetPositionFormatted", formatDurationSeconds((int) (targetPosMs / 1000)));
 
+            String rawOccurredAt = rs.getString("occurred_at");
+            if (rawOccurredAt != null && rawOccurredAt.length() > 19) {
+                rawOccurredAt = rawOccurredAt.substring(0, 19);
+            }
             java.sql.Timestamp occurredTs = rs.getTimestamp("occurred_at");
-            item.put("occurredAt", occurredTs != null ? occurredTs.toLocalDateTime().format(dtf) : "");
+            item.put("occurredAt", rawOccurredAt != null && !rawOccurredAt.isBlank() ? rawOccurredAt : (occurredTs != null ? occurredTs.toLocalDateTime().format(dtf) : ""));
 
             item.put("trackId", rs.getString("track_id"));
             item.put("userId", rs.getLong("user_id"));
