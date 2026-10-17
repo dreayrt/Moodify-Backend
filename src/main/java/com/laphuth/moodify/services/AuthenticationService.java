@@ -516,6 +516,17 @@ public class AuthenticationService {
         return userDeviceService.revokeOtherDevices(user.getId(), currentDeviceUuid);
     }
 
+    public boolean isDeviceActive(String username, String deviceUuid) {
+        if (userDeviceService == null || deviceUuid == null || deviceUuid.isBlank()) {
+            return true;
+        }
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user == null) {
+            return false;
+        }
+        return userDeviceService.isDeviceActive(user.getId(), deviceUuid);
+    }
+
     public AuthResponse refresh(RefreshTokenRequest request) {
         String rawRefreshToken = request.refreshToken().trim();
         String username;

@@ -120,4 +120,23 @@ public class AuthenticationApi {
         int count = authenticationService.revokeOtherDevices(authentication.getName(), currentDeviceUuid);
         return ResponseEntity.ok(java.util.Map.of("revokedCount", count));
     }
+
+    @GetMapping("/devices/ping")
+    public ResponseEntity<java.util.Map<String, Object>> pingDevice(
+            Authentication authentication,
+            @RequestHeader(value = "X-Device-Uuid", required = false) String headerDeviceUuid
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        boolean active = authenticationService.isDeviceActive(authentication.getName(), headerDeviceUuid);
+        if (!active) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(java.util.Map.of(
+                "active", false,
+                "error", "DEVICE_REVOKED",
+                "message", "Thiết bị này đã bị thu hồi quyền truy cập do tài khoản đã đăng nhập trên thiết bị khác vượt quá hạn mức thiết bị của gói cước."
+            ));
+        }
+        return ResponseEntity.ok(java.util.Map.of("active", true));
+    }
 }
