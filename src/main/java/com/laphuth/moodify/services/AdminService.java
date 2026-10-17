@@ -137,7 +137,17 @@ public class AdminService {
         try {
             totalListenedMs = jdbcTemplate.queryForObject("SELECT COALESCE(SUM(listened_duration_ms), 0) FROM listening_history", Long.class);
         } catch (Exception ignored) {}
-        double listenedHours = totalListenedMs != null ? Math.round((totalListenedMs / 3600000.0) * 10.0) / 10.0 : 0.0;
+        double listenedHours = totalListenedMs != null ? Math.round((totalListenedMs / 3600000.0) * 100.0) / 100.0 : 0.0;
+        String listenedFormatted = formatTotalDuration(totalListenedMs != null ? totalListenedMs : 0L);
+
+        Long completedSessions = 0L;
+        try {
+            completedSessions = jdbcTemplate.queryForObject(
+                "SELECT COUNT(DISTINCT pe.listening_history_id) FROM playback_events pe WHERE pe.event_type = 'COMPLETE'", Long.class);
+        } catch (Exception ignored) {}
+        double avgCompletionRate = (totalStreams != null && totalStreams > 0)
+            ? Math.round(((double) (completedSessions != null ? completedSessions : 0) / totalStreams) * 1000.0) / 10.0
+            : 0.0;
 
         Long activeDevices = 0L;
         try {
@@ -146,7 +156,7 @@ public class AdminService {
 
         List<Map<String, Object>> streamsByPlatform = new ArrayList<>();
         try {
-            String platSql = "SELECT device_type, COUNT(*) as cnt FROM listening_history GROUP BY device_type ORDER BY cnt DESC";
+            String platSql = "SELECT COALESCE(device_type, 'WEB') as device_type, COUNT(*) as cnt FROM listening_history GROUP BY device_type ORDER BY cnt DESC";
             streamsByPlatform = jdbcTemplate.query(platSql, (rs, rowNum) -> {
                 Map<String, Object> m = new HashMap<>();
                 m.put("platform", rs.getString("device_type"));
@@ -157,7 +167,7 @@ public class AdminService {
 
         List<Map<String, Object>> streamsBySource = new ArrayList<>();
         try {
-            String srcSql = "SELECT source, COUNT(*) as cnt FROM listening_history GROUP BY source ORDER BY cnt DESC";
+            String srcSql = "SELECT COALESCE(source, 'HOME') as source, COUNT(*) as cnt FROM listening_history GROUP BY source ORDER BY cnt DESC";
             streamsBySource = jdbcTemplate.query(srcSql, (rs, rowNum) -> {
                 Map<String, Object> m = new HashMap<>();
                 m.put("source", rs.getString("source"));
@@ -187,6 +197,9 @@ public class AdminService {
         overview.put("totalFavorites", totalFavorites != null ? totalFavorites : 0);
         overview.put("totalListenedDurationMs", totalListenedMs != null ? totalListenedMs : 0);
         overview.put("totalListenedHours", listenedHours);
+        overview.put("totalListenedFormatted", listenedFormatted);
+        overview.put("completedSessions", completedSessions != null ? completedSessions : 0);
+        overview.put("avgCompletionRate", avgCompletionRate);
         overview.put("activeDevices", activeDevices != null ? activeDevices : 0);
         overview.put("streamsByPlatform", streamsByPlatform);
         overview.put("streamsBySource", streamsBySource);
@@ -287,16 +300,24 @@ public class AdminService {
     }
 
     public List<Map<String, Object>> getListeningTrend() {
-        String sql = "SELECT DATE_FORMAT(started_at, '%d/%m') as day_label, DATE(started_at) as day_date, COUNT(*) as count_val " +
-                     "FROM listening_history " +
-                     "GROUP BY DATE(started_at), DATE_FORMAT(started_at, '%d/%m') " +
-                     "ORDER BY day_date DESC LIMIT 90";
+        String sql = """
+            SELECT 
+                DATE_FORMAT(lh.started_at, '%d/%m') as day_label, 
+                DATE(lh.started_at) as day_date, 
+                COUNT(DISTINCT lh.id) as count_val,
+                COUNT(DISTINCT CASE WHEN pe.event_type = 'COMPLETE' THEN lh.id END) as completed_val
+            FROM listening_history lh
+            LEFT JOIN playback_events pe ON pe.listening_history_id = lh.id AND pe.event_type = 'COMPLETE'
+            GROUP BY DATE(lh.started_at), DATE_FORMAT(lh.started_at, '%d/%m')
+            ORDER BY day_date DESC LIMIT 90
+        """;
         try {
             List<Map<String, Object>> list = jdbcTemplate.query(sql, (rs, rowNum) -> {
                 Map<String, Object> m = new HashMap<>();
                 m.put("date", rs.getString("day_date"));
                 m.put("label", rs.getString("day_label"));
                 m.put("streams", rs.getInt("count_val"));
+                m.put("completed", rs.getInt("completed_val"));
                 return m;
             });
             Collections.reverse(list);
@@ -1702,17 +1723,18 @@ public class AdminService {
             "SELECT COUNT(*) FROM listening_history WHERE started_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)", Long.class
         );
         Long completeEvents = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM playback_events WHERE event_type = 'COMPLETE'", Long.class
+            "SELECT COUNT(DISTINCT listening_history_id) FROM playback_events WHERE event_type = 'COMPLETE'", Long.class
         );
 
         summary.put("totalSessions", totalSessions != null ? totalSessions : 0L);
         summary.put("totalDurationMs", totalDurationMs != null ? totalDurationMs : 0L);
-        summary.put("totalHours", totalDurationMs != null ? Math.round((totalDurationMs / 3600000.0) * 10.0) / 10.0 : 0.0);
+        summary.put("totalHours", totalDurationMs != null ? Math.round((totalDurationMs / 3600000.0) * 100.0) / 100.0 : 0.0);
+        summary.put("totalDurationFormatted", formatTotalDuration(totalDurationMs != null ? totalDurationMs : 0L));
         summary.put("sessionsLast24h", sessionsLast24h != null ? sessionsLast24h : 0L);
         summary.put("completeEvents", completeEvents != null ? completeEvents : 0L);
         
         double completionRate = (totalSessions != null && totalSessions > 0)
-            ? Math.round(((double) (completeEvents != null ? completeEvents : 0) / totalSessions) * 100.0)
+            ? Math.round(((double) (completeEvents != null ? completeEvents : 0) / totalSessions) * 1000.0) / 10.0
             : 0.0;
         summary.put("completionRatePercent", completionRate);
 
@@ -1899,5 +1921,20 @@ public class AdminService {
         int mins = seconds / 60;
         int secs = seconds % 60;
         return String.format("%d:%02d", mins, secs);
+    }
+
+    public String formatTotalDuration(long totalMs) {
+        if (totalMs <= 0) return "0 giây";
+        long totalSecs = totalMs / 1000;
+        long hours = totalSecs / 3600;
+        long minutes = (totalSecs % 3600) / 60;
+        long seconds = totalSecs % 60;
+        if (hours > 0) {
+            return hours + " giờ " + minutes + " phút";
+        } else if (minutes > 0) {
+            return minutes + " phút " + seconds + " giây";
+        } else {
+            return seconds + " giây";
+        }
     }
 }

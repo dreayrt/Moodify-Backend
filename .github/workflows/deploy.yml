@@ -1,14 +1,38 @@
-name: Deploy Backend to Oracle VPS
+name: CI/CD Backend (Main Branch)
 
 on:
   push:
     branches:
       - main
-      - Hai_Branch
   workflow_dispatch:
 
 jobs:
+  # Quality Gate (CI)
+  build:
+    name: Build & Verify Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Make Maven Wrapper executable
+        run: chmod +x ./mvnw
+
+      - name: Compile and Package with Maven
+        run: ./mvnw -B clean package -DskipTests
+
+  # Automated Deployment (CD)
   deploy:
+    name: Deploy Backend to Production VPS
+    needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to Oracle Cloud VPS via SSH
@@ -18,13 +42,18 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
+          script_stop: true
+          command_timeout: 15m
           script: |
-            echo "🚀 Deploying Backend on branch: ${{ github.ref_name }}"
+            echo "🚀 Starting Backend CI/CD deployment on main..."
             cd /opt/moodify/backend
-            git fetch origin
-            git checkout ${{ github.ref_name }}
-            git reset --hard origin/${{ github.ref_name }}
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
             cd /opt/moodify
             docker compose build moodify-backend
-            docker compose up -d moodify-backend
+            docker compose up -d --no-deps moodify-backend
+            echo "🩺 Verifying Backend container status..."
+            sleep 5
+            docker ps --filter "name=moodify-backend" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
             echo "✅ Backend deployment completed successfully!"
