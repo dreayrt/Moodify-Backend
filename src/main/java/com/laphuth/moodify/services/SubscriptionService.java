@@ -8,13 +8,17 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -25,6 +29,7 @@ public class SubscriptionService {
 
     private final JdbcTemplate jdbcTemplate;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ===== Cấu hình SePay Payment (VietQR) =====
@@ -39,10 +44,12 @@ public class SubscriptionService {
         @Value("${sepay.bank-account:}") String sepayBankAccount,
         @Value("${sepay.bank-name:MBBank}") String sepayBankName,
         @Value("${sepay.account-name:}") String sepayAccountName,
-        @Value("${app.maintenance.enabled:true}") boolean maintenanceEnabled
+        @Value("${app.maintenance.enabled:true}") boolean maintenanceEnabled,
+        NotificationService notificationService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
         this.sepayBankAccount = sepayBankAccount;
         this.sepayBankName = sepayBankName;
         this.sepayAccountName = sepayAccountName;
@@ -213,7 +220,7 @@ public class SubscriptionService {
             "FROM subscriptions s " +
             "JOIN service_packages p ON s.service_package_id = p.id " +
             "LEFT JOIN subscription_tiers t ON p.tier_id = t.id " +
-            "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.end_at > NOW() " +
+            "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.start_at <= NOW() AND s.end_at > NOW() " +
             "ORDER BY s.end_at DESC " +
             "LIMIT 1",
             user.getId()
@@ -260,6 +267,156 @@ public class SubscriptionService {
         res.put("userId", user.getId());
         res.put("username", user.getUsername());
         return res;
+    }
+
+    /** Returns the signed-in user's subscription history with the payment receipts attached. */
+    public List<Map<String, Object>> getMySubscriptionManagement(String principal) {
+        User user = findUserByPrincipal(principal);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT s.id AS subscription_id, s.service_package_id, s.start_at, s.end_at, " +
+                        "s.auto_renew, s.status AS subscription_status, s.created_at AS subscription_created_at, " +
+                        "p.name AS package_name, p.description AS package_description, p.price AS catalog_price, " +
+                        "p.duration_days, p.tier_id, t.name AS tier_name, " +
+                        "pt.id AS payment_id, pt.amount AS payment_amount, pt.payment_method, pt.provider, " +
+                        "pt.provider_transaction_id, pt.status AS payment_status, pt.paid_at, " +
+                        "pt.created_at AS payment_created_at " +
+                        "FROM subscriptions s " +
+                        "JOIN service_packages p ON p.id = s.service_package_id " +
+                        "LEFT JOIN subscription_tiers t ON t.id = p.tier_id " +
+                        "LEFT JOIN payment_transactions pt ON pt.subscription_id = s.id " +
+                        "WHERE s.user_id = ? " +
+                        "ORDER BY s.created_at DESC, s.id DESC, pt.created_at DESC, pt.id DESC",
+                user.getId());
+
+        Map<Long, Map<String, Object>> subscriptions = new LinkedHashMap<>();
+        Map<Long, List<Map<String, Object>>> paymentsBySubscription = new HashMap<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (Map<String, Object> row : rows) {
+            Long subscriptionId = ((Number) row.get("subscription_id")).longValue();
+            Map<String, Object> subscription = subscriptions.get(subscriptionId);
+            if (subscription == null) {
+                LocalDateTime startAt = toLocalDateTime(row.get("start_at"));
+                LocalDateTime endAt = toLocalDateTime(row.get("end_at"));
+                String status = String.valueOf(row.get("subscription_status"));
+                boolean current = "ACTIVE".equals(status) && startAt != null && !startAt.isAfter(now)
+                        && endAt != null && endAt.isAfter(now);
+                boolean scheduled = "ACTIVE".equals(status) && startAt != null && startAt.isAfter(now)
+                        && endAt != null && endAt.isAfter(now);
+
+                subscription = new LinkedHashMap<>();
+                subscription.put("id", subscriptionId);
+                subscription.put("packageId", row.get("service_package_id"));
+                subscription.put("packageName", row.get("package_name"));
+                subscription.put("packageDescription", row.get("package_description"));
+                subscription.put("catalogPrice", row.get("catalog_price"));
+                subscription.put("durationDays", row.get("duration_days"));
+                subscription.put("tierId", row.get("tier_id"));
+                subscription.put("tierName", row.get("tier_name"));
+                subscription.put("startAt", startAt == null ? null : startAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                subscription.put("endAt", endAt == null ? null : endAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                subscription.put("createdAt", row.get("subscription_created_at") == null ? null : row.get("subscription_created_at").toString());
+                subscription.put("autoRenew", Boolean.TRUE.equals(row.get("auto_renew")) || "1".equals(String.valueOf(row.get("auto_renew"))));
+                subscription.put("status", status);
+                subscription.put("isCurrent", current);
+                subscription.put("isScheduled", scheduled);
+                List<Map<String, Object>> subscriptionPayments = new ArrayList<>();
+                subscription.put("payments", subscriptionPayments);
+                subscriptions.put(subscriptionId, subscription);
+                paymentsBySubscription.put(subscriptionId, subscriptionPayments);
+            }
+
+            if (row.get("payment_id") != null) {
+                String providerTransactionId = row.get("provider_transaction_id") == null
+                        ? null : String.valueOf(row.get("provider_transaction_id"));
+                String orderCode = providerTransactionId;
+                String providerReference = null;
+                if (providerTransactionId != null && providerTransactionId.contains("|")) {
+                    String[] parts = providerTransactionId.split("\\|", 2);
+                    orderCode = parts[0];
+                    providerReference = parts.length > 1 ? parts[1] : null;
+                }
+                Map<String, Object> payment = new LinkedHashMap<>();
+                payment.put("id", row.get("payment_id"));
+                payment.put("amount", row.get("payment_amount"));
+                payment.put("paymentMethod", row.get("payment_method"));
+                payment.put("provider", row.get("provider"));
+                payment.put("orderCode", orderCode);
+                payment.put("providerReference", providerReference);
+                payment.put("status", row.get("payment_status"));
+                payment.put("paidAt", row.get("paid_at") == null ? null : row.get("paid_at").toString());
+                payment.put("createdAt", row.get("payment_created_at") == null ? null : row.get("payment_created_at").toString());
+                paymentsBySubscription.get(subscriptionId).add(payment);
+            }
+        }
+
+        for (Map.Entry<Long, Map<String, Object>> entry : subscriptions.entrySet()) {
+            Map<String, Object> subscription = entry.getValue();
+            List<Map<String, Object>> payments = paymentsBySubscription.get(entry.getKey());
+            boolean hasPendingPayment = payments.stream().anyMatch(p -> "PENDING".equals(p.get("status")));
+            boolean hasSuccessfulPayment = payments.stream().anyMatch(p -> "SUCCESS".equals(p.get("status")));
+            boolean pendingOrder = "PENDING".equals(subscription.get("status")) && hasPendingPayment && !hasSuccessfulPayment;
+            boolean cancellableSchedule = Boolean.TRUE.equals(subscription.get("isScheduled")) && hasSuccessfulPayment;
+            subscription.put("canCancel", pendingOrder || cancellableSchedule);
+            subscription.put("cancelKind", pendingOrder ? "PENDING_ORDER" : cancellableSchedule ? "SCHEDULED_PAID" : null);
+        }
+
+        return new ArrayList<>(subscriptions.values());
+    }
+
+    /** Cancels only an unpaid pending order or a paid subscription whose start date is still in the future. */
+    @Transactional
+    public Map<String, Object> cancelMyManagedSubscription(String principal, Long subscriptionId) {
+        User user = findUserByPrincipal(principal);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT id, status, start_at, end_at FROM subscriptions " +
+                        "WHERE id = ? AND user_id = ? FOR UPDATE",
+                subscriptionId, user.getId());
+        if (rows.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy gói dịch vụ trong tài khoản của bạn.");
+        }
+
+        Map<String, Object> subscription = rows.get(0);
+        String status = String.valueOf(subscription.get("status"));
+        LocalDateTime startAt = toLocalDateTime(subscription.get("start_at"));
+        LocalDateTime endAt = toLocalDateTime(subscription.get("end_at"));
+        List<Map<String, Object>> payments = jdbcTemplate.queryForList(
+                "SELECT id, status FROM payment_transactions WHERE subscription_id = ? ORDER BY id DESC FOR UPDATE",
+                subscriptionId);
+        boolean hasPendingPayment = payments.stream().anyMatch(p -> "PENDING".equals(p.get("status")));
+        boolean hasSuccessfulPayment = payments.stream().anyMatch(p -> "SUCCESS".equals(p.get("status")));
+        LocalDateTime now = LocalDateTime.now();
+        boolean pendingOrder = "PENDING".equals(status) && hasPendingPayment && !hasSuccessfulPayment;
+        boolean scheduledPaid = "ACTIVE".equals(status) && startAt != null && startAt.isAfter(now)
+                && endAt != null && endAt.isAfter(now) && hasSuccessfulPayment;
+        if (!pendingOrder && !scheduledPaid) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Chỉ có thể hủy đơn đang chờ thanh toán hoặc gói đã thanh toán nhưng chưa bắt đầu.");
+        }
+
+        if (pendingOrder) {
+            jdbcTemplate.update(
+                    "UPDATE payment_transactions SET status = 'CANCELLED', updated_at = NOW() " +
+                            "WHERE subscription_id = ? AND status = 'PENDING'",
+                    subscriptionId);
+        }
+        jdbcTemplate.update(
+                "UPDATE subscriptions SET status = 'CANCELLED', updated_at = NOW() " +
+                        "WHERE id = ? AND user_id = ? AND status = ?",
+                subscriptionId, user.getId(), status);
+
+        String message = pendingOrder
+                ? "Đơn thanh toán gói dịch vụ đã được hủy theo yêu cầu. Giao dịch chưa được xác nhận; nếu bạn đã chuyển tiền, vui lòng liên hệ hỗ trợ."
+                : "Lịch áp dụng gói đã được hủy theo yêu cầu. Giao dịch thanh toán vẫn được lưu trong lịch sử và hệ thống không tự động hoàn tiền.";
+        notificationService.notifySubscriptionManagementCancelled(
+                user.getId(), subscriptionId, message);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("subscriptionId", subscriptionId);
+        result.put("message", pendingOrder ? "Đã hủy đơn thanh toán đang chờ." : "Đã hủy lịch áp dụng gói.");
+        result.put("refundIssued", false);
+        return result;
     }
 
     /** Lấy quyền hạn của tầng FREE từ subscription_tiers hoặc mặc định. */
@@ -342,38 +499,23 @@ public class SubscriptionService {
         User user = findUserByPrincipal(principal);
 
         List<Map<String, Object>> pkgs = jdbcTemplate.queryForList(
-            "SELECT id, name, price, duration_days FROM service_packages WHERE id = ? AND status = 'ACTIVE'",
+            "SELECT id, name, price, duration_days, tier_id FROM service_packages WHERE id = ? AND status = 'ACTIVE'",
             packageId
         );
         if (pkgs.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Gói dịch vụ không tồn tại hoặc đã ngừng cung cấp.");
         }
         Map<String, Object> pkg = pkgs.get(0);
-        int durationDays = ((Number) pkg.get("duration_days")).intValue();
-        double amount = ((Number) pkg.get("price")).doubleValue();
+        PriceBreakdown price = calculatePackagePrice(user.getId(), String.valueOf(pkg.get("tier_id")), pkg.get("price"));
         String method = (paymentMethod == null || paymentMethod.isBlank()) ? "QR_TRANSFER" : paymentMethod.trim().toUpperCase();
 
-        // Kiểm tra xem có đang có gói active không để cộng dồn ngày
-        List<Map<String, Object>> currentActive = jdbcTemplate.queryForList(
-            "SELECT end_at FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' AND end_at > NOW() ORDER BY end_at DESC LIMIT 1",
-            user.getId()
-        );
-
-        LocalDateTime startAt = LocalDateTime.now();
-        LocalDateTime endAt;
-        if (!currentActive.isEmpty()) {
-            // Gia hạn cộng dồn thời gian
-            LocalDateTime currentEndDate = toLocalDateTime(currentActive.get(0).get("end_at"));
-            endAt = (currentEndDate != null ? currentEndDate : startAt).plusDays(durationDays);
-        } else {
-            endAt = startAt.plusDays(durationDays);
-        }
+        PlanApplication plan = applyPaidPackage(user.getId(), pkg, price, LocalDateTime.now());
 
         // Tạo bản ghi Subscription
         jdbcTemplate.update(
             "INSERT INTO subscriptions (user_id, service_package_id, start_at, end_at, auto_renew, status) " +
             "VALUES (?, ?, ?, ?, FALSE, 'ACTIVE')",
-            user.getId(), packageId, startAt, endAt
+            user.getId(), packageId, plan.startAt(), plan.endAt()
         );
 
         Long subscriptionId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
@@ -383,8 +525,12 @@ public class SubscriptionService {
         jdbcTemplate.update(
             "INSERT INTO payment_transactions (subscription_id, amount, payment_method, provider, provider_transaction_id, status, paid_at) " +
             "VALUES (?, ?, ?, 'SANDBOX', ?, 'SUCCESS', NOW())",
-            subscriptionId, amount, method, txCode
+            subscriptionId, BigDecimal.valueOf(price.payableAmount()), method, txCode
         );
+        Long paymentId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        notificationService.notifySubscriptionPaymentSucceeded(
+                user.getId(), paymentId, txCode, String.valueOf(pkg.get("name")),
+                price.payableAmount(), plan.action(), plan.actionDescription(), plan.startAt(), plan.endAt());
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -392,10 +538,18 @@ public class SubscriptionService {
         result.put("subscriptionId", subscriptionId);
         result.put("transactionCode", txCode);
         result.put("packageName", pkg.get("name"));
-        result.put("amount", amount);
-        result.put("startAt", startAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        result.put("expiresAt", endAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        result.put("isPremium", true);
+        result.put("baseAmount", price.baseAmount());
+        result.put("discountAmount", price.discountAmount());
+        result.put("discountPercent", price.discountApplied() ? 20 : 0);
+        result.put("discountApplied", price.discountApplied());
+        result.put("amount", price.payableAmount());
+        result.put("startAt", plan.startAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        result.put("expiresAt", plan.endAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        result.put("action", plan.action());
+        result.put("actionLabel", plan.actionLabel());
+        result.put("actionDescription", plan.actionDescription());
+        result.put("bonusDays", plan.bonusDays());
+        result.put("isPremium", plan.startAt().isBefore(LocalDateTime.now()));
 
         return result;
     }
@@ -477,125 +631,28 @@ public class SubscriptionService {
     //  SEPAY PAYMENT: Luồng thanh toán chuyển khoản ngân hàng qua VietQR
     // ======================================================================
 
-    /**
-     * Tạo đơn thanh toán PENDING và sinh mã QR VietQR để người dùng chuyển khoản.
-     * Hỗ trợ cơ chế Idempotency: nếu client gửi idempotencyKey hoặc có đơn PENDING cùng gói chưa hết hạn,
-     * sẽ trả về kết quả cũ thay vì tạo trùng đơn hàng.
-     */
+    /** Tạo đơn thanh toán PENDING và sinh mã QR VietQR để người dùng chuyển khoản. */
     @Transactional
     public Map<String, Object> createPendingPayment(String principal, Long packageId) {
-        return createPendingPayment(principal, packageId, null);
-    }
-
-    /**
-     * Tạo đơn thanh toán PENDING kèm theo Idempotency-Key từ client.
-     */
-    @Transactional
-    public Map<String, Object> createPendingPayment(String principal, Long packageId, String idempotencyKey) {
         User user = findUserByPrincipal(principal);
-
-        // 0. Kiểm tra Idempotency Key nếu client có gửi
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            List<Map<String, Object>> existingKeys = jdbcTemplate.queryForList(
-                "SELECT response_payload FROM payment_idempotency_keys WHERE user_id = ? AND idempotency_key = ?",
-                user.getId(), idempotencyKey.trim()
-            );
-            if (!existingKeys.isEmpty()) {
-                try {
-                    String cachedJson = (String) existingKeys.get(0).get("response_payload");
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> cachedResult = objectMapper.readValue(cachedJson, Map.class);
-                    // Cập nhật lại status thực tế từ DB nếu có thay đổi
-                    String orderCode = (String) cachedResult.get("orderCode");
-                    if (orderCode != null) {
-                        try {
-                            Map<String, Object> currentStatus = getPaymentStatus(orderCode);
-                            cachedResult.put("status", currentStatus.get("status"));
-                        } catch (Exception ignored) {}
-                    }
-                    cachedResult.put("idempotentReplay", true);
-                    System.out.println("[SePay Checkout Idempotency] Trả về cached response cho key: " + idempotencyKey);
-                    return cachedResult;
-                } catch (Exception e) {
-                    System.err.println("[SePay Checkout Idempotency] Lỗi đọc cached response: " + e.getMessage());
-                }
-            }
-        }
 
         // 1. Lấy thông tin gói dịch vụ
         List<Map<String, Object>> pkgs = jdbcTemplate.queryForList(
-            "SELECT id, name, price, duration_days FROM service_packages WHERE id = ? AND status = 'ACTIVE'",
+            "SELECT id, name, price, duration_days, tier_id FROM service_packages WHERE id = ? AND status = 'ACTIVE'",
             packageId
         );
         if (pkgs.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Gói dịch vụ không tồn tại hoặc đã ngừng cung cấp.");
         }
         Map<String, Object> pkg = pkgs.get(0);
-        double amount = ((Number) pkg.get("price")).doubleValue();
+        PriceBreakdown price = calculatePackagePrice(user.getId(), String.valueOf(pkg.get("tier_id")), pkg.get("price"));
         int durationDays = ((Number) pkg.get("duration_days")).intValue();
+        PlanApplication preview = previewPaidPackage(user.getId(), pkg, price, LocalDateTime.now());
 
-        // 2. Tự nhiên chống click đúp: nếu user có đơn PENDING cùng gói vừa tạo trong 10 phút gần đây và chưa hết hạn,
-        // trả về luôn đơn đó mà không cần tạo mới
-        List<Map<String, Object>> activePending = jdbcTemplate.queryForList(
-            "SELECT pt.id as payment_id, pt.subscription_id, pt.amount, pt.provider_transaction_id, pt.created_at " +
-            "FROM payment_transactions pt " +
-            "JOIN subscriptions s ON pt.subscription_id = s.id " +
-            "WHERE s.user_id = ? AND s.service_package_id = ? AND pt.status = 'PENDING' AND s.status = 'PENDING' " +
-            "  AND pt.created_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE) " +
-            "ORDER BY pt.id DESC LIMIT 1",
-            user.getId(), packageId
-        );
+        // Hủy các đơn PENDING cũ khác của user và ghi lại kết quả vào hộp thư.
+        cancelPendingPaymentsForUser(user.getId());
 
-        if (!activePending.isEmpty()) {
-            Map<String, Object> existingTx = activePending.get(0);
-            Long existingPaymentId = ((Number) existingTx.get("payment_id")).longValue();
-            Long existingSubscriptionId = ((Number) existingTx.get("subscription_id")).longValue();
-            String existingOrderCode = "MD" + existingPaymentId;
-            long amountLong = (long) amount;
-
-            String qrUrl = String.format(
-                "https://qr.sepay.vn/img?acc=%s&bank=%s&amount=%d&des=%s&template=compact",
-                URLEncoder.encode(sepayBankAccount, StandardCharsets.UTF_8),
-                URLEncoder.encode(sepayBankName, StandardCharsets.UTF_8),
-                amountLong,
-                URLEncoder.encode(existingOrderCode, StandardCharsets.UTF_8)
-            );
-
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("success", true);
-            result.put("orderCode", existingOrderCode);
-            result.put("paymentId", existingPaymentId);
-            result.put("subscriptionId", existingSubscriptionId);
-            result.put("packageId", packageId);
-            result.put("packageName", pkg.get("name"));
-            result.put("amount", amountLong);
-            result.put("bankAccount", sepayBankAccount);
-            result.put("bankName", sepayBankName);
-            result.put("accountName", sepayAccountName);
-            result.put("transferContent", existingOrderCode);
-            result.put("qrUrl", qrUrl);
-            result.put("status", "PENDING");
-            result.put("idempotentReplay", true);
-            result.put("message", "Đơn hàng đang chờ thanh toán. Vui lòng quét mã QR hoặc chuyển khoản với nội dung: " + existingOrderCode);
-
-            saveIdempotencyKey(user.getId(), idempotencyKey, packageId, result);
-            System.out.println("[SePay Checkout] Tái sử dụng đơn PENDING còn hiệu lực: " + existingOrderCode + " cho user: " + user.getUsername());
-            return result;
-        }
-
-        // Hủy các đơn PENDING cũ khác của user để tránh xung đột
-        jdbcTemplate.update(
-            "UPDATE payment_transactions SET status = 'CANCELLED' " +
-            "WHERE subscription_id IN (SELECT id FROM subscriptions WHERE user_id = ? AND status = 'PENDING') " +
-            "AND status = 'PENDING'",
-            user.getId()
-        );
-        jdbcTemplate.update(
-            "UPDATE subscriptions SET status = 'CANCELLED' WHERE user_id = ? AND status = 'PENDING'",
-            user.getId()
-        );
-
-        // 3. Tạo subscription trạng thái PENDING
+        // 2. Tạo subscription trạng thái PENDING
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
             "INSERT INTO subscriptions (user_id, service_package_id, start_at, end_at, auto_renew, status) " +
@@ -604,15 +661,15 @@ public class SubscriptionService {
         );
         Long subscriptionId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
 
-        // 4. Tạo payment_transaction trạng thái PENDING
+        // 3. Tạo payment_transaction trạng thái PENDING
         jdbcTemplate.update(
             "INSERT INTO payment_transactions (subscription_id, amount, payment_method, provider, status) " +
             "VALUES (?, ?, 'QR_TRANSFER', 'SEPAY', 'PENDING')",
-            subscriptionId, amount
+            subscriptionId, BigDecimal.valueOf(price.payableAmount())
         );
         Long paymentId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
 
-        // 5. Sinh mã đơn hàng: MD + paymentId (ví dụ: MD1001)
+        // 4. Sinh mã đơn hàng: MD + paymentId (ví dụ: MD1001)
         String orderCode = "MD" + paymentId;
 
         // Cập nhật provider_transaction_id = orderCode để tra cứu sau
@@ -621,8 +678,8 @@ public class SubscriptionService {
             orderCode, paymentId
         );
 
-        // 6. Sinh URL ảnh mã QR VietQR từ SePay
-        long amountLong = (long) amount;
+        // 5. Sinh URL ảnh mã QR VietQR từ SePay
+        long amountLong = price.payableAmount();
         String qrContent = orderCode; // Nội dung chuyển khoản = mã đơn hàng
         String qrUrl = String.format(
             "https://qr.sepay.vn/img?acc=%s&bank=%s&amount=%d&des=%s&template=compact",
@@ -632,7 +689,7 @@ public class SubscriptionService {
             URLEncoder.encode(qrContent, StandardCharsets.UTF_8)
         );
 
-        // 7. Trả kết quả về Frontend
+        // 6. Trả kết quả về Frontend
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", true);
         result.put("orderCode", orderCode);
@@ -640,7 +697,17 @@ public class SubscriptionService {
         result.put("subscriptionId", subscriptionId);
         result.put("packageId", packageId);
         result.put("packageName", pkg.get("name"));
+        result.put("baseAmount", price.baseAmount());
+        result.put("discountAmount", price.discountAmount());
+        result.put("discountPercent", price.discountApplied() ? 20 : 0);
+        result.put("discountApplied", price.discountApplied());
         result.put("amount", amountLong);
+        result.put("action", preview.action());
+        result.put("actionLabel", preview.actionLabel());
+        result.put("actionDescription", preview.actionDescription());
+        result.put("startAt", preview.startAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        result.put("expiresAt", preview.endAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        result.put("bonusDays", preview.bonusDays());
         result.put("bankAccount", sepayBankAccount);
         result.put("bankName", sepayBankName);
         result.put("accountName", sepayAccountName);
@@ -648,9 +715,6 @@ public class SubscriptionService {
         result.put("qrUrl", qrUrl);
         result.put("status", "PENDING");
         result.put("message", "Vui lòng quét mã QR hoặc chuyển khoản với nội dung: " + orderCode);
-
-        // Lưu idempotency key nếu client có gửi
-        saveIdempotencyKey(user.getId(), idempotencyKey, packageId, result);
 
         System.out.println("[SePay Checkout] Tạo đơn thanh toán: " + orderCode +
             " | Gói: " + pkg.get("name") + " | Số tiền: " + amountLong + "đ" +
@@ -660,67 +724,323 @@ public class SubscriptionService {
     }
 
     /**
-     * Xử lý webhook callback từ SePay khi có giao dịch tiền vào tài khoản ngân hàng.
-     * Tích hợp toàn diện cơ chế Idempotency chống retry trùng lặp và race-condition.
+     * Calculates the 20% returning-customer offer by entitlement tier. Package
+     * variants with different durations share the same tier and offer eligibility.
      */
-    @Transactional
-    public Map<String, Object> processSepayWebhook(SepayWebhookDto webhook) {
-        return processSepayWebhook(webhook, null);
+    private PriceBreakdown calculatePackagePrice(Long userId, String targetTierId, Object rawPrice) {
+        BigDecimal catalogPrice = rawPrice instanceof BigDecimal value
+                ? value
+                : new BigDecimal(String.valueOf(rawPrice));
+
+        Boolean hasPaidThisTierBefore = jdbcTemplate.queryForObject(
+                "SELECT EXISTS (" +
+                        "SELECT 1 FROM payment_transactions paid_tx " +
+                        "JOIN subscriptions paid_sub ON paid_sub.id = paid_tx.subscription_id " +
+                        "JOIN service_packages paid_package ON paid_package.id = paid_sub.service_package_id " +
+                        "WHERE paid_sub.user_id = ? " +
+                        "AND paid_package.tier_id = ? " +
+                        "AND paid_tx.status = 'SUCCESS' " +
+                        "AND COALESCE(paid_tx.provider, '') NOT IN ('SANDBOX', 'DEV_SANDBOX')" +
+                        ")",
+                Boolean.class, userId, targetTierId);
+
+        return calculatePackagePrice(catalogPrice, Boolean.TRUE.equals(hasPaidThisTierBefore));
     }
 
-    /**
-     * Xử lý webhook callback từ SePay kèm raw payload để lưu audit log.
-     */
-    @Transactional
-    public Map<String, Object> processSepayWebhook(SepayWebhookDto webhook, String rawPayload) {
-        Long sepayTxId = webhook.getId();
+    private PriceBreakdown calculatePackagePrice(BigDecimal catalogPrice, boolean discountApplied) {
+        long baseAmount = catalogPrice.setScale(0, RoundingMode.HALF_UP).longValueExact();
+        BigDecimal payable = discountApplied
+                ? catalogPrice.multiply(new BigDecimal("0.80"))
+                : catalogPrice;
+        long payableAmount = payable.setScale(0, RoundingMode.HALF_UP).longValueExact();
+        long discountAmount = Math.max(0L, baseAmount - payableAmount);
+        return new PriceBreakdown(baseAmount, discountAmount, payableAmount, discountApplied);
+    }
 
-        // 1. Kiểm tra Idempotency tầng Webhook qua payment_webhook_logs:
-        // Nếu giao dịch này đã từng được xử lý trước đó từ cổng SePay (do SePay retry)
-        if (sepayTxId != null) {
-            List<Map<String, Object>> existingLogs = jdbcTemplate.queryForList(
-                "SELECT id, status, order_code, message FROM payment_webhook_logs WHERE provider = 'SEPAY' AND provider_transaction_id = ?",
-                String.valueOf(sepayTxId)
-            );
-            if (!existingLogs.isEmpty()) {
-                Map<String, Object> logRow = existingLogs.get(0);
-                String logStatus = (String) logRow.get("status");
-                String loggedOrderCode = (String) logRow.get("order_code");
-                System.out.println("[Payment Webhook Idempotency] ⚠️ Webhook lặp lại! Provider=SEPAY, TxId=" + sepayTxId +
-                    " đã được xử lý với status=" + logStatus + " (orderCode=" + loggedOrderCode + ")");
+    private record PriceBreakdown(long baseAmount, long discountAmount, long payableAmount,
+                                  boolean discountApplied) {}
 
-                return Map.of(
-                    "success", true,
-                    "isDuplicate", true,
-                    "message", "Giao dịch đã được ghi nhận trước đó (Idempotent response).",
-                    "orderCode", (loggedOrderCode != null ? loggedOrderCode : ""),
-                    "provider", "SEPAY",
-                    "sepayTransactionId", sepayTxId
-                );
-            }
+    /** Returns a price and policy preview for each package visible in the catalog. */
+    public List<Map<String, Object>> getPackageQuotes(String principal) {
+        User user = findUserByPrincipal(principal);
+        Set<String> paidTierIds = findPaidTierIds(user.getId());
+        PlanContext context = getPlanContext(user.getId());
+        LocalDateTime now = LocalDateTime.now();
+        List<Map<String, Object>> quotes = new ArrayList<>();
+
+        for (Map<String, Object> pkg : getActivePackages()) {
+            String tierId = String.valueOf(pkg.get("tier_id"));
+            BigDecimal catalogPrice = asBigDecimal(pkg.get("price"));
+            PriceBreakdown price = calculatePackagePrice(catalogPrice, paidTierIds.contains(tierId));
+            PlanApplication preview = previewPaidPackage(user.getId(), pkg, price, now, context);
+
+            Map<String, Object> quote = new LinkedHashMap<>(pkg);
+            quote.put("baseAmount", price.baseAmount());
+            quote.put("discountAmount", price.discountAmount());
+            quote.put("discountPercent", price.discountApplied() ? 20 : 0);
+            quote.put("discountApplied", price.discountApplied());
+            quote.put("amount", price.payableAmount());
+            quote.put("action", preview.action());
+            quote.put("actionLabel", preview.actionLabel());
+            quote.put("actionDescription", preview.actionDescription());
+            quote.put("startAt", preview.startAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            quote.put("expiresAt", preview.endAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            quote.put("bonusDays", preview.bonusDays());
+            quote.put("isCurrentPackage", context.current() != null
+                    && ((Number) context.current().get("service_package_id")).longValue()
+                    == ((Number) pkg.get("id")).longValue());
+            quotes.add(quote);
+        }
+        return quotes;
+    }
+
+    private Set<String> findPaidTierIds(Long userId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT DISTINCT paid_package.tier_id " +
+                        "FROM payment_transactions paid_tx " +
+                        "JOIN subscriptions paid_sub ON paid_sub.id = paid_tx.subscription_id " +
+                        "JOIN service_packages paid_package ON paid_package.id = paid_sub.service_package_id " +
+                        "WHERE paid_sub.user_id = ? AND paid_tx.status = 'SUCCESS' " +
+                        "AND COALESCE(paid_tx.provider, '') NOT IN ('SANDBOX', 'DEV_SANDBOX')",
+                userId);
+        Set<String> tiers = new HashSet<>();
+        for (Map<String, Object> row : rows) {
+            if (row.get("tier_id") != null) tiers.add(String.valueOf(row.get("tier_id")));
+        }
+        return tiers;
+    }
+
+    private PlanContext getPlanContext(Long userId) {
+        String planSql = "SELECT s.id AS subscription_id, s.service_package_id, s.start_at, s.end_at, " +
+                "p.name AS package_name, p.tier_id, p.price, p.duration_days, " +
+                "(SELECT pt.amount FROM payment_transactions pt " +
+                "WHERE pt.subscription_id = s.id AND pt.status = 'SUCCESS' " +
+                "AND COALESCE(pt.provider, '') NOT IN ('SANDBOX', 'DEV_SANDBOX') " +
+                "ORDER BY pt.paid_at DESC, pt.id DESC LIMIT 1) AS paid_amount " +
+                "FROM subscriptions s JOIN service_packages p ON p.id = s.service_package_id " +
+                "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.end_at > NOW() ";
+        List<Map<String, Object>> current = jdbcTemplate.queryForList(
+                planSql + "AND s.start_at <= NOW() ORDER BY s.end_at DESC, s.id DESC LIMIT 1", userId);
+        List<Map<String, Object>> scheduled = jdbcTemplate.queryForList(
+                planSql + "AND s.start_at > NOW() ORDER BY s.end_at DESC, s.id DESC LIMIT 1", userId);
+        return new PlanContext(current.isEmpty() ? null : current.get(0),
+                scheduled.isEmpty() ? null : scheduled.get(0));
+    }
+
+    private PlanApplication previewPaidPackage(Long userId, Map<String, Object> targetPackage,
+                                                PriceBreakdown price, LocalDateTime now) {
+        return previewPaidPackage(userId, targetPackage, price, now, getPlanContext(userId));
+    }
+
+    private PlanApplication previewPaidPackage(Long userId, Map<String, Object> targetPackage,
+                                                PriceBreakdown price, LocalDateTime now,
+                                                PlanContext context) {
+        int durationDays = ((Number) targetPackage.get("duration_days")).intValue();
+        Map<String, Object> anchorPlan = context.scheduled() != null ? context.scheduled() : context.current();
+        LocalDateTime anchor = anchorPlan == null ? null : toLocalDateTime(anchorPlan.get("end_at"));
+        if (anchor == null || !anchor.isAfter(now)) anchor = now;
+
+        if (context.scheduled() != null) {
+            LocalDateTime start = anchor;
+            LocalDateTime end = start.plusDays(durationDays);
+            return new PlanApplication(start, end, "AFTER_SCHEDULED", "Sau gói đã thanh toán",
+                    "Gói đã thanh toán trước sẽ được giữ nguyên; gói này bắt đầu sau ngày " + formatDate(anchor) + ".", 0);
         }
 
-        // 2. Chỉ xử lý giao dịch tiền vào
+        if (context.current() == null) {
+            LocalDateTime end = now.plusDays(durationDays);
+            return new PlanApplication(now, end, "NEW", "Đăng ký gói",
+                    "Gói bắt đầu ngay sau khi thanh toán được xác nhận.", 0);
+        }
+
+        String currentTier = String.valueOf(context.current().get("tier_id"));
+        String targetTier = String.valueOf(targetPackage.get("tier_id"));
+        int comparison = compareTier(targetTier, currentTier);
+        if (comparison > 0) {
+            int bonusDays = calculateUpgradeBonusDays(context.current(), durationDays, price, now);
+            LocalDateTime end = now.plusDays((long) durationDays + bonusDays);
+            String detail = bonusDays > 0
+                    ? "Có hiệu lực ngay; ước tính cộng " + bonusDays + " ngày quy đổi từ thời gian còn lại của gói hiện tại."
+                    : "Có hiệu lực ngay sau khi thanh toán được xác nhận.";
+            return new PlanApplication(now, end, "UPGRADE", "Nâng cấp ngay", detail, bonusDays);
+        }
+
+        LocalDateTime start = anchor;
+        LocalDateTime end = start.plusDays(durationDays);
+        if (comparison == 0) {
+            return new PlanApplication(start, end, "RENEWAL", "Gia hạn",
+                    "Quyền lợi hiện tại được giữ nguyên đến " + formatDate(start) + "; gói gia hạn bắt đầu sau thời điểm đó.", 0);
+        }
+        return new PlanApplication(start, end, "DOWNGRADE", "Hạ gói sau khi hết hạn",
+                "Gói hiện tại được giữ nguyên đến " + formatDate(start) + "; gói mới bắt đầu sau thời điểm đó.", 0);
+    }
+
+    /** FAMILY is the highest package tier, followed by FULL and BASIC. */
+    private int compareTier(String targetTier, String currentTier) {
+        if (Objects.equals(targetTier, currentTier)) return 0;
+        if (tierRank(targetTier) == 0 || tierRank(currentTier) == 0) return -1;
+        return Integer.compare(tierRank(targetTier), tierRank(currentTier));
+    }
+
+    private int tierRank(String tierId) {
+        return switch (tierId) {
+            case "FAMILY" -> 3;
+            case "INDIVIDUAL_FULL" -> 2;
+            case "INDIVIDUAL_BASIC" -> 1;
+            default -> 0;
+        };
+    }
+
+    private int calculateUpgradeBonusDays(Map<String, Object> currentPackage, int targetDurationDays,
+                                           PriceBreakdown targetPrice, LocalDateTime now) {
+        LocalDateTime currentEnd = toLocalDateTime(currentPackage.get("end_at"));
+        if (currentEnd == null || !currentEnd.isAfter(now) || targetDurationDays <= 0 || targetPrice.payableAmount() <= 0) {
+            return 0;
+        }
+        long currentDurationSeconds = ((Number) currentPackage.get("duration_days")).longValue() * 86_400L;
+        long remainingSeconds = Math.min(Duration.between(now, currentEnd).getSeconds(), currentDurationSeconds);
+        if (remainingSeconds <= 0 || currentDurationSeconds <= 0) return 0;
+
+        Object rawPaidAmount = currentPackage.get("paid_amount");
+        BigDecimal paidAmount = rawPaidAmount == null ? BigDecimal.ZERO : asBigDecimal(rawPaidAmount);
+        BigDecimal remainingValue = paidAmount.multiply(BigDecimal.valueOf(remainingSeconds))
+                .divide(BigDecimal.valueOf(currentDurationSeconds), 2, RoundingMode.HALF_UP);
+        BigDecimal targetDailyPrice = BigDecimal.valueOf(targetPrice.payableAmount())
+                .divide(BigDecimal.valueOf(targetDurationDays), 8, RoundingMode.HALF_UP);
+        if (remainingValue.signum() <= 0 || targetDailyPrice.signum() <= 0) return 0;
+        return remainingValue.divide(targetDailyPrice, 0, RoundingMode.CEILING).intValue();
+    }
+
+    private BigDecimal asBigDecimal(Object value) {
+        if (value instanceof BigDecimal amount) return amount;
+        return new BigDecimal(String.valueOf(value));
+    }
+
+    private String formatDate(LocalDateTime dateTime) {
+        return dateTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+    }
+
+    /** Expires abandoned QR orders even when the user has closed the checkout page. */
+    @Scheduled(fixedDelayString = "${subscription.payment-expiry-scan-ms:60000}",
+            initialDelayString = "${subscription.payment-expiry-initial-delay-ms:60000}")
+    @Transactional
+    public void expirePendingPaymentsAndNotify() {
+        List<Long> paymentIds = jdbcTemplate.queryForList(
+                "SELECT pt.id FROM payment_transactions pt " +
+                        "JOIN subscriptions s ON s.id = pt.subscription_id " +
+                        "WHERE pt.status = 'PENDING' AND s.status = 'PENDING' " +
+                        "AND pt.created_at <= DATE_SUB(NOW(), INTERVAL 15 MINUTE) " +
+                        "ORDER BY pt.created_at ASC LIMIT 100",
+                Long.class);
+        for (Long paymentId : paymentIds) {
+            expirePendingPayment(paymentId);
+        }
+    }
+
+    private void cancelPendingPaymentsForUser(Long userId) {
+        List<Map<String, Object>> pendingPayments = jdbcTemplate.queryForList(
+                "SELECT pt.id AS payment_id, pt.subscription_id, pt.amount, pt.provider_transaction_id, " +
+                        "s.user_id, p.name AS package_name " +
+                        "FROM payment_transactions pt " +
+                        "JOIN subscriptions s ON s.id = pt.subscription_id " +
+                        "JOIN service_packages p ON p.id = s.service_package_id " +
+                        "WHERE s.user_id = ? AND s.status = 'PENDING' AND pt.status = 'PENDING'",
+                userId);
+
+        for (Map<String, Object> payment : pendingPayments) {
+            Long paymentId = ((Number) payment.get("payment_id")).longValue();
+            int changed = jdbcTemplate.update(
+                    "UPDATE payment_transactions SET status = 'CANCELLED' " +
+                            "WHERE id = ? AND status = 'PENDING'",
+                    paymentId);
+            if (changed == 0) continue;
+
+            jdbcTemplate.update(
+                    "UPDATE subscriptions SET status = 'CANCELLED', updated_at = NOW() " +
+                            "WHERE id = ? AND status = 'PENDING'",
+                    payment.get("subscription_id"));
+            String orderCode = payment.get("provider_transaction_id") == null
+                    ? "MD" + paymentId : String.valueOf(payment.get("provider_transaction_id"));
+            notificationService.notifySubscriptionPaymentFailed(
+                    userId, paymentId, orderCode, String.valueOf(payment.get("package_name")),
+                    ((Number) payment.get("amount")).longValue(),
+                    "Đơn này đã được hủy vì bạn tạo một đơn thanh toán mới; mã QR cũ không còn hiệu lực.",
+                    "replaced");
+        }
+    }
+
+    /** Atomically expires a single order and emits one inbox notification if this call won the transition. */
+    private boolean expirePendingPayment(Long paymentId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT pt.subscription_id, pt.amount, pt.provider_transaction_id, " +
+                        "s.user_id, p.name AS package_name " +
+                        "FROM payment_transactions pt " +
+                        "JOIN subscriptions s ON s.id = pt.subscription_id " +
+                        "JOIN service_packages p ON p.id = s.service_package_id " +
+                        "WHERE pt.id = ? AND pt.status = 'PENDING' AND s.status = 'PENDING' " +
+                        "AND pt.created_at <= DATE_SUB(NOW(), INTERVAL 15 MINUTE)",
+                paymentId);
+        if (rows.isEmpty()) return false;
+
+        Map<String, Object> payment = rows.get(0);
+        int changed = jdbcTemplate.update(
+                "UPDATE payment_transactions pt " +
+                        "JOIN subscriptions s ON s.id = pt.subscription_id " +
+                        "SET pt.status = 'CANCELLED', s.status = 'CANCELLED', s.updated_at = NOW() " +
+                        "WHERE pt.id = ? AND pt.status = 'PENDING' AND s.status = 'PENDING' " +
+                        "AND pt.created_at <= DATE_SUB(NOW(), INTERVAL 15 MINUTE)",
+                paymentId);
+        if (changed == 0) return false;
+
+        String orderCode = payment.get("provider_transaction_id") == null
+                ? "MD" + paymentId : String.valueOf(payment.get("provider_transaction_id"));
+        notificationService.notifySubscriptionPaymentFailed(
+                ((Number) payment.get("user_id")).longValue(), paymentId, orderCode,
+                String.valueOf(payment.get("package_name")),
+                ((Number) payment.get("amount")).longValue(),
+                "Đơn QR đã hết hạn sau 15 phút mà hệ thống chưa xác nhận đủ tiền.", "expired");
+        return true;
+    }
+
+    private record PlanContext(Map<String, Object> current, Map<String, Object> scheduled) {}
+
+    private record PlanApplication(LocalDateTime startAt, LocalDateTime endAt, String action,
+                                   String actionLabel, String actionDescription, int bonusDays) {}
+
+    private PlanApplication applyPaidPackage(Long userId, Map<String, Object> targetPackage,
+                                             PriceBreakdown price, LocalDateTime now) {
+        PlanContext context = getPlanContext(userId);
+        PlanApplication plan = previewPaidPackage(userId, targetPackage, price, now, context);
+
+        if ("UPGRADE".equals(plan.action())) {
+            jdbcTemplate.update(
+                    "UPDATE subscriptions SET status = 'CANCELLED', updated_at = NOW() " +
+                            "WHERE user_id = ? AND status = 'ACTIVE' AND start_at <= NOW() AND end_at > NOW()",
+                    userId);
+        }
+        return plan;
+    }
+
+    /** Xử lý webhook callback từ SePay khi có giao dịch tiền vào tài khoản ngân hàng. */
+    @Transactional
+    public Map<String, Object> processSepayWebhook(SepayWebhookDto webhook) {
+        Long sepayTxId = webhook.getId();
+
+        // Chỉ xử lý giao dịch tiền vào.
         if (webhook.getTransferType() == null || !webhook.getTransferType().equalsIgnoreCase("in")) {
-            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), null, null,
-                webhook.getTransferAmount(), "out", rawPayload, "IGNORED", "Bỏ qua giao dịch tiền ra.");
             return Map.of("success", false, "message", "Bỏ qua giao dịch tiền ra.");
         }
 
         String content = webhook.getContent();
         if (content == null || content.isBlank()) {
-            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), null, null,
-                webhook.getTransferAmount(), "in", rawPayload, "FAILED", "Nội dung chuyển khoản trống.");
             return Map.of("success", false, "message", "Nội dung chuyển khoản trống.");
         }
 
-        // 3. Tìm mã đơn hàng MD<id> trong nội dung chuyển khoản
+        // Tìm mã đơn hàng MD<id> trong nội dung chuyển khoản.
         Pattern pattern = Pattern.compile("MD(\\d+)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(content);
         if (!matcher.find()) {
             System.out.println("[SePay Webhook] Không tìm thấy mã đơn hàng (MD...) trong nội dung: " + content);
-            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), null, null,
-                webhook.getTransferAmount(), "in", rawPayload, "FAILED", "Không tìm thấy mã đơn hàng trong nội dung chuyển khoản.");
             return Map.of("success", false, "message", "Không tìm thấy mã đơn hàng trong nội dung chuyển khoản.");
         }
 
@@ -729,10 +1049,11 @@ public class SubscriptionService {
 
         System.out.println("[SePay Webhook] Tìm thấy mã đơn hàng: " + orderCode + " (paymentId=" + paymentId + ")");
 
-        // 4. Pessimistic Lock (FOR UPDATE) để ngăn chặn Race Condition khi 2 webhook đồng thời đến
+        // Khóa đơn trong lúc chuyển trạng thái để tránh xử lý đồng thời hai lần thanh toán.
         List<Map<String, Object>> txRows = jdbcTemplate.queryForList(
-            "SELECT pt.id, pt.subscription_id, pt.amount, pt.status, " +
-            "       s.user_id, s.service_package_id, sp.duration_days, sp.name as package_name " +
+            "SELECT pt.id, pt.subscription_id, pt.amount, pt.status, pt.created_at, " +
+            "       s.user_id, s.service_package_id, sp.duration_days, sp.name as package_name, " +
+            "       sp.price as package_price, sp.tier_id " +
             "FROM payment_transactions pt " +
             "JOIN subscriptions s ON pt.subscription_id = s.id " +
             "JOIN service_packages sp ON s.service_package_id = sp.id " +
@@ -742,42 +1063,40 @@ public class SubscriptionService {
 
         if (txRows.isEmpty()) {
             System.out.println("[SePay Webhook] Không tìm thấy giao dịch với paymentId=" + paymentId);
-            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), orderCode, paymentId,
-                webhook.getTransferAmount(), "in", rawPayload, "FAILED", "Không tìm thấy đơn hàng " + orderCode);
             return Map.of("success", false, "message", "Không tìm thấy đơn hàng " + orderCode);
         }
 
         Map<String, Object> tx = txRows.get(0);
         String currentStatus = (String) tx.get("status");
 
-        // 5. Kiểm tra Idempotency trạng thái: Nếu đơn hàng đã SUCCESS trước đó
+        // SePay có thể gửi lại cùng giao dịch. Đơn đã thành công được xác nhận
+        // lại cho SePay nhưng không kích hoạt/gia hạn subscription lần nữa.
         if ("SUCCESS".equals(currentStatus)) {
-            System.out.println("[SePay Webhook Idempotency] Đơn " + orderCode + " đã SUCCESS trước đó. Trả về kết quả an toàn.");
-            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), orderCode, paymentId,
-                webhook.getTransferAmount(), "in", rawPayload, "DUPLICATE", "Đơn hàng đã thanh toán thành công trước đó.");
-            return Map.of(
-                "success", true,
-                "isDuplicate", true,
-                "message", "Đơn hàng đã được thanh toán thành công trước đó (Idempotent response).",
-                "orderCode", orderCode
-            );
+            System.out.println("[SePay Webhook] Đơn " + orderCode + " đã SUCCESS; xác nhận callback lặp lại.");
+            return Map.of("success", true, "orderCode", orderCode);
         }
 
         if (!"PENDING".equals(currentStatus)) {
             System.out.println("[SePay Webhook] Đơn " + orderCode + " ở trạng thái không thể xử lý: " + currentStatus);
-            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), orderCode, paymentId,
-                webhook.getTransferAmount(), "in", rawPayload, "FAILED", "Trạng thái đơn hàng không hợp lệ: " + currentStatus);
             return Map.of("success", false, "message", "Đơn hàng " + orderCode + " đang ở trạng thái: " + currentStatus);
         }
 
-        // 6. Kiểm tra số tiền
+        LocalDateTime createdAt = toLocalDateTime(tx.get("created_at"));
+        if (createdAt != null && !createdAt.plusMinutes(15).isAfter(LocalDateTime.now())) {
+            expirePendingPayment(paymentId);
+            return Map.of("success", false, "message", "Đơn hàng " + orderCode + " đã hết hạn.");
+        }
+
+        // Kiểm tra số tiền.
         double expectedAmount = ((Number) tx.get("amount")).doubleValue();
         double receivedAmount = webhook.getTransferAmount() != null ? webhook.getTransferAmount() : 0;
 
         if (receivedAmount < expectedAmount) {
             System.out.println("[SePay Webhook] ❌ Số tiền không đủ: nhận " + receivedAmount + " < cần " + expectedAmount);
-            saveWebhookLog(sepayTxId, webhook.getReferenceCode(), orderCode, paymentId,
-                receivedAmount, "in", rawPayload, "FAILED", "Số tiền không đủ: cần " + expectedAmount + ", nhận " + receivedAmount);
+            notificationService.notifySubscriptionPaymentAmountMismatch(
+                    ((Number) tx.get("user_id")).longValue(), paymentId, orderCode,
+                    String.valueOf(tx.get("package_name")), (long) expectedAmount,
+                    (long) receivedAmount, sepayTxId == null ? null : String.valueOf(sepayTxId));
             return Map.of(
                 "success", false,
                 "message", "Số tiền chuyển khoản (" + (long) receivedAmount + "đ) không đủ so với giá gói (" + (long) expectedAmount + "đ).",
@@ -785,83 +1104,58 @@ public class SubscriptionService {
             );
         }
 
-        // 7. ✅ Thanh toán thành công → Cập nhật payment_transaction
+        // Khóa user để các callback cho hai đơn khác nhau của cùng tài khoản
+        // không đồng thời đọc cùng một gói đang hiệu lực.
+        Long subscriptionId = ((Number) tx.get("subscription_id")).longValue();
+        Long userId = ((Number) tx.get("user_id")).longValue();
+        jdbcTemplate.queryForObject("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, userId);
+
+        Map<String, Object> targetPackage = new HashMap<>();
+        targetPackage.put("id", tx.get("service_package_id"));
+        targetPackage.put("name", tx.get("package_name"));
+        targetPackage.put("price", tx.get("package_price"));
+        targetPackage.put("duration_days", tx.get("duration_days"));
+        targetPackage.put("tier_id", tx.get("tier_id"));
+
+        // Tính giá ưu đãi trước khi đánh dấu đơn hiện tại SUCCESS để giao dịch
+        // đầu tiên không tự đủ điều kiện giảm giá cho chính nó.
+        PriceBreakdown calculatedPrice = calculatePackagePrice(
+                userId, String.valueOf(tx.get("tier_id")), tx.get("package_price"));
+        long expectedPaymentAmount = ((Number) tx.get("amount")).longValue();
+        PriceBreakdown paidPrice = new PriceBreakdown(calculatedPrice.baseAmount(),
+                Math.max(0L, calculatedPrice.baseAmount() - expectedPaymentAmount), expectedPaymentAmount,
+                expectedPaymentAmount < calculatedPrice.baseAmount());
+        PlanApplication plan = applyPaidPackage(userId, targetPackage, paidPrice, LocalDateTime.now());
+
+        // Thanh toán thành công: cập nhật payment_transaction và kích hoạt hoặc
+        // xếp lịch subscription theo chính sách gia hạn/nâng/hạ gói.
         String sepayRefCode = webhook.getReferenceCode() != null ? webhook.getReferenceCode() : "SEPAY-" + sepayTxId;
         jdbcTemplate.update(
             "UPDATE payment_transactions SET status = 'SUCCESS', provider_transaction_id = ?, paid_at = NOW() WHERE id = ?",
             orderCode + "|" + sepayRefCode, paymentId
         );
-
-        // 8. Kích hoạt subscription → ACTIVE, tính lại end_at
-        Long subscriptionId = ((Number) tx.get("subscription_id")).longValue();
-        Long userId = ((Number) tx.get("user_id")).longValue();
-        int durationDays = ((Number) tx.get("duration_days")).intValue();
-
-        // Kiểm tra xem user có gói ACTIVE nào đang chạy không → cộng dồn
-        List<Map<String, Object>> currentActive = jdbcTemplate.queryForList(
-            "SELECT end_at FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' AND end_at > NOW() ORDER BY end_at DESC LIMIT 1",
-            userId
-        );
-
-        LocalDateTime startAt = LocalDateTime.now();
-        LocalDateTime endAt;
-        if (!currentActive.isEmpty()) {
-            LocalDateTime existingEnd = toLocalDateTime(currentActive.get(0).get("end_at"));
-            endAt = (existingEnd != null ? existingEnd : startAt).plusDays(durationDays);
-        } else {
-            endAt = startAt.plusDays(durationDays);
-        }
-
         jdbcTemplate.update(
             "UPDATE subscriptions SET status = 'ACTIVE', start_at = ?, end_at = ? WHERE id = ?",
-            startAt, endAt, subscriptionId
+            plan.startAt(), plan.endAt(), subscriptionId
         );
 
         String packageName = (String) tx.get("package_name");
+        notificationService.notifySubscriptionPaymentSucceeded(
+                userId, paymentId, orderCode, packageName, expectedPaymentAmount,
+                plan.action(), plan.actionDescription(), plan.startAt(), plan.endAt());
         System.out.println("[SePay Webhook] ✅ THÀNH CÔNG! Đã kích hoạt gói " + packageName +
-            " cho userId=" + userId + " | Hạn đến: " + endAt);
-
-        // 9. Lưu vào log Webhook để khóa idempotency
-        saveWebhookLog(sepayTxId, webhook.getReferenceCode(), orderCode, paymentId,
-            receivedAmount, "in", rawPayload, "SUCCESS", "Kích hoạt gói " + packageName + " thành công");
+            " cho userId=" + userId + " | Bắt đầu: " + plan.startAt() + " | Hạn đến: " + plan.endAt());
 
         return Map.of(
             "success", true,
-            "message", "Thanh toán thành công! Đã kích hoạt " + packageName,
+            "message", "Thanh toán thành công! " + plan.actionDescription(),
             "orderCode", orderCode,
             "packageName", packageName,
-            "expiresAt", endAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            "startAt", plan.startAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+            "expiresAt", plan.endAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+            "action", plan.action(),
+            "bonusDays", plan.bonusDays()
         );
-    }
-
-    private void saveIdempotencyKey(Long userId, String key, Long packageId, Map<String, Object> payload) {
-        if (key == null || key.isBlank() || userId == null) return;
-        try {
-            String json = objectMapper.writeValueAsString(payload);
-            jdbcTemplate.update(
-                "INSERT INTO payment_idempotency_keys (idempotency_key, user_id, provider, endpoint, package_id, response_payload) " +
-                "VALUES (?, ?, 'SEPAY', 'CHECKOUT', ?, ?) ON DUPLICATE KEY UPDATE response_payload = VALUES(response_payload)",
-                key.trim(), userId, packageId, json
-            );
-        } catch (Exception e) {
-            System.err.println("[Payment Idempotency] Không thể lưu Idempotency Key: " + e.getMessage());
-        }
-    }
-
-    private void saveWebhookLog(Long sepayTxId, String refCode, String orderCode, Long paymentId,
-                                Double amount, String transferType, String rawPayload, String status, String message) {
-        if (sepayTxId == null) return;
-        try {
-            jdbcTemplate.update(
-                "INSERT INTO payment_webhook_logs (provider, provider_transaction_id, reference_code, order_code, payment_id, amount, transfer_type, raw_payload, status, message) " +
-                "VALUES ('SEPAY', ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
-                "ON DUPLICATE KEY UPDATE status = VALUES(status), message = VALUES(message)",
-                String.valueOf(sepayTxId), refCode, orderCode, paymentId, (amount != null ? amount : 0),
-                (transferType != null ? transferType : "in"), rawPayload, status, message
-            );
-        } catch (Exception e) {
-            System.err.println("[Payment Idempotency] Không thể lưu Webhook Log: " + e.getMessage());
-        }
     }
 
     /**
@@ -870,6 +1164,7 @@ public class SubscriptionService {
      * @param orderCode Mã đơn hàng (ví dụ: MD1001)
      * @return Map chứa status (PENDING/SUCCESS/CANCELLED/EXPIRED), thông tin gói...
      */
+    @Transactional
     public Map<String, Object> getPaymentStatus(String orderCode) {
         // Tách paymentId từ orderCode: "MD1001" → 1001
         String idStr = orderCode.replaceAll("(?i)^MD", "");
@@ -882,7 +1177,8 @@ public class SubscriptionService {
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
             "SELECT pt.id, pt.status, pt.amount, pt.paid_at, " +
-            "       s.status as sub_status, s.end_at, sp.name as package_name, sp.duration_days " +
+            "       pt.created_at, s.status as sub_status, s.start_at, s.end_at, " +
+            "       sp.name as package_name, sp.duration_days " +
             "FROM payment_transactions pt " +
             "JOIN subscriptions s ON pt.subscription_id = s.id " +
             "JOIN service_packages sp ON s.service_package_id = sp.id " +
@@ -899,21 +1195,26 @@ public class SubscriptionService {
 
         // Kiểm tra nếu đơn PENDING quá 15 phút → tự động hết hạn
         if ("PENDING".equals(paymentStatus)) {
-            // Kiểm tra thời gian tạo đơn
-            List<Map<String, Object>> createdRows = jdbcTemplate.queryForList(
-                "SELECT created_at FROM payment_transactions WHERE id = ?", paymentId
-            );
-            if (!createdRows.isEmpty()) {
-                LocalDateTime created = toLocalDateTime(createdRows.get(0).get("created_at"));
-                if (created != null && created.plusMinutes(15).isBefore(LocalDateTime.now())) {
-                    // Đơn đã quá 15 phút → đánh dấu hết hạn
-                    jdbcTemplate.update("UPDATE payment_transactions SET status = 'CANCELLED' WHERE id = ?", paymentId);
-                    jdbcTemplate.update(
-                        "UPDATE subscriptions SET status = 'CANCELLED' WHERE id = (SELECT subscription_id FROM payment_transactions WHERE id = ?)",
-                        paymentId
-                    );
-                    paymentStatus = "EXPIRED";
-                }
+            LocalDateTime created = toLocalDateTime(row.get("created_at"));
+            if (created != null && !created.plusMinutes(15).isAfter(LocalDateTime.now())) {
+                expirePendingPayment(paymentId);
+            }
+            // Refresh because the webhook and the expiry scheduler may have won concurrently.
+            rows = jdbcTemplate.queryForList(
+                "SELECT pt.id, pt.status, pt.amount, pt.paid_at, pt.created_at, " +
+                "       s.status as sub_status, s.start_at, s.end_at, " +
+                "       sp.name as package_name, sp.duration_days " +
+                "FROM payment_transactions pt " +
+                "JOIN subscriptions s ON pt.subscription_id = s.id " +
+                "JOIN service_packages sp ON s.service_package_id = sp.id " +
+                "WHERE pt.id = ?",
+                paymentId);
+            row = rows.get(0);
+            paymentStatus = (String) row.get("status");
+            if ("CANCELLED".equals(paymentStatus)
+                    && toLocalDateTime(row.get("created_at")) != null
+                    && !toLocalDateTime(row.get("created_at")).plusMinutes(15).isAfter(LocalDateTime.now())) {
+                paymentStatus = "EXPIRED";
             }
         }
 
@@ -925,8 +1226,15 @@ public class SubscriptionService {
 
         if ("SUCCESS".equals(paymentStatus)) {
             result.put("paidAt", row.get("paid_at") != null ? row.get("paid_at").toString() : null);
+            result.put("startAt", row.get("start_at") != null ? row.get("start_at").toString() : null);
             result.put("expiresAt", row.get("end_at") != null ? row.get("end_at").toString() : null);
-            result.put("isPremium", true);
+            LocalDateTime startsAt = toLocalDateTime(row.get("start_at"));
+            LocalDateTime endsAt = toLocalDateTime(row.get("end_at"));
+            boolean isEffectiveNow = "ACTIVE".equals(row.get("sub_status"))
+                    && startsAt != null && !startsAt.isAfter(LocalDateTime.now())
+                    && endsAt != null && endsAt.isAfter(LocalDateTime.now());
+            result.put("isEffectiveNow", isEffectiveNow);
+            result.put("isPremium", isEffectiveNow);
         } else {
             result.put("isPremium", false);
         }

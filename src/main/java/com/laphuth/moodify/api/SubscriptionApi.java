@@ -47,6 +47,37 @@ public class SubscriptionApi {
         return ResponseEntity.ok(subscriptionService.getCurrentUserSubscription(authentication.getName()));
     }
 
+    /** Danh sách lịch sử gói và các biên nhận thanh toán của tài khoản hiện tại. */
+    @GetMapping("/subscriptions/me/management")
+    public ResponseEntity<List<Map<String, Object>>> getMySubscriptionManagement(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(subscriptionService.getMySubscriptionManagement(authentication.getName()));
+    }
+
+    /** Hủy đơn chờ thanh toán hoặc gói đã thanh toán nhưng chưa tới ngày áp dụng. */
+    @PostMapping("/subscriptions/me/{subscriptionId}/cancel")
+    public ResponseEntity<Map<String, Object>> cancelMySubscription(
+        Authentication authentication,
+        @PathVariable Long subscriptionId
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(subscriptionService.cancelMyManagedSubscription(
+            authentication.getName(), subscriptionId));
+    }
+
+    /** Báo giá và thời điểm áp dụng theo chính sách gói của tài khoản hiện tại. */
+    @GetMapping("/subscriptions/package-quotes")
+    public ResponseEntity<List<Map<String, Object>>> getPackageQuotes(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(subscriptionService.getPackageQuotes(authentication.getName()));
+    }
+
     /**
      * Đăng ký mua gói dịch vụ (Sandbox Payment).
      */

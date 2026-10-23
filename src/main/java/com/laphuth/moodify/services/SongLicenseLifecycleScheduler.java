@@ -27,9 +27,6 @@ public class SongLicenseLifecycleScheduler {
     private final SongLicenseRepository songLicenseRepository;
     private final TrackRepository trackRepository;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
-
     public SongLicenseLifecycleScheduler(
         SongLicenseRepository songLicenseRepository,
         TrackRepository trackRepository
@@ -38,46 +35,12 @@ public class SongLicenseLifecycleScheduler {
         this.trackRepository = trackRepository;
     }
 
-    /**
-     * Tự động khởi tạo MySQL Event Scheduler và đồng bộ bài hát khi ứng dụng khởi động
-     */
+    /** Reconciles expired licenses once at startup to catch up after downtime. */
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        initDatabaseEventScheduler();
         log.info("[License Lifecycle] Khởi chạy kiểm tra và đồng bộ trạng thái bản quyền bài hát ban đầu...");
         int count = processExpiredLicenses();
         log.info("[License Lifecycle] Hoàn tất kiểm tra ban đầu. Đã xử lý {} bài hát hết hạn hợp đồng.", count);
-    }
-
-    /**
-     * Khởi tạo MySQL Event Scheduler & Stored Procedure nếu được hỗ trợ
-     */
-    public void initDatabaseEventScheduler() {
-        if (jdbcTemplate == null) return;
-        try {
-            jdbcTemplate.execute("SET GLOBAL event_scheduler = ON");
-            jdbcTemplate.execute("""
-                CREATE PROCEDURE IF NOT EXISTS sp_expire_outdated_song_licenses()
-                BEGIN
-                    UPDATE song_licenses
-                    SET status = 'EXPIRED'
-                    WHERE status = 'ACTIVE'
-                      AND expiry_date IS NOT NULL
-                      AND expiry_date < CURRENT_DATE();
-                END
-            """);
-            jdbcTemplate.execute("""
-                CREATE EVENT IF NOT EXISTS evt_daily_song_license_expiry
-                ON SCHEDULE EVERY 1 DAY
-                STARTS (TIMESTAMP(CURRENT_DATE) + INTERVAL 1 DAY + INTERVAL 1 MINUTE)
-                ON COMPLETION PRESERVE
-                ENABLE
-                DO CALL sp_expire_outdated_song_licenses()
-            """);
-            log.info("[License Lifecycle] MySQL Event Scheduler và Stored Procedure đã được kích hoạt thành công tại tầng Database.");
-        } catch (Exception e) {
-            log.info("[License Lifecycle] Thông báo MySQL Event: {}. Kịch bản SQL độc lập có tại mysql_event_scheduler_license_expiry.sql", e.getMessage());
-        }
     }
 
     /**

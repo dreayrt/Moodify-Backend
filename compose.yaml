@@ -49,6 +49,8 @@ services:
           cpus: '2.0'
 
   audio-analysis-service:
+    profiles:
+      - audio
     build:
       context: ../Moodify-Audio-Service
     container_name: 'moodify-audio-analysis'
