@@ -1,0 +1,1 @@
+query_id,query_text,human_emotion,model_label,model_confidence,ranking_version,track_rank,track_id,track_name,artist,distance,feature_coverage,matched_tags,human_relevance_1_to_5,notes

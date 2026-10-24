@@ -78,12 +78,10 @@ public class TrackApi {
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(required = false) String query,
         @RequestParam(required = false) String genre,
-        @RequestParam(required = false) String mode,
-        org.springframework.security.core.Authentication authentication
+        @RequestParam(required = false) String mode
     ) {
         if ("mood".equalsIgnoreCase(mode) && query != null && !query.isBlank()) {
-            String principal = (authentication != null) ? authentication.getName() : null;
-            var moodRec = emotionService.recommendTracksByMood(query.trim(), "empathy", size, principal);
+            var moodRec = emotionService.recommendTracksByMood(query.trim(), "empathy", size);
             var trackList = moodRec.getTracks();
             return ResponseEntity.ok(new TrackPageResponse(
                 trackList,
@@ -153,16 +151,15 @@ public class TrackApi {
             return ResponseEntity.status(org.springframework.http.HttpStatus.PARTIAL_CONTENT)
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400, stale-while-revalidate=604800")
                 .body(region);
         } else {
-            long rangeLength = Math.min(1024 * 1024, contentLength);
-            ResourceRegion region = new ResourceRegion(resource, 0, rangeLength);
             return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
-                .body(region);
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400, stale-while-revalidate=604800")
+                .contentLength(contentLength)
+                .body(resource);
         }
     }
 

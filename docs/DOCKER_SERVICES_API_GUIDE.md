@@ -104,7 +104,7 @@ Khi ứng dụng Backend chạy, bạn có thể gọi qua API của Spring Boot
 
 ## 3. Container 2: Dịch vụ Trích xuất Hợp đồng & OCR (`ocr-service`)
 
-- **Image:** `dreayrt/ocr-service:latest`
+- **Image:** `moodify-ocr-service:local` (built from the local `../ocr-service` source by Compose)
 - **Host Port:** `8001` (chú ý: bên ngoài map vào cổng 8000 bên trong container)
 - **Base URL trực tiếp:** `http://localhost:8001`
 - **Tài liệu trực quan (FastAPI Swagger UI):** `http://localhost:8001/docs` hoặc `http://localhost:8001/redoc`
@@ -113,9 +113,10 @@ Khi ứng dụng Backend chạy, bạn có thể gọi qua API của Spring Boot
 
 #### Endpoint: `POST /api/v1/ocr/pdf`
 - **URL đầy đủ:** `http://localhost:8001/api/v1/ocr/pdf`
+- **Định dạng hỗ trợ:** PDF, PNG, JPG/JPEG.
 - **Content-Type:** `multipart/form-data`
 - **Form Data Parameters:**
-  - `file`: File tài liệu (PDF hoặc hình ảnh scan hợp đồng như PNG/JPG).
+  - `file`: Tài liệu PDF hoặc hình ảnh scan hợp đồng PNG/JPG.
   - `target_fields`: `license_type,copyright_owner,distributor,contract_id,issue_date,expiry_date`
 
 #### Kết quả trả về mẫu từ container (OcrRawResponse - HTTP 200):

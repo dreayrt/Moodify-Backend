@@ -55,8 +55,13 @@ public class SecurityConfig {
                     "/api/auth/login",
                     "/api/auth/register",
                     "/api/auth/refresh",
-                    "/api/auth/logout"
+                    "/api/auth/logout",
+                    "/api/auth/google",
+                    "/api/auth/facebook",
+                    "/hooks/sepay-payment"
                 ).permitAll()
+                // SePay: Cho phép frontend polling trạng thái thanh toán mà không cần JWT
+                .requestMatchers(HttpMethod.GET, "/api/subscriptions/payment-status/**").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/me").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/user").hasRole(UserRole.USER.name())

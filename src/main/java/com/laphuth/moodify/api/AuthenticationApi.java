@@ -1,6 +1,8 @@
 package com.laphuth.moodify.api;
 
 import com.laphuth.moodify.dto.auth.AuthResponse;
+import com.laphuth.moodify.dto.auth.FacebookAuthRequest;
+import com.laphuth.moodify.dto.auth.GoogleAuthRequest;
 import com.laphuth.moodify.dto.auth.LoginRequest;
 import com.laphuth.moodify.dto.auth.RefreshTokenRequest;
 import com.laphuth.moodify.dto.auth.RegisterRequest;
@@ -37,6 +39,20 @@ public class AuthenticationApi {
             @Valid @RequestBody LoginRequest request
     ) {
         return ResponseEntity.ok(authenticationService.login(request));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> loginWithGoogle(
+            @Valid @RequestBody GoogleAuthRequest request
+    ) {
+        return ResponseEntity.ok(authenticationService.loginWithGoogle(request));
+    }
+
+    @PostMapping("/facebook")
+    public ResponseEntity<AuthResponse> loginWithFacebook(
+            @Valid @RequestBody FacebookAuthRequest request
+    ) {
+        return ResponseEntity.ok(authenticationService.loginWithFacebook(request));
     }
 
     @PostMapping("/refresh")
