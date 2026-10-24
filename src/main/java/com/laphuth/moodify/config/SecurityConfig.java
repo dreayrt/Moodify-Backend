@@ -85,6 +85,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/emotions/predict", "/api/emotions/recommend").permitAll()
                 .requestMatchers("/api/emotions/history").authenticated()
                 // Analytics
+                .requestMatchers(HttpMethod.POST, "/api/analytics/listening-session").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/analytics/seed-traffic").hasRole(UserRole.ADMIN.name())
                 .requestMatchers("/api/analytics/**").permitAll()
                 // Seed & Sync are destructive/maintenance operations -> ADMIN only
                 .requestMatchers("/api/seed/**", "/api/sync/**").hasRole(UserRole.ADMIN.name())

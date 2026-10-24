@@ -6,6 +6,7 @@ import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.repositories.TrackRepository;
 import com.laphuth.moodify.repositories.UserRepository;
 import com.laphuth.moodify.services.PlatformTrafficService;
+import com.laphuth.moodify.services.RevenuePlaybackService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -19,15 +20,18 @@ public class TrafficAnalyticsApi {
     private final PlatformTrafficService platformTrafficService;
     private final UserRepository userRepository;
     private final TrackRepository trackRepository;
+    private final RevenuePlaybackService revenuePlaybackService;
 
     public TrafficAnalyticsApi(
         PlatformTrafficService platformTrafficService,
         UserRepository userRepository,
-        TrackRepository trackRepository
+        TrackRepository trackRepository,
+        RevenuePlaybackService revenuePlaybackService
     ) {
         this.platformTrafficService = platformTrafficService;
         this.userRepository = userRepository;
         this.trackRepository = trackRepository;
+        this.revenuePlaybackService = revenuePlaybackService;
     }
 
     @PostMapping("/track-visit")
@@ -63,19 +67,16 @@ public class TrafficAnalyticsApi {
             }
         }
 
-        Long historyId = body.get("historyId") != null ? ((Number) body.get("historyId")).longValue() : null;
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("success", false, "message", "Login required"));
+        }
         String trackId = (String) body.get("trackId");
-        Long durationMs = body.get("durationMs") != null ? ((Number) body.get("durationMs")).longValue() : 0L;
-        Long positionMs = body.get("positionMs") != null ? ((Number) body.get("positionMs")).longValue() : durationMs;
+        String sessionKey = (String) body.get("sessionKey");
+        Long positionMs = body.get("positionMs") != null ? ((Number) body.get("positionMs")).longValue() : 0L;
         Long targetPositionMs = body.get("targetPositionMs") != null ? ((Number) body.get("targetPositionMs")).longValue() : positionMs;
-        String source = (String) body.get("source");
-        String sourceId = (String) body.get("sourceId");
-        String deviceType = (String) body.get("deviceType");
         String eventType = (String) body.get("eventType");
-
-        Map<String, Object> result = platformTrafficService.recordListeningSession(
-            historyId, userId, trackId, durationMs, positionMs, targetPositionMs, source, sourceId, deviceType, eventType
-        );
+        Map<String, Object> result = revenuePlaybackService.record(
+            userId, trackId, sessionKey, eventType, positionMs, targetPositionMs);
         return ResponseEntity.ok(result);
     }
 

@@ -20,16 +20,6 @@ SHOW EVENTS FROM moodify;
 
 The SQL session sets `time_zone` to `+07:00` before creating the Event. MySQL captures the creating session's time zone for that Event. `SET GLOBAL event_scheduler = ON` requires an administrative database account; if it is denied, enable it in the MySQL server configuration and rerun the script. MySQL documents that Events do not execute unless Event Scheduler is enabled and that `CREATE EVENT` uses the session time zone at creation: [CREATE EVENT](https://dev.mysql.com/doc/refman/8.0/en/create-event.html).
 
-## Import existing MongoDB notifications once
-
-The old MongoDB collections are left intact as a backup. After deploying the SQL objects, start the backend once with this application argument:
-
-```text
---app.notifications.mongo-migration.enabled=true
-```
-
-The opt-in importer copies `notifications` and `notification_broadcasts` into MySQL. `source_mongo_id` makes rerunning the import safe; notifications whose `userId` no longer exists in MySQL are skipped. Verify the counts and representative records, then start the backend normally without the argument. Do not delete the MongoDB collections until the team has confirmed the import.
-
 ## Renewal eligibility
 
 Eligibility is computed from successful payment history joined through `payment_transactions.subscription_id`, `subscriptions.service_package_id`, and `service_packages.tier_id`. A purchase of FULL for 30 days qualifies the same account for FULL 90-day and FULL 1-year variants, while BASIC and FAMILY remain separate tiers. `SANDBOX` and `DEV_SANDBOX` records do not qualify. The selected variant's current `service_packages.price` is the source amount; 20% is applied to that amount. No pricing columns are added. The final payable VND amount is stored in the existing `payment_transactions.amount` field and encoded in the QR.

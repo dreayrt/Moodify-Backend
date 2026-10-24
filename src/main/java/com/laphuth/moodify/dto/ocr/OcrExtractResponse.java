@@ -15,6 +15,8 @@ public class OcrExtractResponse {
     private Double confidence;
     private String message;
     private Map<String, Object> rawFields;
+    private java.math.BigDecimal acquisitionCostVnd;
+    private Map<String, Object> costEvidence;
 
     public OcrExtractResponse() {}
 
@@ -118,4 +120,8 @@ public class OcrExtractResponse {
     public void setRawFields(Map<String, Object> rawFields) {
         this.rawFields = rawFields;
     }
+    public java.math.BigDecimal getAcquisitionCostVnd() { return acquisitionCostVnd; }
+    public void setAcquisitionCostVnd(java.math.BigDecimal acquisitionCostVnd) { this.acquisitionCostVnd = acquisitionCostVnd; }
+    public Map<String, Object> getCostEvidence() { return costEvidence; }
+    public void setCostEvidence(Map<String, Object> costEvidence) { this.costEvidence = costEvidence; }
 }

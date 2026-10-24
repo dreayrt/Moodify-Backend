@@ -62,6 +62,7 @@ public class ContentLeadCatalogService {
     private final TrackSyncService trackSyncService;
     private final JdbcTemplate jdbcTemplate;
     private final AudioAnalysisService audioAnalysisService;
+    private final OcrService ocrService;
 
     public ContentLeadCatalogService(
         UserRepository userRepository,
@@ -76,7 +77,8 @@ public class ContentLeadCatalogService {
         @org.springframework.beans.factory.annotation.Autowired(required = false)
         JdbcTemplate jdbcTemplate,
         @org.springframework.beans.factory.annotation.Autowired(required = false)
-        AudioAnalysisService audioAnalysisService
+        AudioAnalysisService audioAnalysisService,
+        OcrService ocrService
     ) {
         this.userRepository = userRepository;
         this.artistRepository = artistRepository;
@@ -88,6 +90,7 @@ public class ContentLeadCatalogService {
         this.trackSyncService = trackSyncService;
         this.jdbcTemplate = jdbcTemplate;
         this.audioAnalysisService = audioAnalysisService;
+        this.ocrService = ocrService;
     }
 
     public ContentLeadCatalogResponse getCurrentCatalog(
@@ -228,13 +231,42 @@ public class ContentLeadCatalogService {
         if (request.getLicenseType() == null || request.getLicenseType().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại bản quyền / giấy phép là bắt buộc.");
         }
+        if (request.getAcquisitionCostVnd() != null &&
+            (request.getAcquisitionCostVnd().signum() < 0 || request.getAcquisitionCostVnd().scale() > 0)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chi phí mua quyền phải là số VND không âm.");
+        }
+        // Financial cost is sourced from the uploaded document, never trusted from multipart form data alone.
+        var extractedLicense = ocrService.extractLicenseDocument(licenseDocFile);
+        java.math.BigDecimal verifiedCost = extractedLicense.isSuccess() ? extractedLicense.getAcquisitionCostVnd() : null;
+        if (request.getAcquisitionCostVnd() != null && !request.getAcquisitionCostVnd().equals(verifiedCost)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chi phí mua quyền phải khớp với số OCR trích xuất từ tài liệu.");
+        }
         if (request.getDistributorId() == null &&
             (request.getCopyrightOwner() == null || request.getCopyrightOwner().isBlank())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chủ sở hữu quyền tác giả là bắt buộc.");
         }
-        if (request.getDistributorId() != null && request.getDistributorId() > 0 &&
-            request.getDistributionContractId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã hợp đồng là bắt buộc khi chọn đơn vị phân phối.");
+        String contractCode = request.getDistributionContractCode() != null
+            ? request.getDistributionContractCode().trim()
+            : "";
+        boolean hasContractReference = request.getDistributionContractId() != null || !contractCode.isEmpty();
+        if (request.getDistributorId() != null && request.getDistributorId() > 0 && !hasContractReference) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã hợp đồng trong tài liệu là bắt buộc khi chọn đơn vị phân phối.");
+        }
+        if (request.getDistributorId() == null && hasContractReference) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hợp đồng cần có đơn vị phân phối tương ứng.");
+        }
+        Long validDistributorId = resolveValidDistributorId(request.getDistributorId());
+        if (request.getDistributorId() != null && validDistributorId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đơn vị phân phối không tồn tại.");
+        }
+        Long validContractId = null;
+        if (validDistributorId != null && request.getDistributionContractId() != null) {
+            validContractId = resolveValidContractId(validDistributorId, request.getDistributionContractId());
+            if (validContractId == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hợp đồng không thuộc đơn vị phân phối đã chọn.");
+            }
+        } else if (validDistributorId != null && !contractCode.isEmpty()) {
+            validContractId = resolveValidContractCode(validDistributorId, contractCode);
         }
 
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
@@ -306,9 +338,6 @@ public class ContentLeadCatalogService {
         license.setTrackId(savedTrack.getId());
         license.setLicenseType(request.getLicenseType() != null ? request.getLicenseType() : "DIGITAL_STREAMING");
 
-        Long validDistributorId = resolveValidDistributorId(request.getDistributorId());
-        Long validContractId = resolveValidContractId(validDistributorId, request.getDistributionContractId());
-
         // Satisfy MySQL chk_song_license_owner:
         // (distributor_id IS NOT NULL AND copyright_owner IS NULL) OR (distributor_id IS NULL AND copyright_owner IS NOT NULL)
         if (validDistributorId != null) {
@@ -324,6 +353,7 @@ public class ContentLeadCatalogService {
             license.setCopyrightOwner(owner);
         }
         license.setDocumentSonglicensesUrl(licenseDocUrl);
+        license.setAcquisitionCostVnd(verifiedCost);
         license.setStatus(com.laphuth.moodify.entities.enums.LicenseStatus.ACTIVE);
 
         license.setIssueDate(issueDate);
@@ -555,33 +585,56 @@ public class ContentLeadCatalogService {
     }
 
     private Long resolveValidContractId(Long distributorId, Long contractId) {
+        if (distributorId == null || contractId == null || contractId <= 0) {
+            return null;
+        }
         if (jdbcTemplate == null) {
             return contractId;
         }
         try {
-            if (contractId != null && contractId > 0) {
-                Integer count = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM distribution_contracts WHERE id = ?",
-                    Integer.class,
-                    contractId
-                );
-                if (count != null && count > 0) {
-                    return contractId;
-                }
-            }
-            if (distributorId != null && distributorId > 0) {
-                List<Long> contracts = jdbcTemplate.query(
-                    "SELECT id FROM distribution_contracts WHERE distributor_id = ? ORDER BY id DESC LIMIT 1",
-                    (rs, rowNum) -> rs.getLong("id"),
-                    distributorId
-                );
-                if (!contracts.isEmpty()) {
-                    return contracts.get(0);
-                }
-            }
-            return null;
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM distribution_contracts WHERE id = ? AND distributor_id = ?",
+                Integer.class,
+                contractId,
+                distributorId
+            );
+            return count != null && count > 0 ? contractId : null;
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    Long resolveValidContractCode(Long distributorId, String contractCode) {
+        if (distributorId == null || contractCode == null || contractCode.isBlank() || jdbcTemplate == null) {
+            return null;
+        }
+        String normalizedCode = contractCode.trim();
+        try {
+            return jdbcTemplate.queryForObject(
+                "SELECT id FROM distribution_contracts WHERE contract_code = ? AND distributor_id = ? LIMIT 1",
+                Long.class,
+                normalizedCode,
+                distributorId
+            );
+        } catch (org.springframework.dao.EmptyResultDataAccessException notLinkedToSelectedDistributor) {
+            try {
+                Long registeredDistributorId = jdbcTemplate.queryForObject(
+                    "SELECT distributor_id FROM distribution_contracts WHERE contract_code = ? LIMIT 1",
+                    Long.class,
+                    normalizedCode
+                );
+                if (registeredDistributorId != null) {
+                    throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Mã hợp đồng đã đăng ký cho một đơn vị phân phối khác."
+                    );
+                }
+                return null;
+            } catch (org.springframework.dao.EmptyResultDataAccessException notRegisteredYet) {
+                // A document may reference a contract that has not been entered in distribution_contracts.
+                // Keep the distributor link and uploaded document; song_licenses.distribution_contract_id is optional.
+                return null;
+            }
         }
     }
 

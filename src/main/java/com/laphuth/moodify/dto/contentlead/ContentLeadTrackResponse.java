@@ -34,7 +34,8 @@ public record ContentLeadTrackResponse(
     Instant updatedAt,
     String licenseStatus,
     String licenseExpiryDate,
-    String licenseIssueDate
+    String licenseIssueDate,
+    java.math.BigDecimal acquisitionCostVnd
 ) {
     public static ContentLeadTrackResponse from(Track track) {
         return from(track, null);
@@ -99,7 +100,8 @@ public record ContentLeadTrackResponse(
             track.getUpdatedAt(),
             licStatus,
             licExpiry,
-            licIssue
+            licIssue,
+            license == null ? null : license.getAcquisitionCostVnd()
         );
     }
 

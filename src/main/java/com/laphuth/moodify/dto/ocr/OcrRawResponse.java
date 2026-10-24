@@ -21,6 +21,9 @@ public class OcrRawResponse {
     @JsonProperty("extracted_fields")
     private Map<String, Object> extractedFields;
 
+    @JsonProperty("field_evidence")
+    private Map<String, Object> fieldEvidence;
+
     private Double confidence;
 
     public boolean isSuccess() {
@@ -70,6 +73,8 @@ public class OcrRawResponse {
     public void setExtractedFields(Map<String, Object> extractedFields) {
         this.extractedFields = extractedFields;
     }
+    public Map<String, Object> getFieldEvidence() { return fieldEvidence; }
+    public void setFieldEvidence(Map<String, Object> fieldEvidence) { this.fieldEvidence = fieldEvidence; }
 
     public Double getConfidence() {
         return confidence;

@@ -58,7 +58,7 @@ public class OcrService {
             };
 
             body.add("file", resource);
-            body.add("target_fields", "license_type,copyright_owner,distributor,contract_id,issue_date,expiry_date");
+            body.add("target_fields", "license_type,copyright_owner,distributor,contract_id,issue_date,expiry_date,acquisition_cost_vnd");
 
             log.info("Gửi file '{}' ({}) tới OCR service", file.getOriginalFilename(), file.getSize());
 
@@ -91,9 +91,21 @@ public class OcrService {
 
         Map<String, Object> fields = raw.getExtractedFields();
         response.setRawFields(fields);
+        if (raw.getFieldEvidence() != null && raw.getFieldEvidence().get("acquisition_cost_vnd") instanceof Map<?, ?> evidence) {
+            java.util.Map<String, Object> normalized = new java.util.HashMap<>();
+            evidence.forEach((key, value) -> normalized.put(String.valueOf(key), value));
+            response.setCostEvidence(normalized);
+        }
 
         if (fields == null || fields.isEmpty()) {
             return response;
+        }
+        Object rawCost = fields.get("acquisition_cost_vnd");
+        if (rawCost != null) {
+            try {
+                java.math.BigDecimal cost = new java.math.BigDecimal(rawCost.toString());
+                if (cost.signum() >= 0 && cost.scale() <= 0) response.setAcquisitionCostVnd(cost);
+            } catch (NumberFormatException ignored) { }
         }
 
         // 1. License Type
