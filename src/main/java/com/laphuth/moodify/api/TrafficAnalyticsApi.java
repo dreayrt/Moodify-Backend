@@ -7,6 +7,7 @@ import com.laphuth.moodify.repositories.TrackRepository;
 import com.laphuth.moodify.repositories.UserRepository;
 import com.laphuth.moodify.services.PlatformTrafficService;
 import com.laphuth.moodify.services.RevenuePlaybackService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -21,17 +22,20 @@ public class TrafficAnalyticsApi {
     private final UserRepository userRepository;
     private final TrackRepository trackRepository;
     private final RevenuePlaybackService revenuePlaybackService;
+    private final com.laphuth.moodify.services.UserDeviceService userDeviceService;
 
     public TrafficAnalyticsApi(
         PlatformTrafficService platformTrafficService,
         UserRepository userRepository,
         TrackRepository trackRepository,
-        RevenuePlaybackService revenuePlaybackService
+        RevenuePlaybackService revenuePlaybackService,
+        com.laphuth.moodify.services.UserDeviceService userDeviceService
     ) {
         this.platformTrafficService = platformTrafficService;
         this.userRepository = userRepository;
         this.trackRepository = trackRepository;
         this.revenuePlaybackService = revenuePlaybackService;
+        this.userDeviceService = userDeviceService;
     }
 
     @PostMapping("/track-visit")
@@ -57,6 +61,7 @@ public class TrafficAnalyticsApi {
     @PostMapping("/listening-session")
     public ResponseEntity<Map<String, Object>> recordListeningSession(
         @RequestBody Map<String, Object> body,
+        @RequestHeader(value = "X-Device-Uuid", required = false) String headerDeviceUuid,
         Authentication authentication
     ) {
         Long userId = null;
@@ -70,13 +75,42 @@ public class TrafficAnalyticsApi {
         if (userId == null) {
             return ResponseEntity.status(401).body(Map.of("success", false, "message", "Login required"));
         }
+
+        String deviceUuid = body.get("deviceUuid") != null ? (String) body.get("deviceUuid") : headerDeviceUuid;
+        if (deviceUuid != null && !deviceUuid.isBlank()) {
+            if (!userDeviceService.isDeviceActive(userId, deviceUuid)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success", false,
+                    "error", "DEVICE_REVOKED",
+                    "message", "Thiết bị này đã bị thu hồi quyền truy cập do tài khoản đã đăng nhập trên thiết bị khác vượt quá hạn mức thiết bị của gói cước."
+                ));
+            }
+        }
+
         String trackId = (String) body.get("trackId");
-        String sessionKey = (String) body.get("sessionKey");
-        Long positionMs = body.get("positionMs") != null ? ((Number) body.get("positionMs")).longValue() : 0L;
-        Long targetPositionMs = body.get("targetPositionMs") != null ? ((Number) body.get("targetPositionMs")).longValue() : positionMs;
         String eventType = (String) body.get("eventType");
-        Map<String, Object> result = revenuePlaybackService.record(
-            userId, trackId, sessionKey, eventType, positionMs, targetPositionMs);
+
+        String sessionKey = (String) body.get("sessionKey");
+        if (sessionKey != null && !sessionKey.isBlank()) {
+            // Revenue path: qualified-stream pipeline keyed by playback session.
+            Long positionMs = body.get("positionMs") != null ? ((Number) body.get("positionMs")).longValue() : 0L;
+            Long targetPositionMs = body.get("targetPositionMs") != null ? ((Number) body.get("targetPositionMs")).longValue() : positionMs;
+            Map<String, Object> result = revenuePlaybackService.record(
+                userId, trackId, sessionKey, eventType, positionMs, targetPositionMs);
+            return ResponseEntity.ok(result);
+        }
+
+        // Analytics fallback for clients that report listening duration without a revenue session key.
+        Long historyId = body.get("historyId") != null ? ((Number) body.get("historyId")).longValue() : null;
+        Long durationMs = body.get("durationMs") != null ? ((Number) body.get("durationMs")).longValue() : 0L;
+        Long positionMs = body.get("positionMs") != null ? ((Number) body.get("positionMs")).longValue() : durationMs;
+        Long targetPositionMs = body.get("targetPositionMs") != null ? ((Number) body.get("targetPositionMs")).longValue() : positionMs;
+        String source = (String) body.get("source");
+        String sourceId = (String) body.get("sourceId");
+        String deviceType = (String) body.get("deviceType");
+        Map<String, Object> result = platformTrafficService.recordListeningSession(
+            historyId, userId, trackId, durationMs, positionMs, targetPositionMs, source, sourceId, deviceType, eventType
+        );
         return ResponseEntity.ok(result);
     }
 

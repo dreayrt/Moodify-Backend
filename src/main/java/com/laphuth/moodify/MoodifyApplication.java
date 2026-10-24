@@ -8,11 +8,19 @@ import org.springframework.context.annotation.Bean;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
+import jakarta.annotation.PostConstruct;
+import java.util.TimeZone;
+
 @SpringBootApplication
 public class MoodifyApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(MoodifyApplication.class, args);
+    }
+
+    @PostConstruct
+    public void init() {
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
     }
 
     @Bean
