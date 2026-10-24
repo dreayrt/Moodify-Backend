@@ -115,7 +115,11 @@ public class RevenuePlaybackService {
             qualify(userId, track, rawSessionKey, now);
         }
         if (event.equals("PAUSE") || event.equals("SEEK") || closed) continuous = 0;
-        boolean nextPlaying = event.equals("PLAY") || event.equals("RESUME") || (event.equals("HEARTBEAT") && playing);
+        // SEEK resets the continuous counter but the listener is still playing — keep the
+        // playing flag (only PAUSE/closed events may clear it), otherwise heartbeats after a
+        // seek stop accumulating and the stream can never qualify.
+        boolean nextPlaying = event.equals("PLAY") || event.equals("RESUME") || event.equals("SEEK")
+            || (event.equals("HEARTBEAT") && playing);
         jdbc.update("UPDATE revenue_playback_sessions SET last_seen_at=?,continuous_ms=?,playing=?,closed=? WHERE session_key=?",
             Timestamp.valueOf(now), continuous, nextPlaying, closed, rawSessionKey);
         jdbc.update("UPDATE listening_history SET listened_duration_ms=?,last_position_ms=?,ended_at=? WHERE id=?",
