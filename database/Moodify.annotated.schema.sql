@@ -282,7 +282,6 @@ CREATE TABLE payment_transactions (
         FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
     CONSTRAINT chk_payment_amount CHECK (amount >= 0),
 
-    UNIQUE KEY uk_payment_provider_tx (provider, provider_transaction_id),
     INDEX idx_payment_subscription_time (subscription_id, created_at),
     INDEX idx_payment_status_time (status, created_at)
 ) ;

@@ -103,7 +103,7 @@ public class SepayPaymentApi {
 
         System.out.println("[SePay Webhook] ✅ HMAC hợp lệ. Giao dịch: " + webhookData);
 
-        // 3. Xử lý nghiệp vụ và chỉ kích hoạt đơn vẫn đang chờ thanh toán.
+        // 3. Xử lý nghiệp vụ và kích hoạt gói theo kết quả xử lý giao dịch.
         try {
             Map<String, Object> result = subscriptionService.processSepayWebhook(webhookData);
             System.out.println("[SePay Webhook] ✅ Kết quả: " + result);

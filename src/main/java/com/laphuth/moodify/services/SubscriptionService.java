@@ -527,9 +527,8 @@ public class SubscriptionService {
             "VALUES (?, ?, ?, 'SANDBOX', ?, 'SUCCESS', NOW())",
             subscriptionId, BigDecimal.valueOf(price.payableAmount()), method, txCode
         );
-        Long paymentId = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
         notificationService.notifySubscriptionPaymentSucceeded(
-                user.getId(), paymentId, txCode, String.valueOf(pkg.get("name")),
+                user.getId(), txCode, String.valueOf(pkg.get("name")),
                 price.payableAmount(), plan.action(), plan.actionDescription(), plan.startAt(), plan.endAt());
 
         Map<String, Object> result = new HashMap<>();
@@ -962,10 +961,9 @@ public class SubscriptionService {
             String orderCode = payment.get("provider_transaction_id") == null
                     ? "MD" + paymentId : String.valueOf(payment.get("provider_transaction_id"));
             notificationService.notifySubscriptionPaymentFailed(
-                    userId, paymentId, orderCode, String.valueOf(payment.get("package_name")),
+                    userId, orderCode, String.valueOf(payment.get("package_name")),
                     ((Number) payment.get("amount")).longValue(),
-                    "Đơn này đã được hủy vì bạn tạo một đơn thanh toán mới; mã QR cũ không còn hiệu lực.",
-                    "replaced");
+                    "Đơn này đã được hủy vì bạn tạo một đơn thanh toán mới; mã QR cũ không còn hiệu lực.");
         }
     }
 
@@ -995,10 +993,10 @@ public class SubscriptionService {
         String orderCode = payment.get("provider_transaction_id") == null
                 ? "MD" + paymentId : String.valueOf(payment.get("provider_transaction_id"));
         notificationService.notifySubscriptionPaymentFailed(
-                ((Number) payment.get("user_id")).longValue(), paymentId, orderCode,
+                ((Number) payment.get("user_id")).longValue(), orderCode,
                 String.valueOf(payment.get("package_name")),
                 ((Number) payment.get("amount")).longValue(),
-                "Đơn QR đã hết hạn sau 15 phút mà hệ thống chưa xác nhận đủ tiền.", "expired");
+                "Đơn QR đã hết hạn sau 15 phút mà hệ thống chưa xác nhận đủ tiền.");
         return true;
     }
 
@@ -1049,7 +1047,7 @@ public class SubscriptionService {
 
         System.out.println("[SePay Webhook] Tìm thấy mã đơn hàng: " + orderCode + " (paymentId=" + paymentId + ")");
 
-        // Khóa đơn trong lúc chuyển trạng thái để tránh xử lý đồng thời hai lần thanh toán.
+        // Khóa bản ghi để các callback đọc và cập nhật trạng thái nhất quán trong transaction.
         List<Map<String, Object>> txRows = jdbcTemplate.queryForList(
             "SELECT pt.id, pt.subscription_id, pt.amount, pt.status, pt.created_at, " +
             "       s.user_id, s.service_package_id, sp.duration_days, sp.name as package_name, " +
@@ -1069,22 +1067,13 @@ public class SubscriptionService {
         Map<String, Object> tx = txRows.get(0);
         String currentStatus = (String) tx.get("status");
 
-        // SePay có thể gửi lại cùng giao dịch. Đơn đã thành công được xác nhận
-        // lại cho SePay nhưng không kích hoạt/gia hạn subscription lần nữa.
-        if ("SUCCESS".equals(currentStatus)) {
-            System.out.println("[SePay Webhook] Đơn " + orderCode + " đã SUCCESS; xác nhận callback lặp lại.");
-            return Map.of("success", true, "orderCode", orderCode);
-        }
-
-        if (!"PENDING".equals(currentStatus)) {
+        // SePay xác nhận đã có tiền vào nên vẫn nhận đơn CANCELLED nếu callback
+        // đến muộn sau lúc QR hết hạn hoặc người dùng đã tạo đơn mới.
+        if (!"PENDING".equals(currentStatus)
+                && !"SUCCESS".equals(currentStatus)
+                && !"CANCELLED".equals(currentStatus)) {
             System.out.println("[SePay Webhook] Đơn " + orderCode + " ở trạng thái không thể xử lý: " + currentStatus);
             return Map.of("success", false, "message", "Đơn hàng " + orderCode + " đang ở trạng thái: " + currentStatus);
-        }
-
-        LocalDateTime createdAt = toLocalDateTime(tx.get("created_at"));
-        if (createdAt != null && !createdAt.plusMinutes(15).isAfter(LocalDateTime.now())) {
-            expirePendingPayment(paymentId);
-            return Map.of("success", false, "message", "Đơn hàng " + orderCode + " đã hết hạn.");
         }
 
         // Kiểm tra số tiền.
@@ -1094,9 +1083,9 @@ public class SubscriptionService {
         if (receivedAmount < expectedAmount) {
             System.out.println("[SePay Webhook] ❌ Số tiền không đủ: nhận " + receivedAmount + " < cần " + expectedAmount);
             notificationService.notifySubscriptionPaymentAmountMismatch(
-                    ((Number) tx.get("user_id")).longValue(), paymentId, orderCode,
+                    ((Number) tx.get("user_id")).longValue(), orderCode,
                     String.valueOf(tx.get("package_name")), (long) expectedAmount,
-                    (long) receivedAmount, sepayTxId == null ? null : String.valueOf(sepayTxId));
+                    (long) receivedAmount);
             return Map.of(
                 "success", false,
                 "message", "Số tiền chuyển khoản (" + (long) receivedAmount + "đ) không đủ so với giá gói (" + (long) expectedAmount + "đ).",
@@ -1141,7 +1130,7 @@ public class SubscriptionService {
 
         String packageName = (String) tx.get("package_name");
         notificationService.notifySubscriptionPaymentSucceeded(
-                userId, paymentId, orderCode, packageName, expectedPaymentAmount,
+                userId, orderCode, packageName, expectedPaymentAmount,
                 plan.action(), plan.actionDescription(), plan.startAt(), plan.endAt());
         System.out.println("[SePay Webhook] ✅ THÀNH CÔNG! Đã kích hoạt gói " + packageName +
             " cho userId=" + userId + " | Bắt đầu: " + plan.startAt() + " | Hạn đến: " + plan.endAt());
@@ -1176,7 +1165,9 @@ public class SubscriptionService {
         }
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-            "SELECT pt.id, pt.status, pt.amount, pt.paid_at, " +
+            "SELECT pt.id, CASE WHEN pt.status = 'CANCELLED' " +
+            "AND pt.created_at <= DATE_SUB(NOW(), INTERVAL 15 MINUTE) THEN 'EXPIRED' " +
+            "ELSE pt.status END AS status, pt.amount, pt.paid_at, " +
             "       pt.created_at, s.status as sub_status, s.start_at, s.end_at, " +
             "       sp.name as package_name, sp.duration_days " +
             "FROM payment_transactions pt " +
@@ -1195,13 +1186,12 @@ public class SubscriptionService {
 
         // Kiểm tra nếu đơn PENDING quá 15 phút → tự động hết hạn
         if ("PENDING".equals(paymentStatus)) {
-            LocalDateTime created = toLocalDateTime(row.get("created_at"));
-            if (created != null && !created.plusMinutes(15).isAfter(LocalDateTime.now())) {
-                expirePendingPayment(paymentId);
-            }
+            expirePendingPayment(paymentId);
             // Refresh because the webhook and the expiry scheduler may have won concurrently.
             rows = jdbcTemplate.queryForList(
-                "SELECT pt.id, pt.status, pt.amount, pt.paid_at, pt.created_at, " +
+                "SELECT pt.id, CASE WHEN pt.status = 'CANCELLED' " +
+                "AND pt.created_at <= DATE_SUB(NOW(), INTERVAL 15 MINUTE) THEN 'EXPIRED' " +
+                "ELSE pt.status END AS status, pt.amount, pt.paid_at, pt.created_at, " +
                 "       s.status as sub_status, s.start_at, s.end_at, " +
                 "       sp.name as package_name, sp.duration_days " +
                 "FROM payment_transactions pt " +
@@ -1211,11 +1201,6 @@ public class SubscriptionService {
                 paymentId);
             row = rows.get(0);
             paymentStatus = (String) row.get("status");
-            if ("CANCELLED".equals(paymentStatus)
-                    && toLocalDateTime(row.get("created_at")) != null
-                    && !toLocalDateTime(row.get("created_at")).plusMinutes(15).isAfter(LocalDateTime.now())) {
-                paymentStatus = "EXPIRED";
-            }
         }
 
         Map<String, Object> result = new LinkedHashMap<>();

@@ -35,8 +35,8 @@ public class NotificationService {
         this.userRepository = userRepository;
     }
 
-    /** Persists a deduplicated billing notification for a completed subscription payment. */
-    public void notifySubscriptionPaymentSucceeded(Long userId, Long paymentId, String orderCode,
+    /** Persists a billing notification for a completed subscription payment. */
+    public void notifySubscriptionPaymentSucceeded(Long userId, String orderCode,
                                                    String packageName, long amount, String action,
                                                    String actionDescription, LocalDateTime startAt,
                                                    LocalDateTime endAt) {
@@ -60,37 +60,27 @@ public class NotificationService {
                     .append(BILLING_DATE_FORMAT.format(endAt)).append('.');
         }
 
-        insertBillingNotification(userId, title, message.toString(),
-                "subscription-payment:" + paymentId + ":success");
+        insertBillingNotification(userId, title, message.toString());
     }
 
-    /** Persists a deduplicated notice when a payment is cancelled, expires, or cannot be confirmed. */
-    public void notifySubscriptionPaymentFailed(Long userId, Long paymentId, String orderCode,
-                                                 String packageName, long amount, String reason,
-                                                 String eventKey) {
+    /** Persists a notice when a payment is cancelled, expires, or cannot be confirmed. */
+    public void notifySubscriptionPaymentFailed(Long userId, String orderCode,
+                                                 String packageName, long amount, String reason) {
         String message = "Đơn " + orderCode + " cho " + packageName + " (" +
                 String.format("%,d", amount).replace(',', '.') + " đ) chưa hoàn tất. " +
                 reason + " Gói dịch vụ chưa được áp dụng; bạn có thể tạo đơn thanh toán mới.";
-        insertBillingNotification(userId, "Thanh toán gói chưa thành công", message,
-                "subscription-payment:" + paymentId + ":" + eventKey);
+        insertBillingNotification(userId, "Thanh toán gói chưa thành công", message);
     }
 
     /** Records an underpayment notice without closing the order, which stays payable until expiry. */
-    public void notifySubscriptionPaymentAmountMismatch(Long userId, Long paymentId, String orderCode,
+    public void notifySubscriptionPaymentAmountMismatch(Long userId, String orderCode,
                                                          String packageName, long expectedAmount,
-                                                         long receivedAmount, String providerEventId) {
+                                                         long receivedAmount) {
         String message = "SePay ghi nhận " + String.format("%,d", receivedAmount).replace(',', '.') +
                 " đ cho đơn " + orderCode + ", thấp hơn số tiền cần thanh toán " +
                 String.format("%,d", expectedAmount).replace(',', '.') + " đ của " + packageName +
                 ". Đơn vẫn đang chờ trong thời hạn QR; vui lòng kiểm tra lại giao dịch. Gói chưa được áp dụng.";
-        String safeProviderEventId = providerEventId == null
-                ? "unknown"
-                : providerEventId.replaceAll("[^A-Za-z0-9_-]", "");
-        if (safeProviderEventId.isBlank()) safeProviderEventId = "unknown";
-        if (safeProviderEventId.length() > 64) safeProviderEventId = safeProviderEventId.substring(0, 64);
-        String eventKey = "underpaid:" + safeProviderEventId;
-        insertBillingNotification(userId, "Chưa xác nhận đủ tiền thanh toán", message,
-                "subscription-payment:" + paymentId + ":" + eventKey);
+        insertBillingNotification(userId, "Chưa xác nhận đủ tiền thanh toán", message);
     }
 
     /** Records a user's cancellation of an unpaid order or a future paid subscription. */
@@ -102,12 +92,12 @@ public class NotificationService {
                 userId, message, "subscription-management:" + subscriptionId + ":cancelled");
     }
 
-    private void insertBillingNotification(Long userId, String title, String message, String dedupeKey) {
+    private void insertBillingNotification(Long userId, String title, String message) {
         jdbcTemplate.update(
-                "INSERT IGNORE INTO notifications " +
-                        "(user_id, title, message, type, link_url, created_at, dedupe_key) " +
-                        "VALUES (?, ?, ?, 'BILLING', '/dashboard/premium', NOW(), ?)",
-                userId, title, message, dedupeKey);
+                "INSERT INTO notifications " +
+                        "(user_id, title, message, type, link_url, created_at) " +
+                        "VALUES (?, ?, ?, 'BILLING', '/dashboard/premium', NOW())",
+                userId, title, message);
     }
 
     /** Sends an individual inbox row to each active user in the selected audience. */

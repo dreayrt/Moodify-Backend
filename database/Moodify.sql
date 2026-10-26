@@ -300,7 +300,6 @@ CREATE TABLE payment_transactions (
         FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
     CONSTRAINT chk_payment_amount CHECK (amount >= 0),
 
-    UNIQUE KEY uk_payment_provider_tx (provider, provider_transaction_id),
     INDEX idx_payment_subscription_time (subscription_id, created_at),
     INDEX idx_payment_status_time (status, created_at)
 ) ;
@@ -476,6 +475,52 @@ CREATE TABLE song_licenses (
     INDEX idx_song_license_distributor (distributor_id),
     INDEX idx_song_license_contract (distribution_contract_id)
 ) ;
+
+-- ============================================================
+-- 22. THÔNG BÁO CÁ NHÂN
+-- ============================================================
+CREATE TABLE notifications (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    link_url VARCHAR(1000) NULL,
+    created_by BIGINT NULL,
+    read_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    dedupe_key VARCHAR(190) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    source_mongo_id VARCHAR(64) NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_notifications_dedupe_key (dedupe_key),
+    UNIQUE KEY uk_notifications_source_mongo_id (source_mongo_id),
+    KEY idx_notifications_user_created (user_id, created_at, id),
+    KEY idx_notifications_user_read (user_id, read_at),
+    CONSTRAINT fk_notifications_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_notifications_created_by FOREIGN KEY (created_by)
+        REFERENCES users (id) ON DELETE SET NULL
+);
+
+-- ============================================================
+-- 23. LỊCH SỬ GỬI THÔNG BÁO HÀNG LOẠT
+-- ============================================================
+CREATE TABLE notification_broadcasts (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    target_role VARCHAR(32) NOT NULL DEFAULT 'ALL',
+    recipients_count INT NOT NULL DEFAULT 0,
+    created_by BIGINT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    source_mongo_id VARCHAR(64) NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_notification_broadcast_source_mongo_id (source_mongo_id),
+    KEY idx_notification_broadcasts_created (created_at, id),
+    CONSTRAINT fk_notification_broadcasts_created_by FOREIGN KEY (created_by)
+        REFERENCES users (id) ON DELETE SET NULL
+);
 
 INSERT INTO users (
     id, full_name, phone, email, username, password, avatar_url,
