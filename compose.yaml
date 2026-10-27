@@ -2,20 +2,18 @@ services:
   mongodb:
     image: 'mongo:latest'
     environment:
-      - 'MONGO_INITDB_DATABASE=mydatabase'
+      - 'MONGO_INITDB_DATABASE=music_streaming'
       - 'MONGO_INITDB_ROOT_PASSWORD=secret'
       - 'MONGO_INITDB_ROOT_USERNAME=root'
     ports:
-      - '27017'
+      - '27018:27017'
   mysql:
     image: 'mysql:latest'
     environment:
-      - 'MYSQL_DATABASE=mydatabase'
-      - 'MYSQL_PASSWORD=secret'
-      - 'MYSQL_ROOT_PASSWORD=verysecret'
-      - 'MYSQL_USER=myuser'
+      - 'MYSQL_DATABASE=moodify'
+      - 'MYSQL_ROOT_PASSWORD=${DATABASE_PASSWORD:-verysecret}'
     ports:
-      - '3306'
+      - '3307:3306'
 
   detect-emotions:
     image: 'dreayrt/detect-emotions:latest'
@@ -32,10 +30,7 @@ services:
           cpus: '2.0'
 
   ocr-service:
-    build:
-      context: ../ocr-service
-      dockerfile: Dockerfile
-    image: 'moodify-ocr-service:local'
+    image: 'dreayrt/ocr-service:latest'
     container_name: 'moodify-ocr-service'
     restart: 'unless-stopped'
     ports:
@@ -51,6 +46,7 @@ services:
   audio-analysis-service:
     build:
       context: ../Moodify-Audio-Service
+    image: 'moodify-audio-analysis:local'
     container_name: 'moodify-audio-analysis'
     restart: 'unless-stopped'
     ports:

@@ -2,62 +2,114 @@ package com.laphuth.moodify.services;
 
 import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.repositories.UserRepository;
-import org.bson.Document;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Hệ thống thông báo (notification) của Moodify.
- *
- * Admin gửi thông báo (broadcast) tới toàn bộ người dùng đang hoạt động
- * hoặc tới một vai trò cụ thể (USER / CONTENT_LEAD / MODERATOR / ADMIN).
- * Mỗi người nhận có một bản ghi riêng nên trạng thái đã đọc là per-user.
- *
- * Dữ liệu lưu trong MongoDB (collections "notifications" và
- * "notification_broadcasts", tự tạo khi chạy) — KHÔNG thay đổi schema MySQL.
- */
+/** Notification inbox and broadcast history backed by MySQL. */
 @Service
 public class NotificationService {
 
-    private final JdbcTemplate jdbcTemplate; // chỉ đọc danh sách user từ MySQL
-    private final UserRepository userRepository;
-    private final MongoTemplate mongoTemplate;
-
-    private static final String COLLECTION = "notifications";
-    private static final String BROADCAST_COLLECTION = "notification_broadcasts";
+    private static final DateTimeFormatter BILLING_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private static final List<String> VALID_TYPES = List.of(
             "SYSTEM", "PROMO", "BILLING", "MODERATION", "ANNOUNCEMENT");
     private static final List<String> VALID_ROLES = List.of(
             "USER", "CONTENT_LEAD", "MODERATOR", "ADMIN");
+    private final JdbcTemplate jdbcTemplate;
+    private final UserRepository userRepository;
 
-    public NotificationService(JdbcTemplate jdbcTemplate,
-                               UserRepository userRepository,
-                               MongoTemplate mongoTemplate) {
+    public NotificationService(JdbcTemplate jdbcTemplate, UserRepository userRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.userRepository = userRepository;
-        this.mongoTemplate = mongoTemplate;
     }
 
-    /** Gửi thông báo tới tất cả user đang ACTIVE (hoặc lọc theo vai trò). */
+    /** Persists a billing notification for a completed subscription payment. */
+    public void notifySubscriptionPaymentSucceeded(Long userId, String orderCode,
+                                                   String packageName, long amount, String action,
+                                                   String actionDescription, LocalDateTime startAt,
+                                                   LocalDateTime endAt) {
+        String title = switch (action == null ? "NEW" : action) {
+            case "RENEWAL" -> "Gia hạn gói thành công";
+            case "UPGRADE" -> "Nâng cấp gói thành công";
+            case "DOWNGRADE" -> "Đã đăng ký gói mới";
+            case "AFTER_SCHEDULED" -> "Thanh toán gói thành công";
+            default -> "Đăng ký gói thành công";
+        };
+
+        StringBuilder message = new StringBuilder("Bạn đã thanh toán ")
+                .append(String.format("%,d", amount).replace(',', '.'))
+                .append(" đ cho ").append(packageName).append(" (mã đơn ").append(orderCode).append("). ");
+        if (actionDescription != null && !actionDescription.isBlank()) {
+            message.append(actionDescription).append(' ');
+        }
+        if (startAt != null && endAt != null) {
+            message.append("Thời gian áp dụng: từ ")
+                    .append(BILLING_DATE_FORMAT.format(startAt)).append(" đến ")
+                    .append(BILLING_DATE_FORMAT.format(endAt)).append('.');
+        }
+
+        insertBillingNotification(userId, title, message.toString());
+    }
+
+    /** Persists a notice when a payment is cancelled, expires, or cannot be confirmed. */
+    public void notifySubscriptionPaymentFailed(Long userId, String orderCode,
+                                                 String packageName, long amount, String reason) {
+        String message = "Đơn " + orderCode + " cho " + packageName + " (" +
+                String.format("%,d", amount).replace(',', '.') + " đ) chưa hoàn tất. " +
+                reason + " Gói dịch vụ chưa được áp dụng; bạn có thể tạo đơn thanh toán mới.";
+        insertBillingNotification(userId, "Thanh toán gói chưa thành công", message);
+    }
+
+    /** Records an underpayment notice without closing the order, which stays payable until expiry. */
+    public void notifySubscriptionPaymentAmountMismatch(Long userId, String orderCode,
+                                                         String packageName, long expectedAmount,
+                                                         long receivedAmount) {
+        String message = "SePay ghi nhận " + String.format("%,d", receivedAmount).replace(',', '.') +
+                " đ cho đơn " + orderCode + ", thấp hơn số tiền cần thanh toán " +
+                String.format("%,d", expectedAmount).replace(',', '.') + " đ của " + packageName +
+                ". Đơn vẫn đang chờ trong thời hạn QR; vui lòng kiểm tra lại giao dịch. Gói chưa được áp dụng.";
+        insertBillingNotification(userId, "Chưa xác nhận đủ tiền thanh toán", message);
+    }
+
+    /** Records a user's cancellation of an unpaid order or a future paid subscription. */
+    public void notifySubscriptionManagementCancelled(Long userId, Long subscriptionId, String message) {
+        jdbcTemplate.update(
+                "INSERT IGNORE INTO notifications " +
+                        "(user_id, title, message, type, link_url, created_at, dedupe_key) " +
+                        "VALUES (?, 'Đã cập nhật gói dịch vụ', ?, 'BILLING', '/dashboard/premium?tab=manage', NOW(), ?)",
+                userId, message, "subscription-management:" + subscriptionId + ":cancelled");
+    }
+
+    private void insertBillingNotification(Long userId, String title, String message) {
+        jdbcTemplate.update(
+                "INSERT INTO notifications " +
+                        "(user_id, title, message, type, link_url, created_at) " +
+                        "VALUES (?, ?, ?, 'BILLING', '/dashboard/premium', NOW())",
+                userId, title, message);
+    }
+
+    /** Sends an individual inbox row to each active user in the selected audience. */
     @Transactional
     public Map<String, Object> broadcast(String title, String message, String type,
                                          String targetRole, String linkUrl, Long createdBy) {
+        String safeTitle = title == null ? "" : title.trim();
+        String safeMessage = message == null ? "" : message.trim();
+        if (safeTitle.isBlank() || safeMessage.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tiêu đề và nội dung thông báo là bắt buộc.");
+        }
+
         String normalizedType = (type != null && !type.isBlank()) ? type.toUpperCase().trim() : "SYSTEM";
         if (!VALID_TYPES.contains(normalizedType)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -73,118 +125,121 @@ public class NotificationService {
             }
         }
 
-        // Danh sách người nhận đọc từ MySQL (bảng users có sẵn, không đổi schema)
         String recipientSql = "SELECT id FROM users WHERE status = 'ACTIVE'";
-        List<Object> params = new ArrayList<>();
+        List<Object> recipientParams = new ArrayList<>();
         if (roleFilter != null) {
             recipientSql += " AND role = ?";
-            params.add(roleFilter);
+            recipientParams.add(roleFilter);
         }
-        List<Long> recipientIds = jdbcTemplate.queryForList(recipientSql, Long.class, params.toArray());
+        List<Long> recipientIds = jdbcTemplate.queryForList(recipientSql, Long.class, recipientParams.toArray());
         if (recipientIds.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Không có người nhận nào phù hợp.");
         }
 
-        Date now = new Date();
-        List<Document> docs = new ArrayList<>();
+        Timestamp createdAt = Timestamp.valueOf(LocalDateTime.now());
+        List<Object[]> notificationRows = new ArrayList<>(recipientIds.size());
         for (Long userId : recipientIds) {
-            Document doc = new Document();
-            doc.put("userId", userId);
-            doc.put("title", title.trim());
-            doc.put("message", message.trim());
-            doc.put("type", normalizedType);
-            doc.put("linkUrl", (linkUrl != null && !linkUrl.isBlank()) ? linkUrl.trim() : null);
-            doc.put("createdBy", createdBy);
-            doc.put("readAt", null);
-            doc.put("createdAt", now);
-            docs.add(doc);
+            notificationRows.add(new Object[]{
+                    userId,
+                    safeTitle,
+                    safeMessage,
+                    normalizedType,
+                    (linkUrl != null && !linkUrl.isBlank()) ? linkUrl.trim() : null,
+                    createdBy,
+                    createdAt
+            });
         }
-        mongoTemplate.getCollection(COLLECTION).insertMany(docs);
+        jdbcTemplate.batchUpdate(
+                "INSERT INTO notifications (user_id, title, message, type, link_url, created_by, created_at) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                notificationRows);
 
-        // Ghi lịch sử đợt gửi để admin tra cứu
-        Document broadcastLog = new Document();
-        broadcastLog.put("title", title.trim());
-        broadcastLog.put("message", message.trim());
-        broadcastLog.put("type", normalizedType);
-        broadcastLog.put("targetRole", roleFilter != null ? roleFilter : "ALL");
-        broadcastLog.put("recipients", recipientIds.size());
-        broadcastLog.put("createdBy", createdBy);
-        broadcastLog.put("createdAt", now);
-        mongoTemplate.save(broadcastLog, BROADCAST_COLLECTION);
+        String historyRole = roleFilter != null ? roleFilter : "ALL";
+        jdbcTemplate.update(
+                "INSERT INTO notification_broadcasts " +
+                        "(title, message, type, target_role, recipients_count, created_by, created_at) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                safeTitle, safeMessage, normalizedType, historyRole, recipientIds.size(), createdBy, createdAt);
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("recipients", recipientIds.size());
         result.put("type", normalizedType);
-        result.put("targetRole", roleFilter != null ? roleFilter : "ALL");
+        result.put("targetRole", historyRole);
         result.put("message", "Đã gửi thông báo tới " + recipientIds.size() + " người dùng.");
         return result;
     }
 
-    /** Danh sách thông báo của user hiện tại (mới nhất trước). */
+    /** Returns the signed-in user's newest notifications and unread count. */
     public Map<String, Object> getMyNotifications(String principal, int limit) {
         Long userId = resolveUserId(principal);
         int safeLimit = Math.min(Math.max(limit, 1), 50);
 
-        Query query = Query.query(Criteria.where("userId").is(userId))
-                .with(Sort.by(Sort.Direction.DESC, "createdAt"))
-                .limit(safeLimit);
-        List<Document> docs = mongoTemplate.find(query, Document.class, COLLECTION);
+        List<Map<String, Object>> items = jdbcTemplate.query(
+                "SELECT CAST(id AS CHAR) AS id, title, message, type, link_url AS linkUrl, " +
+                        "DATE_FORMAT(read_at, '%Y-%m-%dT%H:%i:%s') AS readAt, " +
+                        "DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt " +
+                        "FROM notifications WHERE user_id = ? " +
+                        "ORDER BY created_at DESC, id DESC LIMIT ?",
+                (rs, rowNum) -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", rs.getString("id"));
+                    item.put("title", rs.getString("title"));
+                    item.put("message", rs.getString("message"));
+                    item.put("type", rs.getString("type"));
+                    item.put("linkUrl", rs.getString("linkUrl"));
+                    item.put("readAt", rs.getString("readAt"));
+                    item.put("createdAt", rs.getString("createdAt"));
+                    return item;
+                },
+                userId, safeLimit);
 
-        List<Map<String, Object>> items = new ArrayList<>();
-        for (Document doc : docs) {
-            Map<String, Object> n = new HashMap<>();
-            n.put("id", doc.getObjectId("_id").toHexString());
-            n.put("title", doc.getString("title"));
-            n.put("message", doc.getString("message"));
-            n.put("type", doc.getString("type"));
-            n.put("linkUrl", doc.getString("linkUrl"));
-            n.put("readAt", doc.getDate("readAt") != null ? doc.getDate("readAt").toString() : null);
-            n.put("createdAt", doc.getDate("createdAt") != null ? doc.getDate("createdAt").toString() : null);
-            items.add(n);
-        }
-
-        long unread = mongoTemplate.count(
-                Query.query(Criteria.where("userId").is(userId).and("readAt").is(null)), COLLECTION);
+        Long unreadCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL",
+                Long.class, userId);
 
         Map<String, Object> result = new HashMap<>();
         result.put("items", items);
-        result.put("unreadCount", unread);
+        result.put("unreadCount", unreadCount != null ? unreadCount : 0L);
         return result;
     }
 
     public void markRead(String principal, String notificationId) {
         Long userId = resolveUserId(principal);
-        Query query = Query.query(Criteria.where("_id").is(notificationId).and("userId").is(userId));
-        mongoTemplate.updateFirst(query, Update.update("readAt", new Date()), COLLECTION);
+        long id = parseNotificationId(notificationId);
+        int changed = jdbcTemplate.update(
+                "UPDATE notifications SET read_at = COALESCE(read_at, NOW()) WHERE id = ? AND user_id = ?",
+                id, userId);
+        if (changed == 0 && !notificationExistsForUser(id, userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy thông báo.");
+        }
     }
 
     public void markAllRead(String principal) {
         Long userId = resolveUserId(principal);
-        Query query = Query.query(Criteria.where("userId").is(userId).and("readAt").is(null));
-        mongoTemplate.updateMulti(query, Update.update("readAt", new Date()), COLLECTION);
+        jdbcTemplate.update(
+                "UPDATE notifications SET read_at = NOW() WHERE user_id = ? AND read_at IS NULL",
+                userId);
     }
 
-    /** Lịch sử các đợt gửi thông báo. */
+    /** Admin-visible history of notification broadcasts. */
     public List<Map<String, Object>> getBroadcastHistory() {
-        Query query = Query.query(new Criteria())
-                .with(Sort.by(Sort.Direction.DESC, "createdAt"))
-                .limit(50);
-        List<Document> docs = mongoTemplate.find(query, Document.class, BROADCAST_COLLECTION);
-
-        List<Map<String, Object>> history = new ArrayList<>();
-        for (Document doc : docs) {
-            Map<String, Object> h = new HashMap<>();
-            h.put("id", doc.getObjectId("_id").toHexString());
-            h.put("title", doc.getString("title"));
-            h.put("message", doc.getString("message"));
-            h.put("type", doc.getString("type"));
-            h.put("targetRole", doc.getString("targetRole"));
-            h.put("recipients", doc.getInteger("recipients"));
-            h.put("lastSentAt", doc.getDate("createdAt") != null ? doc.getDate("createdAt").toString() : null);
-            history.add(h);
-        }
-        return history;
+        return jdbcTemplate.query(
+                "SELECT CAST(id AS CHAR) AS id, title, message, type, target_role AS targetRole, " +
+                        "recipients_count AS recipients, " +
+                        "DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') AS lastSentAt " +
+                        "FROM notification_broadcasts ORDER BY created_at DESC, id DESC LIMIT 50",
+                (rs, rowNum) -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", rs.getString("id"));
+                    item.put("title", rs.getString("title"));
+                    item.put("message", rs.getString("message"));
+                    item.put("type", rs.getString("type"));
+                    item.put("targetRole", rs.getString("targetRole"));
+                    item.put("recipients", rs.getInt("recipients"));
+                    item.put("lastSentAt", rs.getString("lastSentAt"));
+                    return item;
+                });
     }
 
     private Long resolveUserId(String principal) {
@@ -192,5 +247,20 @@ public class NotificationService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản người dùng."));
         return user.getId();
+    }
+
+    private long parseNotificationId(String notificationId) {
+        try {
+            return Long.parseLong(notificationId);
+        } catch (NumberFormatException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã thông báo không hợp lệ.");
+        }
+    }
+
+    private boolean notificationExistsForUser(long notificationId, Long userId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM notifications WHERE id = ? AND user_id = ?",
+                Integer.class, notificationId, userId);
+        return count != null && count > 0;
     }
 }

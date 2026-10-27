@@ -38,12 +38,10 @@ public class SepayPaymentApi {
 
     /**
      * Tạo đơn thanh toán mới (PENDING) và trả về thông tin mã QR cho Frontend hiển thị.
-     * Hỗ trợ header `Idempotency-Key` (hoặc trường `idempotencyKey` trong body) để chống double-click.
      */
     @PostMapping("/api/subscriptions/checkout")
     public ResponseEntity<Map<String, Object>> checkout(
         Authentication authentication,
-        @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKeyHeader,
         @RequestBody Map<String, Object> request
     ) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -56,18 +54,7 @@ public class SepayPaymentApi {
         }
         Long packageId = Long.valueOf(pkgIdObj.toString());
 
-        // Lấy idempotencyKey từ Header hoặc Body
-        String idempotencyKey = idempotencyKeyHeader;
-        if (idempotencyKey == null || idempotencyKey.isBlank()) {
-            Object bodyKey = request.get("idempotencyKey");
-            if (bodyKey != null) {
-                idempotencyKey = bodyKey.toString();
-            }
-        }
-
-        Map<String, Object> result = subscriptionService.createPendingPayment(
-            authentication.getName(), packageId, idempotencyKey
-        );
+        Map<String, Object> result = subscriptionService.createPendingPayment(authentication.getName(), packageId);
         return ResponseEntity.ok(result);
     }
 
@@ -78,7 +65,7 @@ public class SepayPaymentApi {
      *   - Header: x-sepay-signature (chữ ký HMAC-SHA256)
      *   - Body: JSON chứa thông tin giao dịch (số tiền, nội dung, mã tham chiếu...)
      *
-     * Tích hợp toàn diện cơ chế Idempotency: chống lặp lại khi SePay retry hoặc mạng gửi trùng.
+     * Giao dịch được kiểm tra theo trạng thái đơn hàng trước khi kích hoạt gói.
      * Lưu ý: Endpoint này KHÔNG yêu cầu JWT token (đã được permitAll() trong SecurityConfig).
      */
     @PostMapping("/hooks/sepay-payment")
@@ -116,18 +103,24 @@ public class SepayPaymentApi {
 
         System.out.println("[SePay Webhook] ✅ HMAC hợp lệ. Giao dịch: " + webhookData);
 
-        // 3. Xử lý nghiệp vụ với cơ chế Idempotency: chống xử lý trùng lặp và race condition
+        // 3. Xử lý nghiệp vụ và kích hoạt gói theo kết quả xử lý giao dịch.
         try {
-            Map<String, Object> result = subscriptionService.processSepayWebhook(webhookData, rawPayload);
+            Map<String, Object> result = subscriptionService.processSepayWebhook(webhookData);
             System.out.println("[SePay Webhook] ✅ Kết quả: " + result);
+            // SePay chỉ xác nhận webhook thành công với HTTP 200/201 và JSON
+            // đúng dạng {"success":true}; không gửi kèm các field nghiệp vụ.
+            if (Boolean.TRUE.equals(result.get("success"))) {
+                return ResponseEntity.ok(Map.of("success", true));
+            }
+
+            // Từ chối nghiệp vụ (không tìm thấy đơn, sai số tiền...) vẫn là
+            // callback đã xử lý được, nhưng không xác nhận thanh toán thành công.
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             System.err.println("[SePay Webhook] ❌ Lỗi xử lý: " + e.getMessage());
-            // Vẫn trả 200 để SePay không retry liên tục khi lỗi nghiệp vụ
-            return ResponseEntity.ok(Map.of(
-                "success", false,
-                "message", "Lỗi xử lý giao dịch: " + e.getMessage()
-            ));
+            // Lỗi hệ thống cần trả non-2xx để SePay có thể retry nếu được bật.
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("success", false, "message", "Lỗi nội bộ khi xử lý giao dịch."));
         }
     }
 

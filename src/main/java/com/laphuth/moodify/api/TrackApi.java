@@ -151,15 +151,16 @@ public class TrackApi {
             return ResponseEntity.status(org.springframework.http.HttpStatus.PARTIAL_CONTENT)
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400, stale-while-revalidate=604800")
+                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
                 .body(region);
         } else {
+            long rangeLength = Math.min(1024 * 1024, contentLength);
+            ResourceRegion region = new ResourceRegion(resource, 0, rangeLength);
             return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400, stale-while-revalidate=604800")
-                .contentLength(contentLength)
-                .body(resource);
+                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                .body(region);
         }
     }
 

@@ -30,7 +30,10 @@ public record ModerationQueueTrackResponse(
     String issueDate,
     String expiryDate,
     String licenseStatus,
-    String licenseDocumentUrl
+    String licenseDocumentUrl,
+
+    // Audio Features (from MongoDB tracks.audio_features)
+    Track.AudioFeatures audioFeatures
 ) {
     public static ModerationQueueTrackResponse from(Track track, SongLicense license) {
         String genre = (track.getGenres() != null && !track.getGenres().isEmpty()) 
@@ -64,7 +67,8 @@ public record ModerationQueueTrackResponse(
             (license != null && license.getIssueDate() != null) ? license.getIssueDate().toString() : null,
             (license != null && license.getExpiryDate() != null) ? license.getExpiryDate().toString() : null,
             license != null ? license.getStatus().name() : "PENDING",
-            license != null ? license.getDocumentSonglicensesUrl() : null
+            license != null ? license.getDocumentSonglicensesUrl() : null,
+            track.getAudioFeatures()
         );
     }
 }

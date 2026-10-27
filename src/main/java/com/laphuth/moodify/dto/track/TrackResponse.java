@@ -35,12 +35,16 @@ public record TrackResponse(
     Map<String, MoodTrackScorer.FeatureDistance> moodFeatureDistances
 ) {
     public static TrackResponse from(Track track) {
+        String resolvedArtistId = track.getArtistSpotifyId();
+        if (resolvedArtistId == null || resolvedArtistId.isBlank()) {
+            resolvedArtistId = track.getArtistName();
+        }
         return new TrackResponse(
             track.getId(),
             track.getSpotifyId(),
             track.getName(),
             track.getArtistName(),
-            track.getArtistSpotifyId(),
+            resolvedArtistId,
             track.getAlbumSpotifyId(),
             track.getAlbumName(),
             AudioUrlResolver.resolveImageUrl(track.getImageUrl()),

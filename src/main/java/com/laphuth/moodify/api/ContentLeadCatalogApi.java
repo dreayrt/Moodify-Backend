@@ -22,7 +22,7 @@ import com.laphuth.moodify.dto.contentlead.ContentLeadAudienceResponse;
 import com.laphuth.moodify.services.ContentLeadAnalyticsService;
 
 @RestController
-@RequestMapping({"/api/content-lead", "/api/artists", "/api/artist"})
+@RequestMapping("/api/content-lead")
 public class ContentLeadCatalogApi {
     private final TrackService trackService;
     private final ContentLeadCatalogService contentLeadCatalogService;

@@ -72,6 +72,130 @@ public class SeedDataApi {
         } else {
             System.out.println("Database already has " + count + " tracks, skipping seed.");
         }
+        ensureArtistProfiles();
+    }
+
+    /**
+     * The tracks collection carries artist_spotify_id / artist_name on every track, but the
+     * artists collection is what Content Lead catalog lookups resolve against
+     * (ContentLeadCatalogService). Derive one artist profile per distinct artist_spotify_id
+     * and insert only the missing ones so repeated startups never duplicate data.
+     */
+    private void ensureArtistProfiles() {
+        try {
+            Set<String> existingSpotifyIds = new HashSet<>();
+            mongoTemplate.getCollection("artists")
+                .find()
+                .projection(new Document("spotify_id", 1))
+                .forEach(doc -> {
+                    Object spotifyId = doc.get("spotify_id");
+                    if (spotifyId != null && !spotifyId.toString().isBlank()) {
+                        existingSpotifyIds.add(spotifyId.toString());
+                    }
+                });
+
+            Map<String, List<Document>> tracksByArtist = new LinkedHashMap<>();
+            mongoTemplate.getCollection("tracks")
+                .find()
+                .projection(new Document("artist_spotify_id", 1)
+                    .append("artist_name", 1)
+                    .append("image_url", 1)
+                    .append("genres", 1))
+                .forEach(doc -> {
+                    Object spotifyId = doc.get("artist_spotify_id");
+                    if (spotifyId == null || spotifyId.toString().isBlank()) {
+                        return;
+                    }
+                    tracksByArtist
+                        .computeIfAbsent(spotifyId.toString(), k -> new ArrayList<>())
+                        .add(doc);
+                });
+
+            java.util.Date now = new java.util.Date();
+            List<Document> artistsToInsert = new ArrayList<>();
+            for (Map.Entry<String, List<Document>> entry : tracksByArtist.entrySet()) {
+                String spotifyId = entry.getKey();
+                if (existingSpotifyIds.contains(spotifyId)) {
+                    continue;
+                }
+                List<Document> artistTracks = entry.getValue();
+
+                Map<String, Integer> nameTally = new HashMap<>();
+                String preferredImage = null;
+                String fallbackImage = null;
+                Set<String> genresRaw = new LinkedHashSet<>();
+                for (Document track : artistTracks) {
+                    Object artistName = track.get("artist_name");
+                    if (artistName != null && !artistName.toString().isBlank()) {
+                        nameTally.merge(artistName.toString().trim(), 1, Integer::sum);
+                    }
+                    Object imageUrl = track.get("image_url");
+                    if (imageUrl != null && !imageUrl.toString().isBlank()) {
+                        String url = imageUrl.toString();
+                        if (url.contains("i.scdn.co")) {
+                            if (preferredImage == null) preferredImage = url;
+                        } else if (fallbackImage == null) {
+                            fallbackImage = url;
+                        }
+                    }
+                    List<String> trackGenres = track.getList("genres", String.class);
+                    if (trackGenres != null) {
+                        trackGenres.stream()
+                            .filter(g -> g != null && !g.isBlank())
+                            .forEach(genresRaw::add);
+                    }
+                }
+
+                List<String> genresRawList = new ArrayList<>(genresRaw);
+                List<String> genres = genresRawList.stream()
+                    .map(g -> g.toLowerCase(Locale.ROOT).trim())
+                    .distinct()
+                    .toList();
+
+                artistsToInsert.add(new Document()
+                    .append("_class", "com.laphuth.moodify.entities.Artist")
+                    .append("spotify_id", spotifyId)
+                    .append("name", resolveArtistName(nameTally, spotifyId))
+                    .append("image_url", preferredImage != null ? preferredImage : fallbackImage)
+                    .append("followers", 0)
+                    .append("popularity", 0)
+                    .append("genres", genres)
+                    .append("genres_raw", genresRawList)
+                    .append("created_at", now)
+                    .append("updated_at", now));
+            }
+
+            if (artistsToInsert.isEmpty()) {
+                System.out.println("Artist profiles are up to date, nothing to insert.");
+                return;
+            }
+            mongoTemplate.getCollection("artists").insertMany(artistsToInsert);
+            System.out.println("Derived " + artistsToInsert.size() + " artist profiles from tracks!");
+        } catch (Exception e) {
+            System.err.println("Warning: Could not derive artist profiles: " + e.getMessage());
+        }
+    }
+
+    private String resolveArtistName(Map<String, Integer> nameTally, String spotifyId) {
+        String bestName = null;
+        int bestCount = 0;
+        for (Map.Entry<String, Integer> tally : nameTally.entrySet()) {
+            String candidate = tally.getKey();
+            // Prefer solo names: "X feat. Y" entries belong to a collaboration, not the profile.
+            boolean solo = !candidate.toLowerCase(Locale.ROOT).contains("feat.");
+            boolean better = tally.getValue() > bestCount
+                || (tally.getValue() == bestCount && bestName != null
+                    && solo && bestName.toLowerCase(Locale.ROOT).contains("feat."));
+            if (bestName == null || better) {
+                bestName = candidate;
+                bestCount = tally.getValue();
+            }
+        }
+        if (bestName == null) {
+            return spotifyId;
+        }
+        int featIndex = bestName.toLowerCase(Locale.ROOT).indexOf("feat.");
+        return featIndex > 0 ? bestName.substring(0, featIndex).trim() : bestName;
     }
 
     private void doSeed() {
@@ -137,6 +261,7 @@ public class SeedDataApi {
 
             mongoTemplate.getCollection("tracks").insertMany(docsToInsert);
             System.out.println("Successfully seeded " + docsToInsert.size() + " Vietnamese tracks!");
+            ensureArtistProfiles();
         } catch (Exception e) {
             System.err.println("Error seeding 147 tracks: " + e.getMessage());
             e.printStackTrace();

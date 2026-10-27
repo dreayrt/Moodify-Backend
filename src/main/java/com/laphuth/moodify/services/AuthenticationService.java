@@ -494,7 +494,7 @@ public class AuthenticationService {
         User user = userRepository.findByUsername(username)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         if (userDeviceService != null) {
-            userDeviceService.registerDeviceOnLogin(user.getId(), username, deviceUuid, deviceName, platform);
+            userDeviceService.syncCurrentDevice(user.getId(), username, deviceUuid, deviceName, platform);
         }
     }
 
@@ -514,6 +514,17 @@ public class AuthenticationService {
             return 0;
         }
         return userDeviceService.revokeOtherDevices(user.getId(), currentDeviceUuid);
+    }
+
+    public boolean isDeviceActive(String username, String deviceUuid) {
+        if (userDeviceService == null || deviceUuid == null || deviceUuid.isBlank()) {
+            return true;
+        }
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user == null) {
+            return false;
+        }
+        return userDeviceService.isDeviceActive(user.getId(), deviceUuid);
     }
 
     public AuthResponse refresh(RefreshTokenRequest request) {

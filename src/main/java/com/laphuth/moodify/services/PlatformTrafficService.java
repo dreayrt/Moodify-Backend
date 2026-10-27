@@ -201,6 +201,11 @@ public class PlatformTrafficService {
     }
 
     public int seedTrafficData(List<String> targetIds, int countPerTrack) {
+        log.info("seedTrafficData is disabled to preserve 100% real platform telemetry data.");
+        return 0;
+    }
+
+    private int unused_seedTrafficData(List<String> targetIds, int countPerTrack) {
         if (targetIds == null || targetIds.isEmpty()) return 0;
 
         // Chỉ 3 nền tảng chính: Web, Android, iOS
@@ -356,11 +361,19 @@ public class PlatformTrafficService {
         List<Map<String, Object>> items = jdbcTemplate.query(selectSql, queryParams.toArray(), (rs, rowNum) -> {
             Map<String, Object> m = new HashMap<>();
             m.put("id", rs.getLong("id"));
-            m.put("trackId", rs.getString("track_id"));
+            String rawStartedAt = rs.getString("started_at");
+            if (rawStartedAt != null && rawStartedAt.length() > 19) {
+                rawStartedAt = rawStartedAt.substring(0, 19);
+            }
             java.sql.Timestamp startedAtTs = rs.getTimestamp("started_at");
+            m.put("startedAt", rawStartedAt != null && !rawStartedAt.isBlank() ? rawStartedAt : (startedAtTs != null ? startedAtTs.toLocalDateTime().format(dtf) : ""));
+
+            String rawEndedAt = rs.getString("ended_at");
+            if (rawEndedAt != null && rawEndedAt.length() > 19) {
+                rawEndedAt = rawEndedAt.substring(0, 19);
+            }
             java.sql.Timestamp endedAtTs = rs.getTimestamp("ended_at");
-            m.put("startedAt", startedAtTs != null ? startedAtTs.toLocalDateTime().format(dtf) : "");
-            m.put("endedAt", endedAtTs != null ? endedAtTs.toLocalDateTime().format(dtf) : "");
+            m.put("endedAt", rawEndedAt != null && !rawEndedAt.isBlank() ? rawEndedAt : (endedAtTs != null ? endedAtTs.toLocalDateTime().format(dtf) : ""));
 
             long durMs = rs.getLong("listened_duration_ms");
             long posMs = rs.getLong("last_position_ms");
@@ -497,8 +510,12 @@ public class PlatformTrafficService {
             m.put("positionFormatted", formatDurationSeconds((int) (posMs / 1000)));
             m.put("targetPositionMs", tgtMs);
             m.put("targetPositionFormatted", formatDurationSeconds((int) (tgtMs / 1000)));
+            String rawOccurredAt = rs.getString("occurred_at");
+            if (rawOccurredAt != null && rawOccurredAt.length() > 19) {
+                rawOccurredAt = rawOccurredAt.substring(0, 19);
+            }
             java.sql.Timestamp occurredTs = rs.getTimestamp("occurred_at");
-            m.put("occurredAt", occurredTs != null ? occurredTs.toLocalDateTime().format(dtf) : "");
+            m.put("occurredAt", rawOccurredAt != null && !rawOccurredAt.isBlank() ? rawOccurredAt : (occurredTs != null ? occurredTs.toLocalDateTime().format(dtf) : ""));
             return m;
         }, historyId);
 

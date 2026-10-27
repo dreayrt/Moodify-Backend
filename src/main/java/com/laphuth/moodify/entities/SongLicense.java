@@ -4,6 +4,7 @@ import com.laphuth.moodify.entities.enums.LicenseStatus;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "song_licenses")
@@ -40,6 +41,9 @@ public class SongLicense {
 
     @Column(name = "document_songlicenses_url", length = 1000)
     private String documentSonglicensesUrl;
+
+    @Column(name = "acquisition_cost_vnd", precision = 18, scale = 0)
+    private BigDecimal acquisitionCostVnd;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -88,6 +92,8 @@ public class SongLicense {
 
     public String getDocumentSonglicensesUrl() { return documentSonglicensesUrl; }
     public void setDocumentSonglicensesUrl(String documentSonglicensesUrl) { this.documentSonglicensesUrl = documentSonglicensesUrl; }
+    public BigDecimal getAcquisitionCostVnd() { return acquisitionCostVnd; }
+    public void setAcquisitionCostVnd(BigDecimal acquisitionCostVnd) { this.acquisitionCostVnd = acquisitionCostVnd; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

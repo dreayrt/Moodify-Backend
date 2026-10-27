@@ -81,14 +81,7 @@ public class ContentLeadAnalyticsService {
             return realData;
         }
 
-        // If no traffic exists yet, auto-seed realistic sample data into MySQL table so subsequent queries are 100% real
-        if (!trackIdSet.isEmpty()) {
-            platformTrafficService.seedTrafficData(new ArrayList<>(trackIdSet), 40);
-            realData = tryAggregateRealTrafficData(trackIdSet, normalizedPeriod, selectedTrackId, activeTracks);
-            if (realData != null && realData.totalReach() > 0) {
-                return realData;
-            }
-        }
+        // Return empty or clean aggregated audience response without auto-seeding fake rows into database
 
         // Fallback
         return generateConsistentAudienceResponse(activeTracks, normalizedPeriod, selectedTrackId);

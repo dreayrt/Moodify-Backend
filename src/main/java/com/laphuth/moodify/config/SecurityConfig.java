@@ -74,8 +74,8 @@ public class SecurityConfig {
                     .hasRole(UserRole.CONTENT_LEAD.name())
                 .requestMatchers("/api/moderator/**").hasRole(UserRole.MODERATOR.name())
                 // Allow MongoDB API access for GET and HEAD (streaming, browsing) and packages
-                .requestMatchers(HttpMethod.GET, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/**", "/api/playlists", "/api/packages/**", "/api/packages").permitAll()
-                .requestMatchers(HttpMethod.HEAD, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/**", "/api/playlists").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tracks/**", "/api/artists", "/api/artists/**", "/api/artist", "/api/artist/**", "/api/albums/**", "/api/genres/**", "/api/playlists/**", "/api/playlists", "/api/packages/**", "/api/packages").permitAll()
+                .requestMatchers(HttpMethod.HEAD, "/api/tracks/**", "/api/artists", "/api/artists/**", "/api/artist", "/api/artist/**", "/api/albums/**", "/api/genres/**", "/api/playlists/**", "/api/playlists").permitAll()
                 // Public ad serving for the player (active campaigns only)
                 .requestMatchers(HttpMethod.GET, "/api/ads/active").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/ads/*/impression").permitAll()
@@ -85,6 +85,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/emotions/predict", "/api/emotions/recommend").permitAll()
                 .requestMatchers("/api/emotions/history").authenticated()
                 // Analytics
+                .requestMatchers(HttpMethod.POST, "/api/analytics/listening-session").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/analytics/seed-traffic").hasRole(UserRole.ADMIN.name())
                 .requestMatchers("/api/analytics/**").permitAll()
                 // Seed & Sync are destructive/maintenance operations -> ADMIN only
                 .requestMatchers("/api/seed/**", "/api/sync/**").hasRole(UserRole.ADMIN.name())

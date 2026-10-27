@@ -1,6 +1,7 @@
 package com.laphuth.moodify.dto.contentlead;
 
 public class TrackUploadRequest {
+    private java.math.BigDecimal acquisitionCostVnd;
     private String title;
     private String genre;
     private String featuredArtists;
@@ -15,6 +16,9 @@ public class TrackUploadRequest {
     private String licenseType = "DIGITAL_STREAMING";
     private String copyrightOwner;
     private Long distributorId;
+    // Human-readable reference printed in the uploaded agreement (not a database primary key).
+    private String distributionContractCode;
+    // Kept for compatibility with clients that already send an internal distribution_contracts.id.
     private Long distributionContractId;
     private String issueDate;
     private String expiryDate;
@@ -60,6 +64,9 @@ public class TrackUploadRequest {
     public Long getDistributionContractId() { return distributionContractId; }
     public void setDistributionContractId(Long distributionContractId) { this.distributionContractId = distributionContractId; }
 
+    public String getDistributionContractCode() { return distributionContractCode; }
+    public void setDistributionContractCode(String distributionContractCode) { this.distributionContractCode = distributionContractCode; }
+
     public String getIssueDate() { return issueDate; }
     public void setIssueDate(String issueDate) { this.issueDate = issueDate; }
 
@@ -68,4 +75,6 @@ public class TrackUploadRequest {
 
     public boolean isPerpetual() { return isPerpetual; }
     public void setPerpetual(boolean perpetual) { isPerpetual = perpetual; }
+    public java.math.BigDecimal getAcquisitionCostVnd() { return acquisitionCostVnd; }
+    public void setAcquisitionCostVnd(java.math.BigDecimal acquisitionCostVnd) { this.acquisitionCostVnd = acquisitionCostVnd; }
 }

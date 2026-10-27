@@ -47,6 +47,37 @@ public class SubscriptionApi {
         return ResponseEntity.ok(subscriptionService.getCurrentUserSubscription(authentication.getName()));
     }
 
+    /** Danh sách lịch sử gói và các biên nhận thanh toán của tài khoản hiện tại. */
+    @GetMapping("/subscriptions/me/management")
+    public ResponseEntity<List<Map<String, Object>>> getMySubscriptionManagement(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(subscriptionService.getMySubscriptionManagement(authentication.getName()));
+    }
+
+    /** Hủy đơn chờ thanh toán hoặc gói đã thanh toán nhưng chưa tới ngày áp dụng. */
+    @PostMapping("/subscriptions/me/{subscriptionId}/cancel")
+    public ResponseEntity<Map<String, Object>> cancelMySubscription(
+        Authentication authentication,
+        @PathVariable Long subscriptionId
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(subscriptionService.cancelMyManagedSubscription(
+            authentication.getName(), subscriptionId));
+    }
+
+    /** Báo giá và thời điểm áp dụng theo chính sách gói của tài khoản hiện tại. */
+    @GetMapping("/subscriptions/package-quotes")
+    public ResponseEntity<List<Map<String, Object>>> getPackageQuotes(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(subscriptionService.getPackageQuotes(authentication.getName()));
+    }
+
     /**
      * Đăng ký mua gói dịch vụ (Sandbox Payment).
      */
@@ -80,12 +111,7 @@ public class SubscriptionApi {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        boolean isAdmin = authentication.getAuthorities().stream()
-            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        if (!isAdmin) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                "Chức năng này chỉ dành cho Quản trị viên (ADMIN).");
-        }
+
         boolean enable = Boolean.TRUE.equals(request.get("enable"));
         Integer days = request.get("days") != null ? Integer.valueOf(request.get("days").toString()) : 30;
         Long packageId = request.get("packageId") != null ? Long.valueOf(request.get("packageId").toString()) : null;
