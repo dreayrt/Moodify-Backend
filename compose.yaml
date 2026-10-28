@@ -51,6 +51,7 @@ services:
       - audio
     build:
       context: ../Moodify-Audio-Service
+    image: 'moodify-audio-analysis:local'
     container_name: 'moodify-audio-analysis'
     restart: 'unless-stopped'
     ports:

@@ -37,4 +37,8 @@ public interface TrackRepository extends MongoRepository<Track, String> {
     );
 
     List<Track> findByNameContainingIgnoreCase(String name);
+
+    List<Track> findByArtistName(String artistName);
+
+    List<Track> findByArtistNameContainingIgnoreCase(String artistName);
 }
