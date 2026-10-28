@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,8 +47,7 @@ public class UserLibraryService {
         User user = findUserByPrincipal(principal);
         
         // Verify track exists in MongoDB by spotifyId or id
-        Track track = trackRepository.findBySpotifyId(trackSpotifyId)
-            .or(() -> trackRepository.findById(trackSpotifyId))
+        Track track = resolveTrack(trackSpotifyId)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "Track not found: " + trackSpotifyId
@@ -56,7 +56,8 @@ public class UserLibraryService {
         String resolvedId = track.getSpotifyId() != null ? track.getSpotifyId() : track.getId();
 
         // Check if already in library
-        if (libraryRepository.existsByUserAndTrackSpotifyId(user, resolvedId)) {
+        if (libraryRepository.existsByUserAndTrackSpotifyId(user, resolvedId) ||
+            libraryRepository.existsByUserAndTrackSpotifyId(user, track.getId())) {
             return; // Already exists, idempotent operation
         }
         
@@ -72,11 +73,14 @@ public class UserLibraryService {
     public void removeTrack(String principal, String trackSpotifyId) {
         User user = findUserByPrincipal(principal);
         libraryRepository.deleteByUserAndTrackSpotifyId(user, trackSpotifyId);
-        // Also attempt delete by Mongo id if it differs
-        trackRepository.findBySpotifyId(trackSpotifyId)
+        // Remove both representations of the same saved fact, regardless of the input alias.
+        resolveTrack(trackSpotifyId)
             .ifPresent(t -> {
                 if (t.getId() != null && !t.getId().equals(trackSpotifyId)) {
                     libraryRepository.deleteByUserAndTrackSpotifyId(user, t.getId());
+                }
+                if (t.getSpotifyId() != null && !t.getSpotifyId().equals(trackSpotifyId)) {
+                    libraryRepository.deleteByUserAndTrackSpotifyId(user, t.getSpotifyId());
                 }
             });
     }
@@ -124,8 +128,8 @@ public class UserLibraryService {
                 response.setPreviewUrl(null);
                 response.setImageUrl(AudioUrlResolver.resolveImageUrl(track.getImageUrl()));
                 response.setGenres(track.getGenres());
-                response.setLyricsPlain(track.getLyricsPlain());
-                response.setLyricsSynced(track.getLyricsSynced());
+                response.setLyricsPlain(null);
+                response.setLyricsSynced(null);
                 response.setLocalPath(track.getLocalPath());
                 response.setAudioUrl(AudioUrlResolver.resolve(track.getLocalPath()));
                 // Add library-specific field
@@ -153,11 +157,16 @@ public class UserLibraryService {
         boolean exists = libraryRepository.existsByUserAndTrackSpotifyId(user, trackSpotifyId);
         if (!exists) {
             // Also check by resolved ID
-            exists = trackRepository.findBySpotifyId(trackSpotifyId)
-                .map(t -> libraryRepository.existsByUserAndTrackSpotifyId(user, t.getId()))
+            exists = resolveTrack(trackSpotifyId)
+                .map(t -> libraryRepository.existsByUserAndTrackSpotifyId(user, t.getId()) ||
+                    (t.getSpotifyId() != null && libraryRepository.existsByUserAndTrackSpotifyId(user, t.getSpotifyId())))
                 .orElse(false);
         }
         return exists;
+    }
+
+    private Optional<Track> resolveTrack(String identity) {
+        return trackRepository.findById(identity).or(() -> trackRepository.findBySpotifyId(identity));
     }
 
     private User findUserByPrincipal(String principal) {

@@ -22,17 +22,33 @@ public class TrackService {
     private final TrackRepository trackRepository;
     private final SongLicenseRepository songLicenseRepository;
 
+    private volatile Set<String> cachedIneligibleTrackIds = null;
+    private volatile long licenseCacheTimestamp = 0;
+    private static final long LICENSE_CACHE_TTL_MS = 5 * 60 * 1000L;
+
     public TrackService(TrackRepository trackRepository, SongLicenseRepository songLicenseRepository) {
         this.trackRepository = trackRepository;
         this.songLicenseRepository = songLicenseRepository;
     }
 
     public Set<String> getIneligibleTrackIds() {
-        try {
-            return new HashSet<>(songLicenseRepository.findIneligibleTrackIds());
-        } catch (Exception e) {
-            return Collections.emptySet();
+        long now = System.currentTimeMillis();
+        if (cachedIneligibleTrackIds != null && (now - licenseCacheTimestamp) < LICENSE_CACHE_TTL_MS) {
+            return cachedIneligibleTrackIds;
         }
+        try {
+            Set<String> ids = new HashSet<>(songLicenseRepository.findIneligibleTrackIds());
+            cachedIneligibleTrackIds = ids;
+            licenseCacheTimestamp = now;
+            return ids;
+        } catch (Exception e) {
+            return cachedIneligibleTrackIds != null ? cachedIneligibleTrackIds : Collections.emptySet();
+        }
+    }
+
+    public void invalidateLicenseCache() {
+        cachedIneligibleTrackIds = null;
+        licenseCacheTimestamp = 0;
     }
 
     public boolean isTrackPubliclyAvailable(Track track, Set<String> ineligibleIds) {
@@ -115,7 +131,7 @@ public class TrackService {
         }
 
         return new TrackPageResponse(
-            tracks.map(TrackResponse::from).getContent(),
+            tracks.map(TrackResponse::fromSummary).getContent(),
             tracks.getNumber(),
             tracks.getSize(),
             tracks.getTotalElements(),
@@ -154,7 +170,32 @@ public class TrackService {
             .toList();
         
         return new TrackPageResponse(
-            valid.stream().map(TrackResponse::from).toList(),
+            valid.stream().map(TrackResponse::fromSummary).toList(),
+            tracks.getNumber(),
+            tracks.getSize(),
+            tracks.getTotalElements() - (tracks.getNumberOfElements() - valid.size()),
+            tracks.getTotalPages()
+        );
+    }
+
+    public TrackPageResponse getTracksByGenres(List<String> genres, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
+        
+        Pageable pageable = PageRequest.of(
+            safePage,
+            safeSize,
+            Sort.by(Sort.Direction.DESC, "popularity")
+        );
+        
+        Page<Track> tracks = trackRepository.findByGenresIn(genres, pageable);
+        Set<String> ineligibleIds = getIneligibleTrackIds();
+        List<Track> valid = tracks.getContent().stream()
+            .filter(t -> isTrackPubliclyAvailable(t, ineligibleIds))
+            .toList();
+        
+        return new TrackPageResponse(
+            valid.stream().map(TrackResponse::fromSummary).toList(),
             tracks.getNumber(),
             tracks.getSize(),
             tracks.getTotalElements() - (tracks.getNumberOfElements() - valid.size()),
@@ -179,7 +220,7 @@ public class TrackService {
             .toList();
         
         return new TrackPageResponse(
-            valid.stream().map(TrackResponse::from).toList(),
+            valid.stream().map(TrackResponse::fromSummary).toList(),
             tracks.getNumber(),
             tracks.getSize(),
             tracks.getTotalElements() - (tracks.getNumberOfElements() - valid.size()),

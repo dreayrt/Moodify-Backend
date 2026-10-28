@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record AlbumResponse(
-    Long id,
+    Object id,
     String title,
     String description,
     String coverUrl,

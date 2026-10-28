@@ -27,16 +27,26 @@ public class RevenuePlaybackService {
     private final JdbcTemplate jdbc;
     private final TrackRepository tracks;
     private final SongLicenseRepository licenses;
+    private final com.laphuth.moodify.recommendation.RecommendationOutcomeDispatcher recommendationOutcomes;
 
-    public RevenuePlaybackService(JdbcTemplate jdbc, TrackRepository tracks, SongLicenseRepository licenses) {
+    public RevenuePlaybackService(JdbcTemplate jdbc, TrackRepository tracks, SongLicenseRepository licenses,
+        com.laphuth.moodify.recommendation.RecommendationOutcomeDispatcher recommendationOutcomes) {
         this.jdbc = jdbc;
         this.tracks = tracks;
         this.licenses = licenses;
+        this.recommendationOutcomes = recommendationOutcomes;
     }
 
     @Transactional
     public Map<String, Object> record(Long userId, String rawTrackId, String rawSessionKey, String rawEvent,
                                       long positionMs, long targetPositionMs) {
+        return record(userId, rawTrackId, rawSessionKey, rawEvent, positionMs, targetPositionMs, "OTHER", null, "WEB", null);
+    }
+
+    @Transactional
+    public Map<String, Object> record(Long userId, String rawTrackId, String rawSessionKey, String rawEvent,
+                                      long positionMs, long targetPositionMs, String source, String sourceId, String deviceType,
+                                      com.laphuth.moodify.recommendation.RecommendationTypes.TokenClaims attribution) {
         if (userId == null || rawTrackId == null || rawSessionKey == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Authenticated user, track and session are required");
         }
@@ -70,20 +80,28 @@ public class RevenuePlaybackService {
             GeneratedKeyHolder key = new GeneratedKeyHolder();
             jdbc.update(connection -> {
                 var statement = connection.prepareStatement(
-                    "INSERT INTO listening_history (user_id,track_id,started_at,listened_duration_ms,last_position_ms,source,device_type) VALUES (?,?,?,0,?,'HOME','WEB')",
+                    "INSERT INTO listening_history (user_id,track_id,started_at,listened_duration_ms,last_position_ms,source,source_id,device_type) VALUES (?,?,?,0,?,?,?,?)",
                     java.sql.Statement.RETURN_GENERATED_KEYS);
                 statement.setLong(1, userId);
                 statement.setString(2, trackId);
-                statement.setTimestamp(3, Timestamp.valueOf(now));
+                statement.setObject(3, now);
                 statement.setLong(4, position);
+                statement.setString(5, source);
+                statement.setString(6, sourceId);
+                statement.setString(7, deviceType);
                 return statement;
             }, key);
             long historyId = key.getKey().longValue();
             jdbc.update("INSERT INTO revenue_playback_sessions (session_key,listening_history_id,last_seen_at,playing) VALUES (?,?,?,TRUE)",
-                rawSessionKey, historyId, Timestamp.valueOf(now));
+                rawSessionKey, historyId, now);
             jdbc.update("INSERT INTO playback_events (listening_history_id,event_type,position_ms,occurred_at) VALUES (?,'PLAY',?,?)",
-                historyId, position, Timestamp.valueOf(now));
-            return Map.of("success", true, "historyId", historyId, "qualified", false);
+                historyId, position, now);
+            if (attribution != null) {
+                String eventId = UUID.nameUUIDFromBytes((userId + ":play:" + rawSessionKey)
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
+                recordRecommendationAfterCommit(userId, eventId, attribution, now.toInstant(ZoneOffset.UTC), rawSessionKey, historyId);
+            }
+            return Map.of("success", true, "historyId", historyId, "qualified", false, "created", true);
         }
         Map<String, Object> session = rows.get(0);
         if (((Number) session.get("user_id")).longValue() != userId || !trackId.equals(session.get("track_id"))) {
@@ -121,18 +139,32 @@ public class RevenuePlaybackService {
         boolean nextPlaying = event.equals("PLAY") || event.equals("RESUME") || event.equals("SEEK")
             || (event.equals("HEARTBEAT") && playing);
         jdbc.update("UPDATE revenue_playback_sessions SET last_seen_at=?,continuous_ms=?,playing=?,closed=? WHERE session_key=?",
-            Timestamp.valueOf(now), continuous, nextPlaying, closed, rawSessionKey);
+            now, continuous, nextPlaying, closed, rawSessionKey);
         jdbc.update("UPDATE listening_history SET listened_duration_ms=?,last_position_ms=?,ended_at=? WHERE id=?",
-            totalPlayed, position, closed ? Timestamp.valueOf(now) : null, historyId);
+            totalPlayed, position, closed ? now : null, historyId);
         String storedEvent = switch (event) {
             case "PLAY", "RESUME", "PAUSE", "SEEK", "COMPLETE", "SKIP_NEXT", "SKIP_PREVIOUS" -> event;
             default -> null;
         };
         if (storedEvent != null) {
             jdbc.update("INSERT INTO playback_events (listening_history_id,event_type,position_ms,target_position_ms,occurred_at) VALUES (?,?,?,?,?)",
-                historyId, storedEvent, position, Math.max(0, targetPositionMs), Timestamp.valueOf(now));
+                historyId, storedEvent, position, Math.max(0, targetPositionMs), now);
         }
         return Map.of("success", true, "historyId", historyId, "qualified", hasQualified(rawSessionKey));
+    }
+
+    private void recordRecommendationAfterCommit(long userId, String eventId,
+        com.laphuth.moodify.recommendation.RecommendationTypes.TokenClaims claims,
+        Instant at, String sessionKey, long historyId) {
+        // MySQL is the authoritative listening/financial store. Recommendation analytics are best effort
+        // after commit: no distributed transaction or new SQL outbox is required.
+        Runnable write = () -> recommendationOutcomes.submit(userId,eventId,claims,at,sessionKey,historyId);
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override public void afterCommit() { write.run(); }
+                });
+        } else write.run();
     }
 
     private boolean hasQualified(String key) {
@@ -169,12 +201,12 @@ public class RevenuePlaybackService {
             JOIN listening_history h ON h.id = s.listening_history_id
             WHERE h.user_id=? AND h.track_id=? AND s.session_key<>?
               AND s.playing=TRUE AND s.closed=FALSE AND s.last_seen_at>=?
-            """, Long.class, userId, track.getId(), key, Timestamp.valueOf(now.minusSeconds(20)));
+            """, Long.class, userId, track.getId(), key, now.minusSeconds(20));
         Long rapidRepeat = jdbc.queryForObject("SELECT COUNT(*) FROM qualified_streams WHERE listener_user_id=? AND track_id=? AND qualified_at>=?",
-            Long.class, userId, track.getId(), Timestamp.valueOf(now.minusMinutes(10)));
+            Long.class, userId, track.getId(), now.minusMinutes(10));
         boolean review = (overlapping != null && overlapping > 0) || (rapidRepeat != null && rapidRepeat >= 3);
         jdbc.update("INSERT INTO qualified_streams (session_key,listener_user_id,content_lead_user_id,track_id,qualified_at,gross_vnd,content_lead_vnd,platform_vnd,policy_version,status,review_reason) VALUES (?,?,?,?,?,1000,750,250,'V1_60S_75_25',?,?)",
-            key, userId, leadId, track.getId(), Timestamp.valueOf(now), review ? "PENDING_REVIEW" : "APPROVED",
+            key, userId, leadId, track.getId(), now, review ? "PENDING_REVIEW" : "APPROVED",
             review ? "Overlapping playback or rapid repeated streams" : null);
     }
 }

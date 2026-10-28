@@ -18,6 +18,7 @@ public interface TrackRepository extends MongoRepository<Track, String> {
     List<Track> findByArtistSpotifyId(String artistSpotifyId);
 
     Page<Track> findByGenresContaining(String genre, Pageable pageable);
+    Page<Track> findByGenresIn(List<String> genres, Pageable pageable);
     
     Optional<Track> findBySpotifyId(String spotifyId);
     

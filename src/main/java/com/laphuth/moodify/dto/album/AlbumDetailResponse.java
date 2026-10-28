@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record AlbumDetailResponse(
-    Long id,
+    Object id,
     String title,
     String description,
     String coverUrl,

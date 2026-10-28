@@ -48,7 +48,7 @@ public class AlbumApi {
 
     @GetMapping("/{id}")
     public ResponseEntity<AlbumDetailResponse> getAlbumDetail(
-        @PathVariable Long id,
+        @PathVariable String id,
         Authentication authentication
     ) {
         String username = authentication != null ? authentication.getName() : null;

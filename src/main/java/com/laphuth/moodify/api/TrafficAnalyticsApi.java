@@ -23,19 +23,22 @@ public class TrafficAnalyticsApi {
     private final TrackRepository trackRepository;
     private final RevenuePlaybackService revenuePlaybackService;
     private final com.laphuth.moodify.services.UserDeviceService userDeviceService;
+    private final com.laphuth.moodify.recommendation.RecommendationService recommendations;
 
     public TrafficAnalyticsApi(
         PlatformTrafficService platformTrafficService,
         UserRepository userRepository,
         TrackRepository trackRepository,
         RevenuePlaybackService revenuePlaybackService,
-        com.laphuth.moodify.services.UserDeviceService userDeviceService
+        com.laphuth.moodify.services.UserDeviceService userDeviceService,
+        com.laphuth.moodify.recommendation.RecommendationService recommendations
     ) {
         this.platformTrafficService = platformTrafficService;
         this.userRepository = userRepository;
         this.trackRepository = trackRepository;
         this.revenuePlaybackService = revenuePlaybackService;
         this.userDeviceService = userDeviceService;
+        this.recommendations = recommendations;
     }
 
     @PostMapping("/track-visit")
@@ -95,8 +98,15 @@ public class TrafficAnalyticsApi {
             // Revenue path: qualified-stream pipeline keyed by playback session.
             Long positionMs = body.get("positionMs") != null ? ((Number) body.get("positionMs")).longValue() : 0L;
             Long targetPositionMs = body.get("targetPositionMs") != null ? ((Number) body.get("targetPositionMs")).longValue() : positionMs;
+            User actor = userRepository.findById(userId).orElseThrow();
+            String queueToken = body.get("queueToken") instanceof String value ? value : null;
+            var context = recommendations.playbackContext(actor, queueToken, trackId,
+                body.get("source") instanceof String value ? value : null,
+                body.get("sourceId") instanceof String value ? value : null,
+                body.get("deviceType") instanceof String value ? value : null);
             Map<String, Object> result = revenuePlaybackService.record(
-                userId, trackId, sessionKey, eventType, positionMs, targetPositionMs);
+                userId, trackId, sessionKey, eventType, positionMs, targetPositionMs,
+                context.source(), context.sourceId(), context.deviceType(), context.claims());
             return ResponseEntity.ok(result);
         }
 
@@ -161,6 +171,7 @@ public class TrafficAnalyticsApi {
             return ResponseEntity.status(404).body(Map.of("message", "Không tìm thấy người dùng."));
         }
         boolean deleted = platformTrafficService.deleteUserHistoryItem(u.get().getId(), historyId);
+        if (deleted) recommendations.forgetHistory(u.get().getId());
         return ResponseEntity.ok(Map.of(
             "success", deleted,
             "message", deleted ? "Đã xóa bài hát khỏi lịch sử nghe." : "Không tìm thấy bài hát cần xóa."
@@ -177,6 +188,7 @@ public class TrafficAnalyticsApi {
             return ResponseEntity.status(404).body(Map.of("message", "Không tìm thấy người dùng."));
         }
         int count = platformTrafficService.clearUserHistory(u.get().getId());
+        recommendations.forgetHistory(u.get().getId());
         return ResponseEntity.ok(Map.of(
             "success", true,
             "deletedCount", count,

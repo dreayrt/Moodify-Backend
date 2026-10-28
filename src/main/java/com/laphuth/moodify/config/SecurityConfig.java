@@ -74,6 +74,7 @@ public class SecurityConfig {
                     .hasRole(UserRole.CONTENT_LEAD.name())
                 .requestMatchers("/api/moderator/**").hasRole(UserRole.MODERATOR.name())
                 // Allow MongoDB API access for GET and HEAD (streaming, browsing) and packages
+                .requestMatchers(HttpMethod.GET, "/api/playlists/me").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/**", "/api/playlists", "/api/packages/**", "/api/packages").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/api/tracks/**", "/api/artists/**", "/api/albums/**", "/api/genres/**", "/api/playlists/**", "/api/playlists").permitAll()
                 // Public ad serving for the player (active campaigns only)
