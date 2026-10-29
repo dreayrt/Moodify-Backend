@@ -23,6 +23,9 @@ public class SongLicense {
     @Column(name = "distribution_contract_id")
     private Long distributionContractId;
 
+    @Column(name = "distribution_contract_code", length = 80)
+    private String distributionContractCode;
+
     @Column(name = "license_type", nullable = false, length = 80)
     private String licenseType;
 
@@ -74,6 +77,9 @@ public class SongLicense {
 
     public Long getDistributionContractId() { return distributionContractId; }
     public void setDistributionContractId(Long distributionContractId) { this.distributionContractId = distributionContractId; }
+
+    public String getDistributionContractCode() { return distributionContractCode; }
+    public void setDistributionContractCode(String distributionContractCode) { this.distributionContractCode = distributionContractCode; }
 
     public String getLicenseType() { return licenseType; }
     public void setLicenseType(String licenseType) { this.licenseType = licenseType; }

@@ -9,7 +9,7 @@ public class AudioUrlResolver {
     private static String backendBaseUrl = "";
 
     public AudioUrlResolver(
-        @Value("${oracle.audio.base-url:}") String configuredBaseUrl,
+        @Value("${audio.server.base-url:}") String configuredBaseUrl,
         @Value("${app.backend-base-url:}") String configuredBackendBaseUrl
     ) {
         if (configuredBaseUrl != null && !configuredBaseUrl.isBlank()) {

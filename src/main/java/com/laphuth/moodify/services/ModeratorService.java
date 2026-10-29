@@ -12,11 +12,14 @@ import com.laphuth.moodify.entities.enums.LicenseStatus;
 import com.laphuth.moodify.repositories.ContentReviewActionRepository;
 import com.laphuth.moodify.repositories.ContentReviewRequestRepository;
 import com.laphuth.moodify.repositories.SongLicenseRepository;
+import com.laphuth.moodify.repositories.SongLicenseDetailsProjection;
 import com.laphuth.moodify.repositories.TrackRepository;
 import com.laphuth.moodify.repositories.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Sort;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
@@ -55,9 +58,13 @@ public class ModeratorService {
         }
 
         List<String> trackIds = pendingTracks.stream().map(Track::getId).toList();
-        List<SongLicense> licenses = songLicenseRepository.findByTrackIdIn(trackIds);
-        Map<String, SongLicense> licenseMap = licenses.stream()
-            .collect(Collectors.toMap(SongLicense::getTrackId, l -> l, (existing, replacement) -> existing));
+        List<SongLicenseDetailsProjection> licenses = songLicenseRepository.findDetailsByTrackIdIn(trackIds);
+        Map<String, SongLicenseDetailsProjection> licenseMap = licenses.stream()
+            .collect(Collectors.toMap(
+                SongLicenseDetailsProjection::getTrackId,
+                l -> l,
+                (existing, replacement) -> existing
+            ));
 
         return pendingTracks.stream()
             .map(t -> ModerationQueueTrackResponse.from(t, licenseMap.get(t.getId())))
@@ -111,22 +118,15 @@ public class ModeratorService {
             .toList();
     }
 
+    @Transactional
     public void processDecision(ModerationDecisionRequest request, String moderatorPrincipal) {
-        if (request.getTrackId() == null || request.getActionType() == null) {
+        if (request == null || request.getTrackId() == null || request.getTrackId().isBlank()
+            || request.getActionType() == null || request.getActionType().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing trackId or actionType");
         }
 
         Track track = trackRepository.findById(request.getTrackId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Track not found in MongoDB"));
-
-        // Resolve moderator user ID
-        Long moderatorUserId = null;
-        try {
-            User moderator = userRepo.findByEmailOrUsername(moderatorPrincipal, moderatorPrincipal).orElse(null);
-            if (moderator != null) {
-                moderatorUserId = moderator.getId();
-            }
-        } catch (Exception ignored) {}
 
         String action = request.getActionType().toLowerCase().trim();
         String reviewAction;
@@ -134,38 +134,67 @@ public class ModeratorService {
 
         switch (action) {
             case "approve" -> {
-                track.setModerationStatus("approved");
-                track.setStatus("published");
-                double score = (request.getModerationScore() != null && request.getModerationScore() > 0)
-                    ? request.getModerationScore()
-                    : 98.0;
-                track.setModerationScore(score);
-                track.setDownloadStatus("completed");
                 reviewAction = "APPROVE";
                 reviewRequestStatus = "APPROVED";
             }
             case "reject" -> {
-                track.setModerationStatus("rejected");
-                track.setStatus("draft");
+                if (request.getRejectionReason() == null || request.getRejectionReason().isBlank()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng chọn ít nhất một lý do từ chối.");
+                }
                 reviewAction = "REJECT";
                 reviewRequestStatus = "REJECTED";
             }
             case "needs_revision" -> {
-                track.setModerationStatus("needs_revision");
-                track.setStatus("draft");
                 reviewAction = "RETURN_FOR_EDIT";
                 reviewRequestStatus = "PENDING"; // Still pending, waiting for artist revision
             }
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid actionType: " + action);
         }
 
-        if (request.getExplicitTag() != null) {
-            track.setExplicit(request.getExplicitTag());
-        }
-        track.setUpdatedAt(Instant.now());
-        trackRepository.save(track);
+        ContentReviewRequest reviewRequest = contentReviewRequestRepository
+            .findByContentIdAndContentTypeAndStatus(track.getId(), "TRACK", "PENDING")
+            .or(() -> contentReviewRequestRepository
+                .findByContentIdAndContentTypeAndStatus(track.getId(), "TRACK", "IN_REVIEW"))
+            .orElseGet(() -> createReviewRequestForPendingTrack(track));
+        snapshotTrackMetadata(reviewRequest, track);
 
-        // Update MySQL song_licenses accordingly
+        User moderator = userRepo.findByEmailOrUsername(moderatorPrincipal, moderatorPrincipal)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Không thể xác định tài khoản kiểm duyệt để lưu lịch sử."
+            ));
+
+        String reason = request.getRejectionReason();
+        if (reason == null || reason.isBlank()) {
+            reason = request.getInternalNote();
+        }
+        if (reason != null && reason.length() > 1000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lý do kiểm duyệt vượt quá 1000 ký tự.");
+        }
+
+        reviewRequest.setStatus(reviewRequestStatus);
+        if ("APPROVED".equals(reviewRequestStatus) || "REJECTED".equals(reviewRequestStatus)) {
+            reviewRequest.setResolvedAt(LocalDateTime.now());
+        }
+        contentReviewRequestRepository.save(reviewRequest);
+
+        ContentReviewAction reviewActionEntity = new ContentReviewAction();
+        reviewActionEntity.setReviewRequestId(reviewRequest.getId());
+        reviewActionEntity.setModeratorUserId(moderator.getId());
+        reviewActionEntity.setAction(reviewAction);
+        reviewActionEntity.setReason(reason);
+        reviewActionEntity.setCreatedAt(LocalDateTime.now());
+        try {
+            contentReviewActionRepository.saveAndFlush(reviewActionEntity);
+        } catch (DataAccessException e) {
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Không thể lưu lịch sử kiểm duyệt vào database. Vui lòng thử lại.",
+                e
+            );
+        }
+
+        // Flush the MySQL audit row before changing the MongoDB queue item.
         songLicenseRepository.findByTrackId(track.getId()).ifPresent(license -> {
             if ("approve".equals(action)) {
                 license.setStatus(LicenseStatus.ACTIVE);
@@ -175,46 +204,76 @@ public class ModeratorService {
             songLicenseRepository.save(license);
         });
 
-        // Update content_review_requests & create content_review_actions in MySQL
-        try {
-            // Find the PENDING review request for this track
-            ContentReviewRequest reviewRequest = contentReviewRequestRepository
-                .findByContentIdAndContentTypeAndStatus(track.getId(), "TRACK", "PENDING")
-                .orElse(null);
-
-            if (reviewRequest == null) {
-                // Also try IN_REVIEW status
-                reviewRequest = contentReviewRequestRepository
-                    .findByContentIdAndContentTypeAndStatus(track.getId(), "TRACK", "IN_REVIEW")
-                    .orElse(null);
-            }
-
-            if (reviewRequest != null) {
-                // Update review request status
-                reviewRequest.setStatus(reviewRequestStatus);
-                if ("APPROVED".equals(reviewRequestStatus) || "REJECTED".equals(reviewRequestStatus)) {
-                    reviewRequest.setResolvedAt(LocalDateTime.now());
-                }
-                contentReviewRequestRepository.save(reviewRequest);
-
-                // Create review action audit trail
-                ContentReviewAction reviewActionEntity = new ContentReviewAction();
-                reviewActionEntity.setReviewRequestId(reviewRequest.getId());
-                reviewActionEntity.setModeratorUserId(moderatorUserId);
-                reviewActionEntity.setAction(reviewAction);
-
-                // Build reason from request fields
-                String reason = request.getRejectionReason();
-                if (reason == null || reason.isBlank()) {
-                    reason = request.getInternalNote();
-                }
-                reviewActionEntity.setReason(reason);
-                reviewActionEntity.setCreatedAt(LocalDateTime.now());
-
-                contentReviewActionRepository.save(reviewActionEntity);
-            }
-        } catch (Exception e) {
-            System.err.println("Warning: Failed to update content review tables: " + e.getMessage());
+        if ("approve".equals(action)) {
+            track.setModerationStatus("approved");
+            track.setStatus("published");
+            double score = (request.getModerationScore() != null && request.getModerationScore() > 0)
+                ? request.getModerationScore()
+                : 98.0;
+            track.setModerationScore(score);
+            track.setDownloadStatus("completed");
+        } else if ("reject".equals(action)) {
+            track.setModerationStatus("rejected");
+            track.setStatus("draft");
+        } else {
+            track.setModerationStatus("needs_revision");
+            track.setStatus("draft");
         }
+        if (request.getExplicitTag() != null) {
+            track.setExplicit(request.getExplicitTag());
+        }
+        track.setUpdatedAt(Instant.now());
+        trackRepository.save(track);
+    }
+
+    private ContentReviewRequest createReviewRequestForPendingTrack(Track track) {
+        if (!"pending".equalsIgnoreCase(track.getModerationStatus())) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Bài hát không còn ở trạng thái chờ kiểm duyệt. Hãy tải lại hàng chờ."
+            );
+        }
+
+        String artistSpotifyId = track.getArtistSpotifyId();
+        if (artistSpotifyId == null || artistSpotifyId.isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Bài hát chưa liên kết với tài khoản nghệ sĩ nên không thể tạo yêu cầu kiểm duyệt."
+            );
+        }
+
+        User artistOwner = userRepo.findByArtistSpotifyId(artistSpotifyId)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Không tìm thấy tài khoản nghệ sĩ sở hữu bài hát để tạo yêu cầu kiểm duyệt."
+            ));
+        List<ContentReviewRequest> previousRequests = contentReviewRequestRepository
+            .findByContentIdAndContentType(track.getId(), "TRACK");
+
+        ContentReviewRequest reviewRequest = new ContentReviewRequest();
+        reviewRequest.setArtistUserId(artistOwner.getId());
+        reviewRequest.setContentType("TRACK");
+        reviewRequest.setContentId(track.getId());
+        reviewRequest.setRequestType(previousRequests.isEmpty() ? "PUBLISH" : "UPDATE");
+        reviewRequest.setStatus("PENDING");
+        reviewRequest.setSubmittedAt(LocalDateTime.now());
+        return contentReviewRequestRepository.save(reviewRequest);
+    }
+
+    private void snapshotTrackMetadata(ContentReviewRequest reviewRequest, Track track) {
+        reviewRequest.setContentTitle(track.getName());
+        reviewRequest.setArtistName(track.getArtistName());
+        reviewRequest.setContentGenre(firstGenre(track));
+        reviewRequest.setContentCoverUrl(track.getImageUrl());
+    }
+
+    private String firstGenre(Track track) {
+        if (track.getGenres() != null && !track.getGenres().isEmpty()) {
+            return track.getGenres().get(0);
+        }
+        if (track.getGenresRaw() != null && !track.getGenresRaw().isEmpty()) {
+            return track.getGenresRaw().get(0);
+        }
+        return null;
     }
 }

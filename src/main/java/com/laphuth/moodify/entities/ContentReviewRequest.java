@@ -20,6 +20,18 @@ public class ContentReviewRequest {
     @Column(name = "content_id", nullable = false, length = 64)
     private String contentId; // MongoDB Track ID
 
+    @Column(name = "content_title", length = 500)
+    private String contentTitle;
+
+    @Column(name = "artist_name", length = 255)
+    private String artistName;
+
+    @Column(name = "content_genre", length = 255)
+    private String contentGenre;
+
+    @Column(name = "content_cover_url", length = 2048)
+    private String contentCoverUrl;
+
     @Column(name = "request_type", nullable = false, length = 20)
     private String requestType; // PUBLISH, UPDATE
 
@@ -54,6 +66,18 @@ public class ContentReviewRequest {
 
     public String getContentId() { return contentId; }
     public void setContentId(String contentId) { this.contentId = contentId; }
+
+    public String getContentTitle() { return contentTitle; }
+    public void setContentTitle(String contentTitle) { this.contentTitle = contentTitle; }
+
+    public String getArtistName() { return artistName; }
+    public void setArtistName(String artistName) { this.artistName = artistName; }
+
+    public String getContentGenre() { return contentGenre; }
+    public void setContentGenre(String contentGenre) { this.contentGenre = contentGenre; }
+
+    public String getContentCoverUrl() { return contentCoverUrl; }
+    public void setContentCoverUrl(String contentCoverUrl) { this.contentCoverUrl = contentCoverUrl; }
 
     public String getRequestType() { return requestType; }
     public void setRequestType(String requestType) { this.requestType = requestType; }

@@ -342,6 +342,10 @@ CREATE TABLE content_review_requests (
     artist_user_id BIGINT NOT NULL,
     content_type ENUM('TRACK','ALBUM') NOT NULL,
     content_id VARCHAR(64) NOT NULL,
+    content_title VARCHAR(500) NULL,
+    artist_name VARCHAR(255) NULL,
+    content_genre VARCHAR(255) NULL,
+    content_cover_url VARCHAR(2048) NULL,
     request_type ENUM('PUBLISH','UPDATE') NOT NULL DEFAULT 'PUBLISH',
     status ENUM('PENDING','IN_REVIEW','APPROVED','REJECTED','CANCELLED') NOT NULL DEFAULT 'PENDING',
     submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -438,6 +442,7 @@ CREATE TABLE song_licenses (
     track_id VARCHAR(64) NOT NULL,
     distributor_id BIGINT NULL,
     distribution_contract_id BIGINT NULL,
+    distribution_contract_code VARCHAR(80) NULL,
     license_type VARCHAR(80) NOT NULL,
     copyright_owner VARCHAR(200) NULL,
     issue_date DATE NULL,
@@ -454,8 +459,7 @@ CREATE TABLE song_licenses (
         FOREIGN KEY (distribution_contract_id) REFERENCES distribution_contracts(id) ON DELETE SET NULL,
     CONSTRAINT chk_song_license_owner
         CHECK (
-            (distributor_id IS NOT NULL AND copyright_owner IS NULL)
-            OR (distributor_id IS NULL AND copyright_owner IS NOT NULL)
+            distributor_id IS NOT NULL OR copyright_owner IS NOT NULL
         ),
     CONSTRAINT chk_song_license_dates
         CHECK (expiry_date IS NULL OR issue_date IS NULL OR expiry_date >= issue_date),

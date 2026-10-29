@@ -14,7 +14,7 @@ public class ContentReviewAction {
     @Column(name = "review_request_id", nullable = false)
     private Long reviewRequestId;
 
-    @Column(name = "moderator_user_id")
+    @Column(name = "moderator_user_id", nullable = false)
     private Long moderatorUserId;
 
     @Column(name = "action", nullable = false, length = 30)

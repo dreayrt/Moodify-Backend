@@ -9,5 +9,4 @@ import java.util.List;
 @Repository
 public interface ContentReviewActionRepository extends JpaRepository<ContentReviewAction, Long> {
     List<ContentReviewAction> findByReviewRequestId(Long reviewRequestId);
-    void deleteByReviewRequestIdIn(List<Long> reviewRequestIds);
 }

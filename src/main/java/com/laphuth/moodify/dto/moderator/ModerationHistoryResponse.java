@@ -44,10 +44,13 @@ public record ModerationHistoryResponse(
         return new ModerationHistoryResponse(
             action.getId() != null ? action.getId().toString() : "",
             request != null ? request.getContentId() : "",
-            track != null && track.getName() != null ? track.getName() : "Bài hát đã kiểm duyệt",
-            track != null && track.getArtistName() != null ? track.getArtistName() : "Nghệ sĩ",
-            firstGenre(track),
-            track != null ? track.getImageUrl() : null,
+            firstNonBlank(request != null ? request.getContentTitle() : null,
+                track != null ? track.getName() : null, "Bài hát đã kiểm duyệt"),
+            firstNonBlank(request != null ? request.getArtistName() : null,
+                track != null ? track.getArtistName() : null, "Nghệ sĩ"),
+            firstNonBlank(request != null ? request.getContentGenre() : null, firstGenre(track), "Pop"),
+            firstNonBlank(request != null ? request.getContentCoverUrl() : null,
+                track != null ? track.getImageUrl() : null, null),
             action.getCreatedAt() != null ? action.getCreatedAt().toString() : null,
             action.getModeratorUserId() != null ? action.getModeratorUserId().toString() : "",
             moderator != null && moderator.getFullname() != null ? moderator.getFullname() : "Kiểm duyệt viên",
@@ -71,5 +74,11 @@ public record ModerationHistoryResponse(
 
     private static String normalize(String value) {
         return value == null ? "" : value.trim().toUpperCase();
+    }
+
+    private static String firstNonBlank(String first, String second, String fallback) {
+        if (first != null && !first.isBlank()) return first;
+        if (second != null && !second.isBlank()) return second;
+        return fallback;
     }
 }

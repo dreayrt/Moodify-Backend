@@ -16,7 +16,6 @@ import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.entities.enums.UserRole;
 import com.laphuth.moodify.repositories.AlbumRepository;
 import com.laphuth.moodify.repositories.ArtistRepository;
-import com.laphuth.moodify.repositories.ContentReviewActionRepository;
 import com.laphuth.moodify.repositories.ContentReviewRequestRepository;
 import com.laphuth.moodify.repositories.SongLicenseRepository;
 import com.laphuth.moodify.repositories.TrackRepository;
@@ -58,7 +57,6 @@ public class ContentLeadCatalogService {
     private final AlbumRepository albumRepository;
     private final SongLicenseRepository songLicenseRepository;
     private final ContentReviewRequestRepository contentReviewRequestRepository;
-    private final ContentReviewActionRepository contentReviewActionRepository;
     private final TrackSyncService trackSyncService;
     private final JdbcTemplate jdbcTemplate;
     private final AudioAnalysisService audioAnalysisService;
@@ -71,7 +69,6 @@ public class ContentLeadCatalogService {
         AlbumRepository albumRepository,
         SongLicenseRepository songLicenseRepository,
         ContentReviewRequestRepository contentReviewRequestRepository,
-        ContentReviewActionRepository contentReviewActionRepository,
         @org.springframework.beans.factory.annotation.Autowired(required = false)
         TrackSyncService trackSyncService,
         @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -86,7 +83,6 @@ public class ContentLeadCatalogService {
         this.albumRepository = albumRepository;
         this.songLicenseRepository = songLicenseRepository;
         this.contentReviewRequestRepository = contentReviewRequestRepository;
-        this.contentReviewActionRepository = contentReviewActionRepository;
         this.trackSyncService = trackSyncService;
         this.jdbcTemplate = jdbcTemplate;
         this.audioAnalysisService = audioAnalysisService;
@@ -248,6 +244,12 @@ public class ContentLeadCatalogService {
         String contractCode = request.getDistributionContractCode() != null
             ? request.getDistributionContractCode().trim()
             : "";
+        if (contractCode.length() > 80) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã hợp đồng không được vượt quá 80 ký tự.");
+        }
+        if (request.getCopyrightOwner() != null && request.getCopyrightOwner().trim().length() > 200) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên chủ sở hữu quyền không được vượt quá 200 ký tự.");
+        }
         boolean hasContractReference = request.getDistributionContractId() != null || !contractCode.isEmpty();
         if (request.getDistributorId() != null && request.getDistributorId() > 0 && !hasContractReference) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã hợp đồng trong tài liệu là bắt buộc khi chọn đơn vị phân phối.");
@@ -337,21 +339,15 @@ public class ContentLeadCatalogService {
         SongLicense license = new SongLicense();
         license.setTrackId(savedTrack.getId());
         license.setLicenseType(request.getLicenseType() != null ? request.getLicenseType() : "DIGITAL_STREAMING");
-
-        // Satisfy MySQL chk_song_license_owner:
-        // (distributor_id IS NOT NULL AND copyright_owner IS NULL) OR (distributor_id IS NULL AND copyright_owner IS NOT NULL)
-        if (validDistributorId != null) {
-            license.setDistributorId(validDistributorId);
-            license.setDistributionContractId(validContractId);
-            license.setCopyrightOwner(null);
-        } else {
-            license.setDistributorId(null);
-            license.setDistributionContractId(null);
-            String owner = request.getCopyrightOwner() != null && !request.getCopyrightOwner().isBlank()
-                ? request.getCopyrightOwner().trim()
-                : mainArtistName;
-            license.setCopyrightOwner(owner);
-        }
+        license.setDistributorId(validDistributorId);
+        license.setDistributionContractId(validDistributorId != null ? validContractId : null);
+        license.setDistributionContractCode(
+            validDistributorId != null && !contractCode.isBlank() ? contractCode : null
+        );
+        String owner = request.getCopyrightOwner() != null && !request.getCopyrightOwner().isBlank()
+            ? request.getCopyrightOwner().trim()
+            : mainArtistName;
+        license.setCopyrightOwner(owner);
         license.setDocumentSonglicensesUrl(licenseDocUrl);
         license.setAcquisitionCostVnd(verifiedCost);
         license.setStatus(com.laphuth.moodify.entities.enums.LicenseStatus.ACTIVE);
@@ -488,17 +484,39 @@ public class ContentLeadCatalogService {
 
         List<ContentReviewRequest> reviewRequests =
             contentReviewRequestRepository.findByContentIdAndContentType(track.getId(), "TRACK");
-        List<Long> reviewRequestIds = reviewRequests.stream()
-            .map(ContentReviewRequest::getId)
-            .filter(id -> id != null)
-            .toList();
-
-        if (!reviewRequestIds.isEmpty()) {
-            contentReviewActionRepository.deleteByReviewRequestIdIn(reviewRequestIds);
+        if (!reviewRequests.isEmpty()) {
+            LocalDateTime resolvedAt = LocalDateTime.now();
+            for (ContentReviewRequest reviewRequest : reviewRequests) {
+                snapshotTrackMetadataIfMissing(reviewRequest, track);
+                if ("PENDING".equalsIgnoreCase(reviewRequest.getStatus())
+                    || "IN_REVIEW".equalsIgnoreCase(reviewRequest.getStatus())) {
+                    reviewRequest.setStatus("CANCELLED");
+                    reviewRequest.setResolvedAt(resolvedAt);
+                }
+            }
+            contentReviewRequestRepository.saveAll(reviewRequests);
         }
-        contentReviewRequestRepository.deleteAll(reviewRequests);
         songLicenseRepository.deleteByTrackId(track.getId());
         trackRepository.delete(track);
+    }
+
+    private void snapshotTrackMetadataIfMissing(ContentReviewRequest reviewRequest, Track track) {
+        if (reviewRequest.getContentTitle() == null || reviewRequest.getContentTitle().isBlank()) {
+            reviewRequest.setContentTitle(track.getName());
+        }
+        if (reviewRequest.getArtistName() == null || reviewRequest.getArtistName().isBlank()) {
+            reviewRequest.setArtistName(track.getArtistName());
+        }
+        if (reviewRequest.getContentGenre() == null || reviewRequest.getContentGenre().isBlank()) {
+            if (track.getGenres() != null && !track.getGenres().isEmpty()) {
+                reviewRequest.setContentGenre(track.getGenres().get(0));
+            } else if (track.getGenresRaw() != null && !track.getGenresRaw().isEmpty()) {
+                reviewRequest.setContentGenre(track.getGenresRaw().get(0));
+            }
+        }
+        if (reviewRequest.getContentCoverUrl() == null || reviewRequest.getContentCoverUrl().isBlank()) {
+            reviewRequest.setContentCoverUrl(track.getImageUrl());
+        }
     }
 
     private java.util.Map<String, SongLicense> resolveLicensesForTracks(List<Track> trackList) {
