@@ -60,7 +60,16 @@ jobs:
             docker compose build moodify-backend
             docker compose up -d --no-deps moodify-backend
             echo "🩺 Verifying Backend container status & Health..."
-            sleep 10
             docker ps --filter "name=moodify-backend" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-            curl -f http://127.0.0.1:8080/api/packages || exit 1
-            echo "✅ Moodify Backend CI/CD deployment completed successfully!"
+            for i in $(seq 1 30); do
+              if curl -s -f http://127.0.0.1:8080/api/packages > /dev/null; then
+                echo "✅ Moodify Backend is healthy and responding!"
+                echo "✅ Moodify Backend CI/CD deployment completed successfully!"
+                exit 0
+              fi
+              echo "Waiting for Backend to start up ($i/30)..."
+              sleep 3
+            done
+            echo "❌ Backend health check timed out!"
+            docker logs --tail 50 moodify-backend
+            exit 1
