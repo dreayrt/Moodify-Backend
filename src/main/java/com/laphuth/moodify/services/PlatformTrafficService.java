@@ -94,7 +94,7 @@ public class PlatformTrafficService {
         try {
             // Trường hợp 1: Đã có session đang phát dở -> Cập nhật listening_history và ghi tiếp playback_events
             if (historyId != null && historyId > 0) {
-                Integer exists = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM listening_history WHERE id = ?", Integer.class, historyId);
+                Integer exists = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM listening_history WHERE id = ? AND user_id = ?", Integer.class, historyId, userId);
                 if (exists != null && exists > 0) {
                     jdbcTemplate.update("""
                         UPDATE listening_history 

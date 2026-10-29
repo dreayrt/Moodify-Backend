@@ -53,8 +53,8 @@ public record TrackResponse(
             track.getDurationMs(),
             track.isExplicit(),
             track.getGenres(),
-            track.getLyricsPlain(),
-            track.getLyricsSynced(),
+            includeLyrics ? track.getLyricsPlain() : null,
+            includeLyrics ? track.getLyricsSynced() : null,
             track.getLocalPath(),
             AudioUrlResolver.resolve(track.getLocalPath()),
             track.getDownloadStatus(),
@@ -67,8 +67,16 @@ public record TrackResponse(
         );
     }
 
+    public static TrackResponse from(Track track) {
+        return from(track, true);
+    }
+
+    public static TrackResponse fromSummary(Track track) {
+        return from(track, false);
+    }
+
     public static TrackResponse fromMood(Track track, MoodTrackScorer.Score score) {
-        TrackResponse response = from(track);
+        TrackResponse response = fromSummary(track);
         return new TrackResponse(
             response.id(),
             response.spotifyId(),

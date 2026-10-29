@@ -92,6 +92,11 @@ public class TrackApi {
             ));
         }
         if (genre != null && !genre.isBlank()) {
+            String[] parts = genre.split(",");
+            if (parts.length > 1) {
+                List<String> list = Arrays.stream(parts).map(String::trim).filter(s -> !s.isEmpty()).toList();
+                return ResponseEntity.ok(trackService.getTracksByGenres(list, page, size));
+            }
             return ResponseEntity.ok(trackService.getTracksByGenre(genre.trim(), page, size));
         }
         return ResponseEntity.ok(trackService.getTracks(page, size, query));

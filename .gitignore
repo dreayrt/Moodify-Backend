@@ -98,6 +98,22 @@ data/
 ### Backup and temporary files ###
 *.bak
 *.old
+
+# Recommendation worker environments and generated artifacts
+recommendation-worker/.venv/
+**/__pycache__/
+**/.pytest_cache/
 *.orig
 *.swp
 *~
+
+# Local credential variants and worker/test caches
+*.env
+*.p12
+*.pfx
+*.keystore
+*.jks
+.venv/
+venv/
+*.pyc
+*.pyo

@@ -64,9 +64,10 @@ public class PlaylistApi {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PlaylistResponse> getPlaylist(@PathVariable String id) {
+    public ResponseEntity<PlaylistResponse> getPlaylist(@PathVariable String id, Authentication authentication) {
         try {
-            return ResponseEntity.ok(playlistService.getPlaylist(id));
+            String principal = authentication == null ? null : authentication.getName();
+            return ResponseEntity.ok(playlistService.getPlaylist(id, principal));
         } catch (PlaylistService.PlaylistNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
         }

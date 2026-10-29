@@ -31,19 +31,25 @@ public class AlbumService {
     private final FavoriteAlbumRepository favoriteAlbumRepository;
     private final UserRepository userRepository;
     private final TrackRepository trackRepository;
+    private final com.laphuth.moodify.recommendation.PreferenceEntityResolver identities;
+    private final com.laphuth.moodify.recommendation.RecommendationPreferenceService preferences;
+    private final com.laphuth.moodify.recommendation.RecommendationCatalog recommendationCatalog;
 
     public AlbumService(
         AlbumEntityRepository albumRepository,
         AlbumTrackRepository albumTrackRepository,
         FavoriteAlbumRepository favoriteAlbumRepository,
         UserRepository userRepository,
-        TrackRepository trackRepository
+        TrackRepository trackRepository,
+        com.laphuth.moodify.recommendation.PreferenceEntityResolver identities,
+        com.laphuth.moodify.recommendation.RecommendationPreferenceService preferences,
+        com.laphuth.moodify.recommendation.RecommendationCatalog recommendationCatalog
     ) {
         this.albumRepository = albumRepository;
         this.albumTrackRepository = albumTrackRepository;
         this.favoriteAlbumRepository = favoriteAlbumRepository;
         this.userRepository = userRepository;
-        this.trackRepository = trackRepository;
+        this.trackRepository = trackRepository;this.identities=identities;this.preferences=preferences;this.recommendationCatalog=recommendationCatalog;
     }
 
     @Transactional
@@ -126,17 +132,18 @@ public class AlbumService {
         }).collect(Collectors.toList());
     }
 
+    public AlbumDetailResponse getAlbumDetail(Long id,String currentUsername) { return getAlbumDetail(String.valueOf(id),currentUsername); }
+
     @Transactional(readOnly = true)
-    public AlbumDetailResponse getAlbumDetail(Long id, String currentUsername) {
-        AlbumEntity album = albumRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy album: " + id));
-
-        List<AlbumTrackEntity> trackEntities = albumTrackRepository.findByAlbumOrderByTrackOrderAscAddedAtAsc(album);
-        List<String> trackIds = trackEntities.stream().map(AlbumTrackEntity::getTrackId).collect(Collectors.toList());
-        List<TrackResponse> tracks = loadTracksInOrder(trackIds);
-
-        boolean isFav = isAlbumFavorited(currentUsername, String.valueOf(id));
-        return AlbumDetailResponse.from(album, tracks, isFav);
+    public AlbumDetailResponse getAlbumDetail(String id,String currentUsername) {
+        User actor=currentUsername==null?new User():findUser(currentUsername);
+        if(actor.getId()==null)actor.setId(-1L);
+        var ref=identities.album(actor,id);
+        var snapshot=recommendationCatalog.snapshot();
+        List<TrackResponse> tracks=ref.trackIds().stream().map(snapshot::resolve).filter(Objects::nonNull).map(TrackResponse::fromSummary).toList();
+        boolean favorite=currentUsername!=null&&preferences.hasAlbumFavorite(actor,ref);
+        return new AlbumDetailResponse(ref.displayId(),ref.title(),ref.description(),ref.imageUrl(),ref.releaseDate(),ref.isPublic(),"ACTIVE",
+            ref.ownerId(),ref.authorName(),null,tracks.size(),favorite,tracks,ref.createdAt(),ref.updatedAt());
     }
 
     @Transactional
@@ -175,45 +182,30 @@ public class AlbumService {
     }
 
     @Transactional
-    public boolean toggleFavoriteAlbum(String username, String albumId) {
-        User user = findUser(username);
-        Optional<FavoriteAlbumEntity> existing = favoriteAlbumRepository.findByUserAndAlbumId(user, albumId);
-        if (existing.isPresent()) {
-            favoriteAlbumRepository.delete(existing.get());
-            return false;
-        } else {
-            favoriteAlbumRepository.save(new FavoriteAlbumEntity(user, albumId));
-            return true;
-        }
+    public boolean toggleFavoriteAlbum(String username,String albumId) {
+        return preferences.toggleAlbum(findUser(username),albumId);
     }
 
-    @Transactional(readOnly = true)
-    public boolean isAlbumFavorited(String username, String albumId) {
-        if (username == null || username.isBlank()) return false;
-        try {
-            User user = findUser(username);
-            return favoriteAlbumRepository.existsByUserAndAlbumId(user, albumId);
-        } catch (Exception e) {
-            return false;
-        }
+    @Transactional(readOnly=true)
+    public boolean isAlbumFavorited(String username,String albumId) {
+        if(username==null||username.isBlank())return false;
+        try { User actor=findUser(username);return preferences.hasAlbumFavorite(actor,identities.album(actor,albumId)); }
+        catch(ResponseStatusException unavailable){return false;}
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly=true)
     public List<AlbumResponse> getUserFavoriteAlbums(String username) {
-        User user = findUser(username);
-        List<String> favAlbumIds = favoriteAlbumRepository.findAlbumIdsByUser(user);
-
-        List<AlbumResponse> result = new ArrayList<>();
-        for (String albIdStr : favAlbumIds) {
+        User actor=findUser(username);Map<String,AlbumResponse> result=new LinkedHashMap<>();
+        for(String raw:preferences.favoriteAlbumIds(actor)) {
             try {
-                Long albId = Long.parseLong(albIdStr);
-                albumRepository.findById(albId).ifPresent(album -> {
-                    int trackCount = (int) albumTrackRepository.countByAlbum(album);
-                    result.add(AlbumResponse.from(album, trackCount, true));
-                });
-            } catch (NumberFormatException ignored) {}
+                var ref=identities.album(actor,raw);
+                result.putIfAbsent(ref.key(),new AlbumResponse(ref.displayId(),ref.title(),ref.description(),ref.imageUrl(),ref.releaseDate(),
+                    ref.isPublic(),"ACTIVE",ref.ownerId(),ref.authorName(),null,ref.trackIds().size(),true,ref.createdAt(),ref.updatedAt()));
+            } catch(ResponseStatusException invalid) {
+                if(!Set.of(400,404,409).contains(invalid.getStatusCode().value()))throw invalid;
+            }
         }
-        return result;
+        return List.copyOf(result.values());
     }
 
     private User findUser(String username) {
@@ -247,7 +239,12 @@ public class AlbumService {
         if (username == null || username.isBlank()) return Collections.emptySet();
         try {
             User user = findUser(username);
-            return new HashSet<>(favoriteAlbumRepository.findAlbumIdsByUser(user));
+            Set<String> aliases=new HashSet<>();
+            for(String raw:preferences.favoriteAlbumIds(user)) {
+                try { aliases.addAll(identities.album(user,raw).aliases()); }
+                catch(ResponseStatusException ignored) { }
+            }
+            return aliases;
         } catch (Exception e) {
             return Collections.emptySet();
         }
@@ -274,7 +271,7 @@ public class AlbumService {
                 t = trackRepository.findBySpotifyId(id).orElse(null);
             }
             if (t != null) {
-                result.add(TrackResponse.from(t));
+                result.add(TrackResponse.fromSummary(t));
             }
         }
         return result;

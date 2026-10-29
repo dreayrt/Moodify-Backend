@@ -18,10 +18,11 @@ import java.util.stream.Collectors;
 public class PlaylistService {
     private final PlaylistRepository playlistRepository;
     private final TrackRepository trackRepository;
+    private final com.laphuth.moodify.repositories.UserRepository users;
 
-    public PlaylistService(PlaylistRepository playlistRepository, TrackRepository trackRepository) {
+    public PlaylistService(PlaylistRepository playlistRepository, TrackRepository trackRepository,com.laphuth.moodify.repositories.UserRepository users) {
         this.playlistRepository = playlistRepository;
-        this.trackRepository = trackRepository;
+        this.trackRepository = trackRepository;this.users=users;
     }
 
     public PlaylistResponse createPlaylist(String username, CreatePlaylistRequest request) {
@@ -32,12 +33,16 @@ public class PlaylistService {
             username,
             request.isPublic()
         );
+        playlist.setOwnerUserId(actor(username).getId());
         Playlist saved = playlistRepository.save(playlist);
         return PlaylistResponse.from(saved, Collections.emptyList());
     }
 
     public List<PlaylistResponse> getUserPlaylists(String username) {
-        List<Playlist> playlists = playlistRepository.findByUsernameOrderByCreatedAtDesc(username);
+        var user=actor(username);Map<String,Playlist> own=new LinkedHashMap<>();
+        for(Playlist p:playlistRepository.findByUsernameOrderByCreatedAtDesc(username))if(com.laphuth.moodify.recommendation.RecommendationCatalog.owns(p,user))own.put(p.getId(),p);
+        for(Playlist p:playlistRepository.findByOwnerUserIdOrderByCreatedAtDesc(user.getId()))own.put(p.getId(),p);
+        List<Playlist> playlists=List.copyOf(own.values());
         return playlists.stream().map(p -> {
             List<TrackResponse> tracks = loadTracksInOrder(p.getTrackSpotifyIds());
             return PlaylistResponse.from(p, tracks);
@@ -58,9 +63,9 @@ public class PlaylistService {
     }
 
     public PlaylistResponse updatePlaylistVisibility(String id, String username, boolean isPublic) {
-        Playlist playlist = playlistRepository.findByIdAndUsername(id, username)
-            .orElseThrow(() -> new PlaylistNotFoundException("Playlist not found or access denied: " + id));
+        Playlist playlist=owned(id,username);
         playlist.setIsPublic(isPublic);
+        playlist.setRevision(playlist.getRevision() + 1);
         playlist.setUpdatedAt(Instant.now());
         Playlist saved = playlistRepository.save(playlist);
         List<TrackResponse> tracks = loadTracksInOrder(saved.getTrackSpotifyIds());
@@ -68,16 +73,23 @@ public class PlaylistService {
     }
 
     public PlaylistResponse getPlaylist(String id) {
+        return getPlaylist(id, null);
+    }
+
+    public PlaylistResponse getPlaylist(String id, String principal) {
         Playlist playlist = playlistRepository.findById(id)
             .orElseThrow(() -> new PlaylistNotFoundException("Playlist not found: " + id));
+
+        if (!Boolean.TRUE.equals(playlist.getIsPublic()) && (principal==null||!com.laphuth.moodify.recommendation.RecommendationCatalog.owns(playlist,actor(principal)))) {
+            throw new PlaylistNotFoundException("Playlist not found or access denied: " + id);
+        }
 
         List<TrackResponse> tracks = loadTracksInOrder(playlist.getTrackSpotifyIds());
         return PlaylistResponse.from(playlist, tracks);
     }
 
     public PlaylistResponse addTrackToPlaylist(String id, String username, String trackSpotifyId) {
-        Playlist playlist = playlistRepository.findByIdAndUsername(id, username)
-            .orElseThrow(() -> new PlaylistNotFoundException("Playlist not found or access denied: " + id));
+        Playlist playlist=owned(id,username);
 
         String resolvedId = trackSpotifyId;
         Optional<Track> trackOpt = trackRepository.findBySpotifyId(trackSpotifyId);
@@ -91,6 +103,7 @@ public class PlaylistService {
         List<String> ids = playlist.getTrackSpotifyIds();
         if (!ids.contains(resolvedId)) {
             ids.add(resolvedId);
+            playlist.setRevision(playlist.getRevision() + 1);
             playlist.setTrackSpotifyIds(ids);
             playlist.setUpdatedAt(Instant.now());
             playlistRepository.save(playlist);
@@ -101,8 +114,7 @@ public class PlaylistService {
     }
 
     public PlaylistResponse removeTrackFromPlaylist(String id, String username, String trackSpotifyId) {
-        Playlist playlist = playlistRepository.findByIdAndUsername(id, username)
-            .orElseThrow(() -> new PlaylistNotFoundException("Playlist not found or access denied: " + id));
+        Playlist playlist=owned(id,username);
 
         String resolvedId = trackSpotifyId;
         Optional<Track> trackOpt = trackRepository.findBySpotifyId(trackSpotifyId);
@@ -116,6 +128,7 @@ public class PlaylistService {
         List<String> ids = playlist.getTrackSpotifyIds();
         boolean removed = ids.remove(resolvedId) || ids.remove(trackSpotifyId);
         if (removed) {
+            playlist.setRevision(playlist.getRevision() + 1);
             playlist.setTrackSpotifyIds(ids);
             playlist.setUpdatedAt(Instant.now());
             playlistRepository.save(playlist);
@@ -126,9 +139,17 @@ public class PlaylistService {
     }
 
     public void deletePlaylist(String id, String username) {
-        Playlist playlist = playlistRepository.findByIdAndUsername(id, username)
-            .orElseThrow(() -> new PlaylistNotFoundException("Playlist not found or access denied: " + id));
+        Playlist playlist=owned(id,username);
         playlistRepository.delete(playlist);
+    }
+
+    private com.laphuth.moodify.entities.User actor(String principal) {
+        return users.findByEmailOrUsername(principal,principal).orElseThrow(()->new PlaylistNotFoundException("User not found"));
+    }
+    private Playlist owned(String id,String principal) {
+        Playlist playlist=playlistRepository.findById(id).orElseThrow(()->new PlaylistNotFoundException("Playlist not found"));
+        if(!com.laphuth.moodify.recommendation.RecommendationCatalog.owns(playlist,actor(principal)))throw new PlaylistNotFoundException("Playlist not found or access denied");
+        return playlist;
     }
 
     private List<TrackResponse> loadTracksInOrder(List<String> spotifyIds) {
@@ -157,7 +178,7 @@ public class PlaylistService {
         for (String id : spotifyIds) {
             Track t = trackMap.get(id);
             if (t != null) {
-                ordered.add(TrackResponse.from(t));
+                ordered.add(TrackResponse.fromSummary(t));
             }
         }
         return ordered;

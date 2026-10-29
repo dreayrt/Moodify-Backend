@@ -7,9 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Quality Gate (CI)
-  build:
-    name: Build & Verify Backend
+  build-and-deploy:
+    name: Build & Deploy Backend to Google Cloud VM
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -28,14 +27,18 @@ jobs:
       - name: Compile and Package with Maven
         run: ./mvnw -B clean package -DskipTests
 
-  # Automated Deployment (CD)
-  deploy:
-    name: Deploy Backend to Production VPS
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to Oracle Cloud VPS via SSH
+      - name: Copy JAR & Dockerfile to Google Cloud VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          source: "target/moodify-0.0.1-SNAPSHOT.jar,Dockerfile.prod"
+          target: "/opt/moodify/backend"
+          strip_components: 1
+
+      - name: Reload Moodify Backend Container via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -43,17 +46,21 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           script_stop: true
-          command_timeout: 15m
+          command_timeout: 5m
           script: |
-            echo "🚀 Starting Backend CI/CD deployment on main..."
-            cd /opt/moodify/backend
-            git fetch origin main
-            git checkout main
-            git reset --hard origin/main
+            echo "🚀 Reloading moodify-backend on Google Cloud VM..."
+            # Ensure Dockerfile.prod is in place
+            if [ -f /opt/moodify/backend/target/Dockerfile.prod ]; then
+              mv -f /opt/moodify/backend/target/Dockerfile.prod /opt/moodify/backend/Dockerfile.prod
+            fi
+            if [ -f /opt/moodify/backend/target/moodify-0.0.1-SNAPSHOT.jar ]; then
+              mv -f /opt/moodify/backend/target/moodify-0.0.1-SNAPSHOT.jar /opt/moodify/backend/moodify-0.0.1-SNAPSHOT.jar
+            fi
             cd /opt/moodify
             docker compose build moodify-backend
             docker compose up -d --no-deps moodify-backend
-            echo "🩺 Verifying Backend container status..."
-            sleep 5
+            echo "🩺 Verifying Backend container status & Health..."
+            sleep 10
             docker ps --filter "name=moodify-backend" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-            echo "✅ Backend deployment completed successfully!"
+            curl -f http://127.0.0.1:8080/api/packages || exit 1
+            echo "✅ Moodify Backend CI/CD deployment completed successfully!"

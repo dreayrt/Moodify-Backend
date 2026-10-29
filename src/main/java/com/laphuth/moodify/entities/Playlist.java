@@ -22,8 +22,22 @@ public class Playlist {
 
     private String username;
 
+    @Field("owner_user_id")
+    private Long ownerUserId;
+
+    private Long revision = 1L;
+
+    @Field("source_kind")
+    private String sourceKind = "USER";
+
+    @Field("generated_source_id")
+    private String generatedSourceId;
+
+    @Field("generated_source_version")
+    private String generatedSourceVersion;
+
     @Field("is_public")
-    private Boolean isPublic = true;
+    private Boolean isPublic = false;
 
     @Field("track_spotify_ids")
     private List<String> trackSpotifyIds = new ArrayList<>();
@@ -82,6 +96,17 @@ public class Playlist {
     public String getUsername() {
         return username;
     }
+
+    public Long getOwnerUserId() { return ownerUserId; }
+    public void setOwnerUserId(Long value) { ownerUserId = value; }
+    public Long getRevision() { return revision == null ? 1L : revision; }
+    public void setRevision(Long value) { revision = value; }
+    public String getSourceKind() { return sourceKind; }
+    public void setSourceKind(String value) { sourceKind = value; }
+    public String getGeneratedSourceId() { return generatedSourceId; }
+    public void setGeneratedSourceId(String value) { generatedSourceId = value; }
+    public String getGeneratedSourceVersion() { return generatedSourceVersion; }
+    public void setGeneratedSourceVersion(String value) { generatedSourceVersion = value; }
 
     public void setUsername(String username) {
         this.username = username;
