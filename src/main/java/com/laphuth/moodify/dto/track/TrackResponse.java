@@ -35,6 +35,16 @@ public record TrackResponse(
     Map<String, MoodTrackScorer.FeatureDistance> moodFeatureDistances
 ) {
     public static TrackResponse from(Track track) {
+        return from(track, true);
+    }
+
+    public static TrackResponse fromSummary(Track track) {
+        return from(track, false);
+    }
+
+    public static TrackResponse from(Track track, boolean includeLyrics) {
+        if (track == null) return null;
+
         String resolvedArtistId = track.getArtistSpotifyId();
         if (resolvedArtistId == null || resolvedArtistId.isBlank()) {
             resolvedArtistId = track.getArtistName();
@@ -65,14 +75,6 @@ public record TrackResponse(
             null,
             null
         );
-    }
-
-    public static TrackResponse from(Track track) {
-        return from(track, true);
-    }
-
-    public static TrackResponse fromSummary(Track track) {
-        return from(track, false);
     }
 
     public static TrackResponse fromMood(Track track, MoodTrackScorer.Score score) {
