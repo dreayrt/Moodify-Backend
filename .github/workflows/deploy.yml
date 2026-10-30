@@ -9,13 +9,14 @@ on:
 jobs:
   build-and-deploy:
     name: Build & Deploy Backend to Google Cloud VM
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -28,7 +29,7 @@ jobs:
         run: ./mvnw -B clean package -DskipTests
 
       - name: Copy JAR & Dockerfile to Google Cloud VM
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
@@ -39,15 +40,16 @@ jobs:
           strip_components: 1
 
       - name: Reload Moodify Backend Container via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          script_stop: true
-          command_timeout: 30m
+          timeout: 30s
+          command_timeout: 10m
           script: |
+            set -euo pipefail
             echo "🚀 Reloading moodify-backend on Google Cloud VM..."
             # Ensure Dockerfile.prod is in place
             if [ -f /opt/moodify/backend/target/Dockerfile.prod ]; then
