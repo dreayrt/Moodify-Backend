@@ -34,7 +34,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          source: "target/moodify-0.0.1-SNAPSHOT.jar,Dockerfile.prod,supporting-services/karaoke-media/Dockerfile,supporting-services/karaoke-media/package.json,supporting-services/karaoke-media/package-lock.json,supporting-services/karaoke-media/server.js,supporting-services/karaoke-media/compose.production.yaml"
+          source: "target/moodify-0.0.1-SNAPSHOT.jar,Dockerfile.prod,scripts/configure-karaoke-room-websocket-nginx.py,supporting-services/karaoke-media/Dockerfile,supporting-services/karaoke-media/package.json,supporting-services/karaoke-media/package-lock.json,supporting-services/karaoke-media/server.js,supporting-services/karaoke-media/compose.production.yaml"
           target: "/opt/moodify/backend"
           strip_components: 1
 
@@ -115,5 +115,11 @@ jobs:
               echo "❌ Karaoke media service did not become ready."
               docker logs --tail 50 moodify-karaoke-media
               exit 1
+            fi
+            echo "🔌 Configuring the room-state WebSocket proxy..."
+            if [ "$(id -u)" -eq 0 ]; then
+              python3 /opt/moodify/backend/configure-karaoke-room-websocket-nginx.py
+            else
+              sudo -n python3 /opt/moodify/backend/configure-karaoke-room-websocket-nginx.py
             fi
             echo "✅ Moodify Backend and Karaoke Media deployment completed successfully!"
