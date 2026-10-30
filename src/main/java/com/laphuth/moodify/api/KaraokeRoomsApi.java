@@ -104,8 +104,11 @@ public class KaraokeRoomsApi {
     @PostMapping("/{roomId}/close")
     public ResponseEntity<Void> closeRoom(@PathVariable Long roomId, Authentication authentication) {
         boolean changed = roomService.closeRoom(roomId, authentication);
+        realtimeGateway.publishRoomClosed(roomId);
         realtimeGateway.disconnectRoom(roomId);
-        if (changed) realtimeGateway.publishRoomsChanged();
+        if (changed) {
+            realtimeGateway.publishRoomsChanged();
+        }
         return ResponseEntity.noContent().build();
     }
 

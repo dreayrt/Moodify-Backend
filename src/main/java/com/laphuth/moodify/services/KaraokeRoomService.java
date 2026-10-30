@@ -90,6 +90,7 @@ public class KaraokeRoomService {
         room.setMaxMembers(request.maxMembers());
         room.setVisibility(request.visibility());
         room.setInviteCodeHash(inviteCode == null ? null : hashInviteCode(inviteCode));
+        room.setInviteCode(inviteCode);
         room = roomRepository.saveAndFlush(room);
 
         KaraokeRoomMember hostMembership = new KaraokeRoomMember();
@@ -127,6 +128,7 @@ public class KaraokeRoomService {
 
         if (member != null && member.getLeftAt() == null) {
             recoverHostIfMissing(room, user);
+            ensureHostInviteCode(room, user.getId());
             return roomDetail(room, user.getId());
         }
 
@@ -146,16 +148,18 @@ public class KaraokeRoomService {
         memberRepository.save(member);
         memberRepository.flush();
         recoverHostIfMissing(room, user);
+        ensureHostInviteCode(room, user.getId());
         return roomDetail(room, user.getId());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public KaraokeRoomDetailResponse getRoom(Long roomId, Authentication authentication) {
         User user = authenticatedUser(authentication);
         KaraokeRoom room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ROOM_NOT_FOUND"));
         ensureOpen(room);
         requireActiveMember(room, user.getId());
+        ensureHostInviteCode(room, user.getId());
         return roomDetail(room, user.getId());
     }
 
@@ -396,8 +400,23 @@ public class KaraokeRoomService {
         return new KaraokeRoomDetailResponse(room.getId(), room.getName(), host.getId(),
                 host.getFullName(), AudioUrlResolver.resolveImageUrl(host.getAvatarUrl()),
                 Math.min(room.getMaxMembers(), MAX_ROOM_CAPACITY), room.getVisibility(),
+                host.getId().equals(currentUserId) ? room.getInviteCode() : null,
                 room.getCreatedAt(), members.size(), host.getId().equals(currentUserId),
                 memberResponses, queueResponses, playbackResponse(room));
+    }
+
+    private void ensureHostInviteCode(KaraokeRoom room, Long currentUserId) {
+        if (room.getVisibility() != KaraokeRoomVisibility.PRIVATE
+                || !room.getHostUser().getId().equals(currentUserId)
+                || room.getInviteCode() != null) {
+            return;
+        }
+
+        // Older rooms only stored the one-way hash, so rotate once to a new code
+        // that the host can recover and share from inside the room.
+        String inviteCode = createInviteCode();
+        room.setInviteCode(inviteCode);
+        room.setInviteCodeHash(hashInviteCode(inviteCode));
     }
 
     private Map<String, Document> loadTrackDocuments(List<KaraokeRoomQueueItem> queueItems) {

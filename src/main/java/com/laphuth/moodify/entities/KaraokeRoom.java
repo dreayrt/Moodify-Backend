@@ -39,6 +39,9 @@ public class KaraokeRoom {
     @Column(name = "invite_code_hash", length = 64)
     private String inviteCodeHash;
 
+    @Column(name = "invite_code", length = 64)
+    private String inviteCode;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -80,6 +83,8 @@ public class KaraokeRoom {
     public void setVisibility(KaraokeRoomVisibility visibility) { this.visibility = visibility; }
     public String getInviteCodeHash() { return inviteCodeHash; }
     public void setInviteCodeHash(String inviteCodeHash) { this.inviteCodeHash = inviteCodeHash; }
+    public String getInviteCode() { return inviteCode; }
+    public void setInviteCode(String inviteCode) { this.inviteCode = inviteCode; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getClosedAt() { return closedAt; }
     public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }

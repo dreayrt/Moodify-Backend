@@ -13,6 +13,7 @@ public record KaraokeRoomDetailResponse(
         String hostAvatarUrl,
         Integer maxMembers,
         KaraokeRoomVisibility visibility,
+        String inviteCode,
         LocalDateTime createdAt,
         long memberCount,
         boolean canManage,

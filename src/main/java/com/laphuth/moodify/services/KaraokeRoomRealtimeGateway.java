@@ -113,6 +113,11 @@ public class KaraokeRoomRealtimeGateway {
         sendTo(connection -> connection.roomsList, Map.of("type", "rooms.updated"));
     }
 
+    public void publishRoomClosed(Long roomId) {
+        sendTo(connection -> roomId.equals(connection.roomId),
+                Map.of("type", "room.closed", "roomId", roomId));
+    }
+
     public void disconnectRoomMember(Long roomId, Long userId) {
         memberSessions.getOrDefault(new MemberKey(roomId, userId), java.util.Set.of()).stream()
                 .map(connections::get)
