@@ -101,7 +101,17 @@ jobs:
             fi
             echo "🎤 Deploying mediasoup voice service..."
             docker compose --env-file /opt/moodify/backend/backend.env -f /opt/moodify/backend/karaoke-media/compose.production.yaml up -d --build
-            if ! curl -s -f http://127.0.0.1:3001/health/ready > /dev/null; then
+            media_healthy=false
+            for i in $(seq 1 30); do
+              if curl --connect-timeout 2 --max-time 5 -s -f http://127.0.0.1:3001/health/ready > /dev/null; then
+                echo "✅ Karaoke media service is healthy and responding!"
+                media_healthy=true
+                break
+              fi
+              echo "Waiting for Karaoke Media to start up ($i/30)..."
+              sleep 2
+            done
+            if [ "$media_healthy" != "true" ]; then
               echo "❌ Karaoke media service did not become ready."
               docker logs --tail 50 moodify-karaoke-media
               exit 1
