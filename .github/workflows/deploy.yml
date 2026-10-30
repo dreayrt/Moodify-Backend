@@ -34,7 +34,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          source: "target/moodify-0.0.1-SNAPSHOT.jar,Dockerfile.prod"
+          source: "target/moodify-0.0.1-SNAPSHOT.jar,Dockerfile.prod,supporting-services/karaoke-media/Dockerfile,supporting-services/karaoke-media/package.json,supporting-services/karaoke-media/package-lock.json,supporting-services/karaoke-media/server.js,supporting-services/karaoke-media/compose.production.yaml"
           target: "/opt/moodify/backend"
           strip_components: 1
 
@@ -46,7 +46,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           script_stop: true
-          command_timeout: 5m
+          command_timeout: 30m
           script: |
             echo "🚀 Reloading moodify-backend on Google Cloud VM..."
             # Ensure Dockerfile.prod is in place
@@ -57,19 +57,53 @@ jobs:
               mv -f /opt/moodify/backend/target/moodify-0.0.1-SNAPSHOT.jar /opt/moodify/backend/moodify-0.0.1-SNAPSHOT.jar
             fi
             cd /opt/moodify
+            echo "🔎 Checking production karaoke configuration..."
+            for name in KARAOKE_SCORING_KEY KARAOKE_MEDIA_TICKET_SECRET KARAOKE_MEDIA_SERVICE_SECRET KARAOKE_MEDIA_WS_URL MEDIASOUP_ALLOWED_ORIGINS MEDIASOUP_ANNOUNCED_IP; do
+              if ! grep -Eq "^${name}=.+$" /opt/moodify/backend/backend.env; then
+                echo "❌ Required karaoke setting is missing: ${name}"
+                exit 1
+              fi
+            done
+            if ! awk -F= '$1 == "KARAOKE_SCORING_KEY" && length(substr($0,index($0,"=")+1)) >= 24 {found=1} END {exit !found}' /opt/moodify/backend/backend.env; then
+              echo "❌ KARAOKE_SCORING_KEY must contain at least 24 characters."
+              exit 1
+            fi
+            for name in KARAOKE_MEDIA_TICKET_SECRET KARAOKE_MEDIA_SERVICE_SECRET; do
+              if ! awk -F= -v key="$name" '$1 == key && length(substr($0,index($0,"=")+1)) >= 32 {found=1} END {exit !found}' /opt/moodify/backend/backend.env; then
+                echo "❌ ${name} must contain at least 32 characters."
+                exit 1
+              fi
+            done
+            score_service_key=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' karaoke-score-production | awk -F= '$1 == "AI_API_KEY" {print substr($0,index($0,"=")+1); exit}')
+            backend_scoring_key=$(awk -F= '$1 == "KARAOKE_SCORING_KEY" {print substr($0,index($0,"=")+1); exit}' /opt/moodify/backend/backend.env)
+            if [ -z "$score_service_key" ] || [ "$score_service_key" != "$backend_scoring_key" ]; then
+              echo "❌ KARAOKE_SCORING_KEY must match AI_API_KEY in karaoke-score-production."
+              exit 1
+            fi
             docker compose build moodify-backend
             docker compose up -d --no-deps moodify-backend
             echo "🩺 Verifying Backend container status & Health..."
             docker ps --filter "name=moodify-backend" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            backend_healthy=false
             for i in $(seq 1 30); do
               if curl -s -f http://127.0.0.1:8080/api/packages > /dev/null; then
                 echo "✅ Moodify Backend is healthy and responding!"
-                echo "✅ Moodify Backend CI/CD deployment completed successfully!"
-                exit 0
+                backend_healthy=true
+                break
               fi
               echo "Waiting for Backend to start up ($i/30)..."
               sleep 3
             done
-            echo "❌ Backend health check timed out!"
-            docker logs --tail 50 moodify-backend
-            exit 1
+            if [ "$backend_healthy" != "true" ]; then
+              echo "❌ Backend health check timed out!"
+              docker logs --tail 50 moodify-backend
+              exit 1
+            fi
+            echo "🎤 Deploying mediasoup voice service..."
+            docker compose --env-file /opt/moodify/backend/backend.env -f /opt/moodify/backend/karaoke-media/compose.production.yaml up -d --build
+            if ! curl -s -f http://127.0.0.1:3001/health/ready > /dev/null; then
+              echo "❌ Karaoke media service did not become ready."
+              docker logs --tail 50 moodify-karaoke-media
+              exit 1
+            fi
+            echo "✅ Moodify Backend and Karaoke Media deployment completed successfully!"

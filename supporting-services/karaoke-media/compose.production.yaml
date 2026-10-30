@@ -1,0 +1,31 @@
+services:
+  karaoke-media:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: moodify-karaoke-media:production
+    container_name: moodify-karaoke-media
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      PORT: "3001"
+      KARAOKE_MEDIA_SIGNALING_LISTEN_IP: 127.0.0.1
+      KARAOKE_MEDIA_TICKET_SECRET: ${KARAOKE_MEDIA_TICKET_SECRET:?set KARAOKE_MEDIA_TICKET_SECRET}
+      KARAOKE_MEDIA_SERVICE_SECRET: ${KARAOKE_MEDIA_SERVICE_SECRET:?set KARAOKE_MEDIA_SERVICE_SECRET}
+      KARAOKE_BACKEND_INTERNAL_URL: ${KARAOKE_BACKEND_INTERNAL_URL:-http://127.0.0.1:8080}
+      MEDIASOUP_ALLOWED_ORIGINS: ${MEDIASOUP_ALLOWED_ORIGINS:?set MEDIASOUP_ALLOWED_ORIGINS}
+      MEDIASOUP_AUTH_TIMEOUT_MS: ${MEDIASOUP_AUTH_TIMEOUT_MS:-5000}
+      KARAOKE_MEDIA_TICKET_CLOCK_TOLERANCE_SECONDS: ${KARAOKE_MEDIA_TICKET_CLOCK_TOLERANCE_SECONDS:-120}
+      MEDIASOUP_LISTEN_IP: 0.0.0.0
+      MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:?set MEDIASOUP_ANNOUNCED_IP to the VM public IP}
+      MEDIASOUP_MIN_PORT: ${MEDIASOUP_MIN_PORT:-40000}
+      MEDIASOUP_MAX_PORT: ${MEDIASOUP_MAX_PORT:-49999}
+      WEBRTC_ICE_SERVERS: ${WEBRTC_ICE_SERVERS:-[]}
+      TURN_SERVER_URLS: ${TURN_SERVER_URLS:-[]}
+      TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:-}
+      TURN_CREDENTIAL_TTL_SECONDS: "600"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      retries: 3

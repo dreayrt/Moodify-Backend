@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const { WebSocketServer, WebSocket } = require("ws");
 
 const port = Number(process.env.PORT || 3001);
+const signalingListenIp = process.env.KARAOKE_MEDIA_SIGNALING_LISTEN_IP || "0.0.0.0";
 const secret = process.env.KARAOKE_MEDIA_TICKET_SECRET || "";
 const backendUrl = (process.env.KARAOKE_BACKEND_INTERNAL_URL || "http://127.0.0.1:8080").replace(/\/$/, "");
 const backendServiceSecret = process.env.KARAOKE_MEDIA_SERVICE_SECRET || "";
@@ -654,7 +655,7 @@ async function main() {
     }
     createPeerSocket(socket);
   });
-  server.listen(port, "0.0.0.0", () => console.log(`Moodify mediasoup listening on ${port}`));
+  server.listen(port, signalingListenIp, () => console.log(`Moodify mediasoup signaling listening on ${signalingListenIp}:${port}`));
 }
 
 setInterval(() => {

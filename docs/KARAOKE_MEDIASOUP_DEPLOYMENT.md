@@ -6,7 +6,28 @@ Dịch vụ media chạy tách biệt với Spring Boot. Spring Boot vẫn là n
 
 Cấu hình cùng một giá trị `KARAOKE_MEDIA_TICKET_SECRET` (ít nhất 32 ký tự ngẫu nhiên) trong môi trường Spring Boot và `supporting-services/karaoke-media/.env`; dùng một secret service khác cho `KARAOKE_MEDIA_SERVICE_SECRET`. Trong Spring Boot, đặt `KARAOKE_MEDIA_WS_URL` thành URL `wss://<your-host>/ws` có thể truy cập từ bên ngoài và `KARAOKE_ROOM_RECONNECT_GRACE_MS=30000`. Trong `supporting-services/karaoke-media/.env`, đặt `MEDIASOUP_ANNOUNCED_IP` thành địa chỉ IP công khai của VM và `MEDIASOUP_ALLOWED_ORIGINS` thành danh sách origin chính xác, phân tách bằng dấu phẩy (ví dụ `https://moodify.click`). Bỏ `localhost` khỏi allowlist production. Không đưa bí mật vé vào bất kỳ biến môi trường frontend `NEXT_PUBLIC_*` nào.
 
-Trên máy ảo, trong thư mục `supporting-services/karaoke-media/`, sao chép `.env.example` thành tệp `.env` không được Git theo dõi, điền bí mật/origin/IP công khai, rồi khởi chạy stack bằng lệnh `docker compose --env-file supporting-services/karaoke-media/.env -f supporting-services/karaoke-media/compose.yaml up -d --build`. Cổng 3001 chỉ được liên kết với giao diện loopback của máy chủ; định tuyến WSS qua reverse proxy TLS có hỗ trợ nâng cấp kết nối WebSocket. Giữ `/health/ready` và `/metrics` ở mạng nội bộ; không mở cổng TCP 3001 ra Internet hoặc đưa đường dẫn metrics qua reverse proxy công khai.
+Với môi trường độc lập, sao chép `.env.example` thành `.env` không được Git theo dõi trong `supporting-services/karaoke-media/`, điền bí mật/origin/IP công khai, rồi chạy `docker compose --env-file supporting-services/karaoke-media/.env -f supporting-services/karaoke-media/compose.yaml up -d --build`. VM production của Moodify dùng cấu hình riêng bên dưới. Cổng signaling 3001 chỉ được truy cập qua reverse proxy TLS có hỗ trợ nâng cấp WebSocket; giữ `/health/ready` và `/metrics` nội bộ.
+
+### VM production của Moodify
+
+Backend production nhận biến môi trường từ `/opt/moodify/backend/backend.env`. Khai báo các biến sau ở đó; hai secret media phải giống hệt giữa Spring Boot và mediasoup, còn `KARAOKE_SCORING_KEY` phải khớp với `AI_API_KEY` của container scoring:
+
+```dotenv
+KARAOKE_SCORING_URL=http://karaoke-score-production:8000
+KARAOKE_SCORING_KEY=<giá trị AI_API_KEY của karaoke-score-production>
+KARAOKE_MEDIA_TICKET_SECRET=<secret ngẫu nhiên, tối thiểu 32 ký tự>
+KARAOKE_MEDIA_SERVICE_SECRET=<secret khác, tối thiểu 32 ký tự>
+KARAOKE_MEDIA_WS_URL=wss://moodify.click/ws
+KARAOKE_BACKEND_INTERNAL_URL=http://127.0.0.1:8080
+MEDIASOUP_ALLOWED_ORIGINS=https://moodify.click,https://www.moodify.click
+MEDIASOUP_ANNOUNCED_IP=<IP công khai của VM>
+MEDIASOUP_MIN_PORT=40000
+MEDIASOUP_MAX_PORT=49999
+```
+
+Compose production `supporting-services/karaoke-media/compose.production.yaml` dùng host networking để mediasoup bind trực tiếp dải cổng WebRTC mà không yêu cầu Docker chiếm dải cổng host; signaling chỉ nghe trên `127.0.0.1:3001`. Workflow triển khai backend cũng chép và khởi chạy service này. Nginx cần proxy chính xác đường dẫn `/ws` tới `http://127.0.0.1:3001/ws` với HTTP/1.1 và header `Upgrade`, `Connection`. Firewall của VM cần cho phép TCP và UDP 40000–49999 theo network tag của VM. Cập nhật cả proxy và IP công bố khi chuyển service sang máy chủ khác.
+
+Khi cần khởi chạy thủ công trên VM, dùng `docker compose --env-file /opt/moodify/backend/backend.env -f /opt/moodify/backend/karaoke-media/compose.production.yaml up -d --build`.
 
 Mở các quy tắc ingress sau trong Google Cloud firewall cho network tag của máy ảo; khi phù hợp, hãy giới hạn nguồn truy cập ở mức cần thiết:
 
