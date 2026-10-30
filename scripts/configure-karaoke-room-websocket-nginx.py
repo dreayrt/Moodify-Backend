@@ -8,6 +8,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +37,10 @@ LOCATION = f'''location = {ROOM_ROUTE} {{
     proxy_send_timeout 3600s;
     proxy_buffering off;
 }}'''
+
+
+def format_location(indent: str) -> str:
+    return "\n".join(indent + line if line else "" for line in LOCATION.splitlines())
 
 
 def find_block_end(text: str, opening: int) -> int:
@@ -73,13 +78,24 @@ def find_block_end(text: str, opening: int) -> int:
 
 
 def enabled_config_files() -> list[Path]:
-    candidates: set[Path] = set()
-    for root in (Path("/etc/nginx/sites-enabled"), Path("/etc/nginx/conf.d")):
-        if not root.exists():
-            continue
-        for entry in root.iterdir():
-            if entry.is_file():
-                candidates.add(entry.resolve())
+    result = subprocess.run(
+        ["nginx", "-T"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    candidates = {
+        Path(match.group(1)).resolve()
+        for match in re.finditer(
+            r"(?m)^# configuration file (.+):$", result.stdout
+        )
+        if Path(match.group(1)).is_file()
+    }
+    if not candidates:
+        raise RuntimeError("nginx -T returned no active configuration files")
+    print(f"[karaoke-ws] Found {len(candidates)} active Nginx config files.", flush=True)
     return sorted(candidates)
 
 
@@ -120,11 +136,19 @@ def update_file(path: Path) -> tuple[str, bool]:
                 "proxy_pass http://127.0.0.1:8080;",
                 "proxy_set_header Upgrade $http_upgrade;",
                 'proxy_set_header Connection "upgrade";',
+                "proxy_http_version 1.1;",
             )
-            if not all(directive in existing_location for directive in required):
-                raise ValueError(
-                    f"{path} already defines {ROOM_ROUTE} with different proxy settings"
-                )
+            if all(directive in existing_location for directive in required):
+                continue
+
+            line_start = block.rfind("\n", 0, route_match.start()) + 1
+            route_indent = re.match(r"[ \t]*", block[line_start:]).group(0)  # type: ignore[union-attr]
+            new_block = (
+                block[:line_start]
+                + format_location(route_indent)
+                + block[route_end + 1 :]
+            )
+            updates.append((start, end + 1, new_block))
             continue
 
         indent_source = host_match.start() if host_match else proxy_match.start()  # type: ignore[union-attr]
@@ -132,9 +156,7 @@ def update_file(path: Path) -> tuple[str, bool]:
         indent = re.match(r"[ \t]*", block[line_start:]).group(0)  # type: ignore[union-attr]
         closing_line_start = block.rfind("\n", 0, len(block) - 1) + 1
         closing_indent = re.match(r"[ \t]*", block[closing_line_start:-1]).group(0)  # type: ignore[union-attr]
-        indented_location = "\n".join(
-            indent + line if line else "" for line in LOCATION.splitlines()
-        )
+        indented_location = format_location(indent)
         new_block = block[: -1].rstrip() + "\n\n" + indented_location + "\n" + closing_indent + "}"
         updates.append((start, end + 1, new_block))
 
@@ -171,7 +193,9 @@ def main() -> None:
             changes[path] = (path.read_text(encoding="utf-8"), content)
 
     if matched_servers == 0:
-        raise RuntimeError("No enabled Nginx server block names api.moodify.click")
+        raise RuntimeError(
+            "No active Nginx server block proxies api.moodify.click to the Moodify API"
+        )
     if not changes:
         print(f"Nginx already proxies {ROOM_ROUTE} with WebSocket upgrade headers.")
         return
@@ -184,7 +208,9 @@ def main() -> None:
             shutil.copy2(path, backup)
             backups[path] = backup
             write_atomically(path, updated)
+        print("[karaoke-ws] Validating Nginx configuration...", flush=True)
         run("nginx", "-t")
+        print("[karaoke-ws] Reloading Nginx...", flush=True)
         run("systemctl", "reload", "nginx")
     except Exception:
         for path, backup in backups.items():
@@ -198,4 +224,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as error:
+        print(
+            f"[karaoke-ws] ERROR: {type(error).__name__}: {error}",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise

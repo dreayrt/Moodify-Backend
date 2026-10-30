@@ -117,9 +117,19 @@ jobs:
               exit 1
             fi
             echo "🔌 Configuring the room-state WebSocket proxy..."
+            nginx_updater=/opt/moodify/backend/configure-karaoke-room-websocket-nginx.py
+            if [ ! -f "$nginx_updater" ]; then
+              echo "❌ Nginx WebSocket updater was not copied to $nginx_updater."
+              ls -la /opt/moodify/backend
+              exit 1
+            fi
             if [ "$(id -u)" -eq 0 ]; then
-              python3 /opt/moodify/backend/configure-karaoke-room-websocket-nginx.py
+              python3 -u "$nginx_updater"
             else
-              sudo -n python3 /opt/moodify/backend/configure-karaoke-room-websocket-nginx.py
+              if ! command -v sudo >/dev/null 2>&1 || ! sudo -n true; then
+                echo "❌ SSH user $(id -un) cannot run the Nginx updater with passwordless sudo."
+                exit 1
+              fi
+              sudo -n python3 -u "$nginx_updater"
             fi
             echo "✅ Moodify Backend and Karaoke Media deployment completed successfully!"
