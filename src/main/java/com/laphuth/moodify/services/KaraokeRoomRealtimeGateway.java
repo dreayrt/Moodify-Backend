@@ -99,6 +99,16 @@ public class KaraokeRoomRealtimeGateway {
         sendTo(connection -> connection.roomsList || roomId.equals(connection.roomId), event);
     }
 
+    public void publishRoomScoreUpdated(Long roomId, String sessionId, String status, Map<String, Object> score) {
+        Map<String, Object> event = new java.util.LinkedHashMap<>();
+        event.put("type", "score.updated");
+        event.put("roomId", roomId);
+        event.put("sessionId", sessionId);
+        event.put("status", status);
+        if (score != null) event.put("score", score);
+        sendTo(connection -> roomId.equals(connection.roomId), event);
+    }
+
     public void publishRoomsChanged() {
         sendTo(connection -> connection.roomsList, Map.of("type", "rooms.updated"));
     }

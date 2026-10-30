@@ -49,6 +49,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class KaraokeRoomService {
@@ -312,6 +313,7 @@ public class KaraokeRoomService {
         room.setClosedAt(now);
         pause(room);
         room.setCurrentTrackId(null);
+        room.setPlaybackRunId(null);
         room.setPlaybackPositionMs(0L);
         room.setPlaybackVersion(room.getPlaybackVersion() + 1);
         memberRepository.findAllByRoom_IdAndLeftAtIsNullOrderByJoinedAtAsc(roomId)
@@ -422,7 +424,7 @@ public class KaraokeRoomService {
     private KaraokeRoomQueueItemResponse toQueueItem(KaraokeRoomQueueItem item, Document track, Long currentUserId) {
         String title = track == null ? "Bài hát không còn khả dụng" : valueOr(track.getString("name"), "Bài hát không tên");
         String artist = track == null ? "" : valueOr(track.getString("artist_name"), "");
-        String imageUrl = track == null ? null : track.getString("image_url");
+        String imageUrl = track == null ? null : AudioUrlResolver.resolveImageUrl(track.getString("image_url"));
         Long durationMs = null;
         if (track != null && track.get("duration_ms") instanceof Number duration) durationMs = duration.longValue();
         return new KaraokeRoomQueueItemResponse(item.getId(), item.getTrackId(), title, artist, imageUrl,
@@ -452,7 +454,7 @@ public class KaraokeRoomService {
                 Long duration = rawDuration instanceof Number number ? number.longValue() : null;
                 trackResponse = new KaraokeRoomPlaybackTrackResponse(room.getCurrentTrackId(),
                         valueOr(track.getString("name"), "Bài hát không tên"), valueOr(track.getString("artist_name"), ""),
-                        track.getString("image_url"), duration,
+                        AudioUrlResolver.resolveImageUrl(track.getString("image_url")), duration,
                         instrumental == null ? null : urlFor(baseUrl, instrumental.getString("storageKey")),
                         track.getString("lyrics_plain"), track.getString("lyrics_synced"),
                         asset.get("lyricTimeline", Document.class));
@@ -465,7 +467,7 @@ public class KaraokeRoomService {
             position += Math.max(0, Duration.between(room.getPlaybackStartedAt(), serverNow).toMillis());
         }
         return new KaraokeRoomPlaybackResponse(room.getPlaybackStatus(), trackResponse, position,
-                room.getPlaybackStartedAt(), room.getPlaybackVersion(), serverTimeMs);
+                room.getPlaybackStartedAt(), room.getPlaybackVersion(), serverTimeMs, room.getPlaybackRunId());
     }
 
     private static String urlFor(String baseUrl, String storageKey) {
@@ -499,11 +501,13 @@ public class KaraokeRoomService {
         KaraokeRoomQueueItem next = queued.isEmpty() ? null : queued.getFirst();
         if (next == null) {
             room.setCurrentTrackId(null);
+            room.setPlaybackRunId(null);
             room.setPlaybackStatus(KaraokePlaybackStatus.IDLE);
             room.setPlaybackPositionMs(0L);
             room.setPlaybackStartedAt(null);
         } else {
             room.setCurrentTrackId(next.getTrackId());
+            room.setPlaybackRunId(UUID.randomUUID().toString());
             queueRepository.delete(next);
             room.setPlaybackPositionMs(0L);
             room.setPlaybackStartedAt(LocalDateTime.now());

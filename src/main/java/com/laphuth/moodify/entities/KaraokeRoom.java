@@ -61,6 +61,9 @@ public class KaraokeRoom {
     @Column(name = "playback_version", nullable = false)
     private Long playbackVersion = 0L;
 
+    @Column(name = "playback_run_id", length = 36)
+    private String playbackRunId;
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
@@ -90,4 +93,6 @@ public class KaraokeRoom {
     public void setPlaybackStartedAt(LocalDateTime playbackStartedAt) { this.playbackStartedAt = playbackStartedAt; }
     public Long getPlaybackVersion() { return playbackVersion == null ? 0L : playbackVersion; }
     public void setPlaybackVersion(Long playbackVersion) { this.playbackVersion = playbackVersion; }
+    public String getPlaybackRunId() { return playbackRunId; }
+    public void setPlaybackRunId(String playbackRunId) { this.playbackRunId = playbackRunId; }
 }

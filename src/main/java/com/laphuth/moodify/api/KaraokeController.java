@@ -379,7 +379,7 @@ public class KaraokeController {
         }
     }
 
-    private static void validatePitchFeatures(KaraokePitchFeatureRequest features) {
+    public static void validatePitchFeatures(KaraokePitchFeatureRequest features) {
         if (features == null || !Double.isFinite(features.durationSeconds()) || features.durationSeconds() <= 0
                 || features.durationSeconds() > MAX_RECORDING_SECONDS
                 || !Double.isFinite(features.rmsDbfs()) || features.rmsDbfs() < -240 || features.rmsDbfs() > 6
@@ -404,6 +404,36 @@ public class KaraokeController {
                     || probability == null || !Double.isFinite(probability) || probability < 0 || probability > 1) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Recording pitch features contain invalid values");
             }
+        }
+    }
+
+    /** Scores one room-wide pitch timeline after the room service has merged every singer's contribution. */
+    public Map<String, Object> scoreMergedRoomFeatures(String songId, KaraokePitchFeatureRequest features,
+                                                       String expectedAssetVersion, String expectedReferenceVersion,
+                                                       String expectedReferenceSha256) {
+        validatePitchFeatures(features);
+        if (scoringKey.length() < 24) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Scoring service credentials are not configured");
+        }
+        try {
+            Document asset = readyAsset(songId);
+            if (!expectedAssetVersion.equals(asset.getString("assetVersion"))) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "The prepared song version changed during room scoring");
+            }
+            Document assetFiles = asset.get("assets", Document.class);
+            Document referenceAsset = assetFiles == null ? null : assetFiles.get("pitchReference", Document.class);
+            if (referenceAsset == null || !expectedReferenceVersion.equals(referenceAsset.getString("referenceVersion"))) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "The scoring reference changed during room scoring");
+            }
+            byte[] reference = fetchReference(asset, referenceAsset, expectedReferenceSha256);
+            String timing = "{\"recording_start_offset_ms\":0,\"capture_latency_ms\":0"
+                    + ",\"allow_octave_shift\":true,\"expected_reference_version\":\""
+                    + expectedReferenceVersion + "\"}";
+            return castMap(publicScoreDocument(sendScoreFeatures(features, reference, timing)));
+        } catch (ResponseStatusException error) {
+            throw error;
+        } catch (Exception error) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Scoring service could not complete the room performance");
         }
     }
 

@@ -10,5 +10,6 @@ public record KaraokeRoomPlaybackResponse(
         long positionMs,
         LocalDateTime startedAt,
         long version,
-        long serverTimeMs
+        long serverTimeMs,
+        String playbackRunId
 ) {}
