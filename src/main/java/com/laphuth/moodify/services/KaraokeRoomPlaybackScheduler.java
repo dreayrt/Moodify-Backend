@@ -5,6 +5,8 @@ import com.laphuth.moodify.repositories.KaraokeRoomRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
 public class KaraokeRoomPlaybackScheduler {
     private final KaraokeRoomRepository roomRepository;
@@ -21,11 +23,11 @@ public class KaraokeRoomPlaybackScheduler {
 
     @Scheduled(fixedDelayString = "${karaoke.rooms.playback-sweep-interval-ms:1000}")
     public void advanceExpiredTracks() {
-        for (Long roomId : roomRepository.findAllIdsByPlaybackStatus(KaraokePlaybackStatus.PLAYING)) {
-            Long hostUserId = roomService.roomHostUserId(roomId);
-            boolean hostConnected = hostUserId != null && realtimeGateway.hasRoomMemberSession(roomId, hostUserId);
-            if (roomService.advanceIfExpired(roomId, hostConnected)) {
-                realtimeGateway.publishRoomChanged(roomId, "playback.updated");
+        for (KaraokePlaybackStatus status : List.of(KaraokePlaybackStatus.PLAYING, KaraokePlaybackStatus.PAUSED)) {
+            for (Long roomId : roomRepository.findAllIdsByPlaybackStatus(status)) {
+                if (roomService.advanceIfExpired(roomId)) {
+                    realtimeGateway.publishRoomChanged(roomId, "playback.updated");
+                }
             }
         }
     }

@@ -239,27 +239,23 @@ public class KaraokeRoomService {
     }
 
     @Transactional
-    public boolean advanceIfExpired(Long roomId, boolean hostConnected) {
+    public boolean advanceIfExpired(Long roomId) {
         KaraokeRoom room = roomRepository.findByIdForUpdate(roomId).orElse(null);
-        if (room == null || room.getClosedAt() != null || room.getPlaybackStatus() != KaraokePlaybackStatus.PLAYING
-                || room.getCurrentTrackId() == null || room.getPlaybackStartedAt() == null) return false;
+        if (room == null || room.getClosedAt() != null
+                || (room.getPlaybackStatus() != KaraokePlaybackStatus.PLAYING
+                && room.getPlaybackStatus() != KaraokePlaybackStatus.PAUSED)
+                || room.getCurrentTrackId() == null) return false;
+        if (room.getPlaybackStatus() == KaraokePlaybackStatus.PLAYING && room.getPlaybackStartedAt() == null) return false;
         Document track = mongo.findById(new ObjectId(room.getCurrentTrackId()), Document.class, TRACKS);
         Object rawDuration = track == null ? null : track.get("duration_ms");
         if (!(rawDuration instanceof Number number) || number.longValue() <= 0) return false;
-        long elapsed = room.getPlaybackPositionMs() + Duration.between(room.getPlaybackStartedAt(), LocalDateTime.now()).toMillis();
-        if (elapsed < number.longValue()) return false;
-        if (hostConnected) {
-            startNextTrack(room);
-        } else {
-            pause(room);
-            room.setPlaybackVersion(room.getPlaybackVersion() + 1);
+        long elapsed = room.getPlaybackPositionMs();
+        if (room.getPlaybackStatus() == KaraokePlaybackStatus.PLAYING) {
+            elapsed += Math.max(0, Duration.between(room.getPlaybackStartedAt(), LocalDateTime.now()).toMillis());
         }
+        if (elapsed < number.longValue()) return false;
+        startNextTrack(room);
         return true;
-    }
-
-    @Transactional(readOnly = true)
-    public Long roomHostUserId(Long roomId) {
-        return roomRepository.findById(roomId).map(room -> room.getHostUser().getId()).orElse(null);
     }
 
     @Transactional
