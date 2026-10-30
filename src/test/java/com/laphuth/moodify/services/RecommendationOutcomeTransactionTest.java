@@ -1,7 +1,6 @@
 package com.laphuth.moodify.services;
 
 import static org.mockito.Mockito.*;
-import com.laphuth.moodify.recommendation.*;
 import com.laphuth.moodify.repositories.*;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;

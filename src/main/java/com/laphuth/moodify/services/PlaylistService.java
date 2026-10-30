@@ -40,7 +40,7 @@ public class PlaylistService {
 
     public List<PlaylistResponse> getUserPlaylists(String username) {
         var user=actor(username);Map<String,Playlist> own=new LinkedHashMap<>();
-        for(Playlist p:playlistRepository.findByUsernameOrderByCreatedAtDesc(username))if(com.laphuth.moodify.recommendation.RecommendationCatalog.owns(p,user))own.put(p.getId(),p);
+        for(Playlist p:playlistRepository.findByUsernameOrderByCreatedAtDesc(username))if(RecommendationCatalog.owns(p,user))own.put(p.getId(),p);
         for(Playlist p:playlistRepository.findByOwnerUserIdOrderByCreatedAtDesc(user.getId()))own.put(p.getId(),p);
         List<Playlist> playlists=List.copyOf(own.values());
         return playlists.stream().map(p -> {
@@ -80,7 +80,7 @@ public class PlaylistService {
         Playlist playlist = playlistRepository.findById(id)
             .orElseThrow(() -> new PlaylistNotFoundException("Playlist not found: " + id));
 
-        if (!Boolean.TRUE.equals(playlist.getIsPublic()) && (principal==null||!com.laphuth.moodify.recommendation.RecommendationCatalog.owns(playlist,actor(principal)))) {
+        if (!Boolean.TRUE.equals(playlist.getIsPublic()) && (principal==null||!RecommendationCatalog.owns(playlist,actor(principal)))) {
             throw new PlaylistNotFoundException("Playlist not found or access denied: " + id);
         }
 
@@ -148,7 +148,7 @@ public class PlaylistService {
     }
     private Playlist owned(String id,String principal) {
         Playlist playlist=playlistRepository.findById(id).orElseThrow(()->new PlaylistNotFoundException("Playlist not found"));
-        if(!com.laphuth.moodify.recommendation.RecommendationCatalog.owns(playlist,actor(principal)))throw new PlaylistNotFoundException("Playlist not found or access denied");
+        if(!RecommendationCatalog.owns(playlist,actor(principal)))throw new PlaylistNotFoundException("Playlist not found or access denied");
         return playlist;
     }
 

@@ -5,7 +5,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $backendRoot = Split-Path -Parent $PSScriptRoot
-$workerDirectory = Join-Path $backendRoot 'recommendation-worker'
+$workerDirectory = Join-Path $backendRoot 'supporting-services\recommendation-worker'
 $workerPython = Join-Path $workerDirectory '.venv\Scripts\python.exe'
 
 if ($Mode -eq 'setup') {

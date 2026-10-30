@@ -27,7 +27,7 @@ Theo từng tín hiệu, lần lượt kiểm tra:
 
 SQL dùng transaction READ ONLY; không xuất search keyword, nhãn cảm xúc, confidence, user ID hoặc target ID thô. Metadata các collection hạ tầng như cookie/proxy/fingerprint chỉ được nhận diện tên, không đọc giá trị để phân tích gu nghe. Mongo `users` chỉ kiểm tra field presence, không đọc password/email values.
 
-Nguồn số liệu: [JSON inventory](recommendation-signal-inventory-20261027.json). Công cụ chạy lại: [audit_signals.py](../recommendation-worker/audit_signals.py). Audit là snapshot local, không xác nhận dữ liệu production hoặc chứng minh các rows legacy do người thật tạo. Việc không tìm thấy writer trong repo không loại trừ một client/hệ cũ bên ngoài repo; nó có nghĩa chưa đủ bằng chứng về producer hiện hành.
+Nguồn số liệu: [JSON inventory](recommendation-signal-inventory-20261027.json). Công cụ chạy lại: [audit_signals.py](../supporting-services/recommendation-worker/audit_signals.py). Audit là snapshot local, không xác nhận dữ liệu production hoặc chứng minh các rows legacy do người thật tạo. Việc không tìm thấy writer trong repo không loại trừ một client/hệ cũ bên ngoài repo; nó có nghĩa chưa đủ bằng chứng về producer hiện hành.
 
 ## 3. Những dữ liệu bị bỏ sót: số liệu kiểm chứng
 
@@ -272,7 +272,7 @@ Mọi thay đổi UI hoặc dữ liệu legacy là công việc riêng cần ch�
 
 - Backend: [UserLibraryService](../src/main/java/com/laphuth/moodify/services/UserLibraryService.java), [AlbumService](../src/main/java/com/laphuth/moodify/services/AlbumService.java), [SearchHistoryService](../src/main/java/com/laphuth/moodify/services/SearchHistoryService.java), [AdminService](../src/main/java/com/laphuth/moodify/services/AdminService.java), [PlatformTrafficService](../src/main/java/com/laphuth/moodify/services/PlatformTrafficService.java), [SubscriptionApi](../src/main/java/com/laphuth/moodify/api/SubscriptionApi.java), [ContentLeadAnalyticsService](../src/main/java/com/laphuth/moodify/services/ContentLeadAnalyticsService.java).
 - Frontend: [API client](../../Moodify/lib/api-client.ts), [global player](../../Moodify/components/dashboard/global-player.tsx), [track action menu](../../Moodify/components/dashboard/track-action-menu.tsx), [search page](../../Moodify/app/dashboard/search/page.tsx), [album detail](../../Moodify/components/dashboard/album-detail-modal.tsx), [player context](../../Moodify/components/dashboard/player-context.tsx), [Home genre context](../../Moodify/components/dashboard/lumen-hero.tsx).
-- Hiện trạng recommender: [context](../src/main/java/com/laphuth/moodify/recommendation/RecommendationContextService.java), [store](../src/main/java/com/laphuth/moodify/recommendation/RecommendationStore.java), [engine](../src/main/java/com/laphuth/moodify/recommendation/RecommendationEngine.java), [worker](../recommendation-worker/worker.py).
+- Hiện trạng recommender: [context](../src/main/java/com/laphuth/moodify/recommendation/RecommendationContextService.java), [store](../src/main/java/com/laphuth/moodify/recommendation/RecommendationStore.java), [engine](../src/main/java/com/laphuth/moodify/recommendation/RecommendationEngine.java), [worker](../supporting-services/recommendation-worker/worker.py).
 
 ## 12. Kết luận khảo sát
 

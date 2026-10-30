@@ -1,0 +1,54 @@
+services:
+  karaoke-media:
+    build: .
+    container_name: moodify-karaoke-media
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      KARAOKE_MEDIA_TICKET_SECRET: ${KARAOKE_MEDIA_TICKET_SECRET:?set a shared 32+ character secret}
+      KARAOKE_MEDIA_SERVICE_SECRET: ${KARAOKE_MEDIA_SERVICE_SECRET:?set a second 32+ character secret}
+      KARAOKE_BACKEND_INTERNAL_URL: ${KARAOKE_BACKEND_INTERNAL_URL:?set a private backend URL reachable from this container}
+      MEDIASOUP_ALLOWED_ORIGINS: ${MEDIASOUP_ALLOWED_ORIGINS:?set comma-separated browser origins}
+      MEDIASOUP_AUTH_TIMEOUT_MS: ${MEDIASOUP_AUTH_TIMEOUT_MS:-5000}
+      KARAOKE_MEDIA_TICKET_CLOCK_TOLERANCE_SECONDS: ${KARAOKE_MEDIA_TICKET_CLOCK_TOLERANCE_SECONDS:-120}
+      MEDIASOUP_LISTEN_IP: 0.0.0.0
+      MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:?set the VM public IP}
+      MEDIASOUP_MIN_PORT: ${MEDIASOUP_MIN_PORT:-40000}
+      MEDIASOUP_MAX_PORT: ${MEDIASOUP_MAX_PORT:-49999}
+      WEBRTC_ICE_SERVERS: "${WEBRTC_ICE_SERVERS:-}"
+      TURN_SERVER_URLS: "${TURN_SERVER_URLS:-}"
+      TURN_SHARED_SECRET: "${TURN_SHARED_SECRET:-}"
+      TURN_CREDENTIAL_TTL_SECONDS: 600
+    ports:
+      - "127.0.0.1:3001:3001/tcp"
+      - "${MEDIASOUP_MIN_PORT:-40000}-${MEDIASOUP_MAX_PORT:-49999}:${MEDIASOUP_MIN_PORT:-40000}-${MEDIASOUP_MAX_PORT:-49999}/udp"
+      - "${MEDIASOUP_MIN_PORT:-40000}-${MEDIASOUP_MAX_PORT:-49999}:${MEDIASOUP_MIN_PORT:-40000}-${MEDIASOUP_MAX_PORT:-49999}/tcp"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  coturn:
+    image: coturn/coturn:4.6
+    container_name: moodify-karaoke-turn
+    restart: unless-stopped
+    profiles: ["turn"]
+    command:
+      - -n
+      - --log-file=stdout
+      - --fingerprint
+      - --realm=${TURN_REALM:-moodify.click}
+      - --lt-cred-mech
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SHARED_SECRET:?set TURN_SHARED_SECRET}
+      - --external-ip=${MEDIASOUP_ANNOUNCED_IP:?set the VM public IP}
+      - --listening-port=3478
+      - --min-port=49160
+      - --max-port=49200
+      - --no-tls
+      - --no-dtls
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "49160-49200:49160-49200/udp"

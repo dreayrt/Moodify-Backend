@@ -1,5 +1,7 @@
 package com.laphuth.moodify.api;
 
+import com.laphuth.moodify.services.RecommendationService;
+
 import com.laphuth.moodify.dto.analytics.TrackVisitRequest;
 import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.entities.Track;
@@ -23,7 +25,7 @@ public class TrafficAnalyticsApi {
     private final TrackRepository trackRepository;
     private final RevenuePlaybackService revenuePlaybackService;
     private final com.laphuth.moodify.services.UserDeviceService userDeviceService;
-    private final com.laphuth.moodify.recommendation.RecommendationService recommendations;
+    private final RecommendationService recommendations;
 
     public TrafficAnalyticsApi(
         PlatformTrafficService platformTrafficService,
@@ -31,7 +33,7 @@ public class TrafficAnalyticsApi {
         TrackRepository trackRepository,
         RevenuePlaybackService revenuePlaybackService,
         com.laphuth.moodify.services.UserDeviceService userDeviceService,
-        com.laphuth.moodify.recommendation.RecommendationService recommendations
+        RecommendationService recommendations
     ) {
         this.platformTrafficService = platformTrafficService;
         this.userRepository = userRepository;

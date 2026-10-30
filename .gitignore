@@ -100,7 +100,7 @@ data/
 *.old
 
 # Recommendation worker environments and generated artifacts
-recommendation-worker/.venv/
+supporting-services/recommendation-worker/.venv/
 **/__pycache__/
 **/.pytest_cache/
 *.orig

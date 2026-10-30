@@ -31,9 +31,9 @@ public class AlbumService {
     private final FavoriteAlbumRepository favoriteAlbumRepository;
     private final UserRepository userRepository;
     private final TrackRepository trackRepository;
-    private final com.laphuth.moodify.recommendation.PreferenceEntityResolver identities;
-    private final com.laphuth.moodify.recommendation.RecommendationPreferenceService preferences;
-    private final com.laphuth.moodify.recommendation.RecommendationCatalog recommendationCatalog;
+    private final PreferenceEntityResolver identities;
+    private final RecommendationPreferenceService preferences;
+    private final RecommendationCatalog recommendationCatalog;
 
     public AlbumService(
         AlbumEntityRepository albumRepository,
@@ -41,9 +41,9 @@ public class AlbumService {
         FavoriteAlbumRepository favoriteAlbumRepository,
         UserRepository userRepository,
         TrackRepository trackRepository,
-        com.laphuth.moodify.recommendation.PreferenceEntityResolver identities,
-        com.laphuth.moodify.recommendation.RecommendationPreferenceService preferences,
-        com.laphuth.moodify.recommendation.RecommendationCatalog recommendationCatalog
+        PreferenceEntityResolver identities,
+        RecommendationPreferenceService preferences,
+        RecommendationCatalog recommendationCatalog
     ) {
         this.albumRepository = albumRepository;
         this.albumTrackRepository = albumTrackRepository;

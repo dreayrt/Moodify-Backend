@@ -1,5 +1,7 @@
 package com.laphuth.moodify.services;
 
+import com.laphuth.moodify.dto.recommendation.RecommendationTypes;
+
 import com.laphuth.moodify.entities.SongLicense;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.entities.enums.LicenseStatus;
@@ -27,10 +29,10 @@ public class RevenuePlaybackService {
     private final JdbcTemplate jdbc;
     private final TrackRepository tracks;
     private final SongLicenseRepository licenses;
-    private final com.laphuth.moodify.recommendation.RecommendationOutcomeDispatcher recommendationOutcomes;
+    private final RecommendationOutcomeDispatcher recommendationOutcomes;
 
     public RevenuePlaybackService(JdbcTemplate jdbc, TrackRepository tracks, SongLicenseRepository licenses,
-        com.laphuth.moodify.recommendation.RecommendationOutcomeDispatcher recommendationOutcomes) {
+        RecommendationOutcomeDispatcher recommendationOutcomes) {
         this.jdbc = jdbc;
         this.tracks = tracks;
         this.licenses = licenses;
@@ -46,7 +48,7 @@ public class RevenuePlaybackService {
     @Transactional
     public Map<String, Object> record(Long userId, String rawTrackId, String rawSessionKey, String rawEvent,
                                       long positionMs, long targetPositionMs, String source, String sourceId, String deviceType,
-                                      com.laphuth.moodify.recommendation.RecommendationTypes.TokenClaims attribution) {
+                                      RecommendationTypes.TokenClaims attribution) {
         if (userId == null || rawTrackId == null || rawSessionKey == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Authenticated user, track and session are required");
         }
@@ -154,7 +156,7 @@ public class RevenuePlaybackService {
     }
 
     private void recordRecommendationAfterCommit(long userId, String eventId,
-        com.laphuth.moodify.recommendation.RecommendationTypes.TokenClaims claims,
+        RecommendationTypes.TokenClaims claims,
         Instant at, String sessionKey, long historyId) {
         // MySQL is the authoritative listening/financial store. Recommendation analytics are best effort
         // after commit: no distributed transaction or new SQL outbox is required.

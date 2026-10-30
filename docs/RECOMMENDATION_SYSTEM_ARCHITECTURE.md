@@ -81,7 +81,7 @@ Không có Python inference service trong request path. Java nhận điểm CF �
 | [PersonalizedMixService](../src/main/java/com/laphuth/moodify/recommendation/PersonalizedMixService.java) | ID ổn định, snapshot, publish CAS, lịch, copy riêng |
 | [RecommendationPersistence](../src/main/java/com/laphuth/moodify/recommendation/RecommendationPersistence.java) | Khởi tạo sáu index ở hai collection Mongo |
 | [RecommendationTokens](../src/main/java/com/laphuth/moodify/recommendation/RecommendationTokens.java) | Ký/xác minh context đề xuất và hàng đợi |
-| [worker.py](../recommendation-worker/worker.py) | Extract, aggregate RAM, đánh giá/fit ALS, artifact và projection |
+| [worker.py](../supporting-services/recommendation-worker/worker.py) | Extract, aggregate RAM, đánh giá/fit ALS, artifact và projection |
 
 ## 4. Nguồn dữ liệu và ý nghĩa
 
@@ -529,8 +529,8 @@ Các lệnh kiểm tra có thể chạy từ backend:
 
 ```powershell
 # Chỉ đọc database, ghi báo cáo tổng hợp ra file local
-.\recommendation-worker\.venv\Scripts\python.exe `
-  .\recommendation-worker\audit_production.py `
+.\supporting-services\recommendation-worker\.venv\Scripts\python.exe `
+  .\supporting-services\recommendation-worker\audit_production.py `
   --output .\docs\recommendation-data-audit-20261027.json
 
 # Xác nhận không còn cấu trúc legacy

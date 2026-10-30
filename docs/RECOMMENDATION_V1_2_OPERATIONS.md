@@ -135,7 +135,7 @@ HTTP smoke dùng MySQL/Mongo thật trên database fixture riêng: giữ toàn b
 ```powershell
 # Từ Moodify-Backend
 .\mvnw.cmd '-Dtest=!EmotionServiceTest' test package
-.\recommendation-worker\.venv\Scripts\python.exe -m pytest recommendation-worker -q
+.\supporting-services\recommendation-worker\.venv\Scripts\python.exe -m pytest supporting-services\recommendation-worker -q
 .\scripts\recommendations.ps1 -Mode smoke
 ```
 

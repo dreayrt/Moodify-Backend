@@ -201,7 +201,7 @@ Smoke kiểm tra cả: anonymous/banned/owner, generation đồng thời, privat
 ```powershell
 # Chạy từ Moodify-Backend
 .\mvnw.cmd '-Dtest=!EmotionServiceTest' test package
-.\recommendation-worker\.venv\Scripts\python.exe -m pytest recommendation-worker -q
+.\supporting-services\recommendation-worker\.venv\Scripts\python.exe -m pytest supporting-services\recommendation-worker -q
 .\scripts\recommendations.ps1 -Mode smoke
 ```
 

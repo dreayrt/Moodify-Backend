@@ -62,7 +62,7 @@ Chạy từ thư mục backend bằng PowerShell, dùng `.env` của đúng môi
 
 Bản sao lưu: `storage/recommendation-backups/20261027T132448753525Z/snapshot.json`; checksum và biên bản kiểm chứng nằm cùng thư mục. Xem [biên bản dọn dữ liệu](RECOMMENDATION_STORAGE_CLEANUP.md). Không có backend/worker đang chạy khi dọn; các tiến trình Java của IDE được giữ nguyên. Không chỉnh giao diện hoặc deploy production.
 
-Công cụ `recommendation-worker/compact_storage.py` đã được kiểm thử trên fixture và áp dụng vào database local theo yêu cầu. Các lệnh sau mô tả cách dùng lại khi cần, không cần chạy thêm trên local đã dọn:
+Công cụ `supporting-services/recommendation-worker/compact_storage.py` đã được kiểm thử trên fixture và áp dụng vào database local theo yêu cầu. Các lệnh sau mô tả cách dùng lại khi cần, không cần chạy thêm trên local đã dọn:
 
 ```powershell
 # Read-only, không backup/ghi/xóa
@@ -70,10 +70,10 @@ Công cụ `recommendation-worker/compact_storage.py` đã được kiểm thử
 
 # Chỉ chạy sau khi được chủ dự án đồng ý; dừng backend/worker đang ghi trước
 # Backup có checksum + import dữ liệu cần giữ; chưa xóa nguồn
-.\recommendation-worker\.venv\Scripts\python.exe .\recommendation-worker\compact_storage.py --apply
+.\supporting-services\recommendation-worker\.venv\Scripts\python.exe .\supporting-services\recommendation-worker\compact_storage.py --apply
 
 # Backup + import + kiểm tra nguồn chưa đổi + dọn đúng allowlist 8 bảng/4 collection cũ
-.\recommendation-worker\.venv\Scripts\python.exe .\recommendation-worker\compact_storage.py --apply --remove-legacy
+.\supporting-services\recommendation-worker\.venv\Scripts\python.exe .\supporting-services\recommendation-worker\compact_storage.py --apply --remove-legacy
 ```
 
 Backup BSON Extended JSON nằm trong `storage/recommendation-backups/<timestamp>/snapshot.json`, có DDL SQL và dữ liệu nguồn, checksum riêng. SQL DATE được giữ bằng tag `$sqlDate`. Công cụ không đụng bảng/collection users, tracks, playlists, giấy phép, lịch sử hoặc doanh thu. Aggregate cũ và registry cũ nằm trong backup; không tái tạo thành collection riêng. Metadata model đang phục vụ lấy từ profile và manifest artifact. Không deploy production trong lượt này.
@@ -144,7 +144,7 @@ API cá nhân hóa yêu cầu authentication; campaign yêu cầu ADMIN theo sec
 .\mvnw.cmd '-Dtest=*,!EmotionServiceTest' test
 
 # Worker unit tests; pytest là dependency phục vụ kiểm thử, không phải runtime
-.\recommendation-worker\.venv\Scripts\python.exe -m pytest .\recommendation-worker -q
+.\supporting-services\recommendation-worker\.venv\Scripts\python.exe -m pytest .\supporting-services\recommendation-worker -q
 
 # Đóng gói rồi chạy HTTP smoke với MySQL/Mongo thật, database fixture tách biệt
 .\mvnw.cmd clean -DskipTests package
