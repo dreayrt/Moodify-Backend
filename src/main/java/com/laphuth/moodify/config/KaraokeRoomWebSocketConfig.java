@@ -31,7 +31,8 @@ public class KaraokeRoomWebSocketConfig implements WebSocketConfigurer {
         if (origins.length == 0) {
             origins = new String[]{"http://localhost:3000", "http://127.0.0.1:3000"};
         }
-        registry.addHandler(handler, "/ws/karaoke")
+        // Production routes the API host's /api/* path to Spring Boot; the bare path falls through to Next.js.
+        registry.addHandler(handler, "/ws/karaoke", "/api/ws/karaoke")
                 .setAllowedOriginPatterns(origins);
     }
 }

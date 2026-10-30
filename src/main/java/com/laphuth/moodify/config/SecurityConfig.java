@@ -51,7 +51,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/error", "/error/**").permitAll()
                 // WebSocket access is authenticated by the first frame, never by URL query parameters.
-                .requestMatchers("/ws/karaoke").permitAll()
+                .requestMatchers("/ws/karaoke", "/api/ws/karaoke").permitAll()
                 // Node mediasoup authenticates to these internal callbacks with a dedicated service key.
                 .requestMatchers("/api/internal/karaoke/media-sessions/**").permitAll()
                 .requestMatchers(
