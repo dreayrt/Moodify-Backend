@@ -633,6 +633,15 @@ public class SubscriptionService {
     /** Tạo đơn thanh toán PENDING và sinh mã QR VietQR để người dùng chuyển khoản. */
     @Transactional
     public Map<String, Object> createPendingPayment(String principal, Long packageId) {
+        if (sepayBankAccount == null || sepayBankAccount.isBlank()
+                || sepayBankName == null || sepayBankName.isBlank()
+                || sepayAccountName == null || sepayAccountName.isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Thanh toán SePay chưa được cấu hình đầy đủ trên máy chủ."
+            );
+        }
+
         User user = findUserByPrincipal(principal);
 
         // 1. Lấy thông tin gói dịch vụ

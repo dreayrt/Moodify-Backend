@@ -61,6 +61,7 @@ public class SecurityConfig {
                     "/api/auth/refresh",
                     "/api/auth/logout",
                     "/api/auth/google",
+                    "/api/auth/google/code",
                     "/api/auth/facebook",
                     "/hooks/sepay-payment"
                 ).permitAll()

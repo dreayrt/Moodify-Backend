@@ -27,6 +27,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.laphuth.moodify.dto.auth.FacebookAuthRequest;
 import com.laphuth.moodify.dto.auth.GoogleAuthRequest;
+import com.laphuth.moodify.dto.auth.GoogleCodeRequest;
 import java.util.Collections;
 
 import java.io.IOException;
@@ -53,6 +54,9 @@ public class AuthenticationService {
 
     @Value("${google.client-id:}")
     private String googleClientId;
+
+    @Value("${google.client-secret:}")
+    private String googleClientSecret;
 
     @Value("${facebook.app-id:}")
     private String facebookAppId;
@@ -204,6 +208,76 @@ public class AuthenticationService {
         }
 
         return buildAuthResponse(currentUser);
+    }
+
+    /**
+     * Đăng nhập Google bằng Authorization Code + PKCE (mobile).
+     * Google đã chặn implicit flow (response_type=id_token/token) với các OAuth client
+     * tạo mới, nên mobile chỉ nhận được "code" — backend giữ client_secret và tự đổi
+     * code lấy access token, sau đó tái sử dụng nguyên flow đăng nhập Google hiện có.
+     */
+    public AuthResponse loginWithGoogleCode(GoogleCodeRequest request) {
+        // Code có thể đến từ client web (có secret) hoặc client native Android/iOS
+        // (Google không phát hành secret cho native — exchange theo dạng installed app).
+        String exchangeClientId = request.clientId() != null && !request.clientId().isBlank()
+            ? request.clientId().trim()
+            : googleClientId;
+        boolean isWebClient = exchangeClientId.equals(googleClientId);
+
+        if (isWebClient && (googleClientSecret == null || googleClientSecret.isBlank())) {
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Google Client Secret is not configured on the server"
+            );
+        }
+
+        String accessToken;
+        try {
+            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+            StringBuilder form = new StringBuilder();
+            form.append("code=").append(java.net.URLEncoder.encode(request.code(), java.nio.charset.StandardCharsets.UTF_8));
+            form.append("&client_id=").append(java.net.URLEncoder.encode(exchangeClientId, java.nio.charset.StandardCharsets.UTF_8));
+            if (isWebClient) {
+                form.append("&client_secret=").append(java.net.URLEncoder.encode(googleClientSecret, java.nio.charset.StandardCharsets.UTF_8));
+            }
+            form.append("&redirect_uri=").append(java.net.URLEncoder.encode(request.redirectUri(), java.nio.charset.StandardCharsets.UTF_8));
+            form.append("&code_verifier=").append(java.net.URLEncoder.encode(request.codeVerifier(), java.nio.charset.StandardCharsets.UTF_8));
+            form.append("&grant_type=authorization_code");
+
+            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create("https://oauth2.googleapis.com/token"))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(form.toString()))
+                .build();
+
+            java.net.http.HttpResponse<String> resp = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
+                log.warn("Google authorization code exchange failed: {}", resp.body());
+                throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Failed to exchange Google authorization code. Kiểm tra Redirect URI đã đăng ký trên Google Cloud Console."
+                );
+            }
+
+            com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(resp.body());
+            accessToken = root.path("access_token").asText(null);
+            if (accessToken == null || accessToken.isBlank()) {
+                throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Google token response did not contain an access token"
+                );
+            }
+        } catch (ResponseStatusException rse) {
+            throw rse;
+        } catch (Exception e) {
+            throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "Failed to exchange Google authorization code: " + e.getMessage()
+            );
+        }
+
+        // Access token của Google (không phải JWT user-info) -> flow hiện có tự xác minh qua userinfo API
+        return loginWithGoogle(new GoogleAuthRequest(accessToken, request.deviceUuid(), request.deviceName(), request.platform()));
     }
 
     public AuthResponse loginWithGoogle(GoogleAuthRequest request) {
