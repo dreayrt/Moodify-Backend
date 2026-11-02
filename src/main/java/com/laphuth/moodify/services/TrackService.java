@@ -98,7 +98,7 @@ public class TrackService {
 
         Page<Track> tracks;
         if (query == null || query.isBlank()) {
-            tracks = trackRepository.findAll(pageable);
+            tracks = trackRepository.findCatalogPublic(pageable);
             List<Track> valid = tracks.getContent().stream()
                 .filter(t -> isTrackPubliclyAvailable(t, ineligibleIds))
                 .toList();
@@ -213,7 +213,7 @@ public class TrackService {
             Sort.by(Sort.Direction.DESC, "popularity")
         );
         
-        Page<Track> tracks = trackRepository.findByArtistSpotifyId(artistSpotifyId, pageable);
+        Page<Track> tracks = trackRepository.findPublicByArtistSpotifyId(artistSpotifyId, pageable);
         Set<String> ineligibleIds = getIneligibleTrackIds();
         List<Track> valid = tracks.getContent().stream()
             .filter(t -> isTrackPubliclyAvailable(t, ineligibleIds))
@@ -229,13 +229,7 @@ public class TrackService {
     }
 
     private Page<Track> findByQuery(String query, Pageable pageable) {
-        return trackRepository
-            .findByNameContainingIgnoreCaseOrArtistNameContainingIgnoreCaseOrAlbumNameContainingIgnoreCase(
-                query,
-                query,
-                query,
-                pageable
-            );
+        return trackRepository.searchCatalogPublic(java.util.regex.Pattern.quote(query), pageable);
     }
 
     public static class TrackNotFoundException extends RuntimeException {

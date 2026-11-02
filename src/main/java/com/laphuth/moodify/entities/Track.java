@@ -86,6 +86,9 @@ public class Track {
     @Field("moderation_score")
     private Double moderationScore;
 
+    @Field("catalog_migration_batch")
+    private String catalogMigrationBatch;
+
     @Field("audio_features")
     private AudioFeatures audioFeatures;
 
@@ -151,6 +154,8 @@ public class Track {
     public void setModerationStatus(String moderationStatus) { this.moderationStatus = moderationStatus; }
     public Double getModerationScore() { return moderationScore; }
     public void setModerationScore(Double moderationScore) { this.moderationScore = moderationScore; }
+    public String getCatalogMigrationBatch() { return catalogMigrationBatch; }
+    public void setCatalogMigrationBatch(String catalogMigrationBatch) { this.catalogMigrationBatch = catalogMigrationBatch; }
     public AudioFeatures getAudioFeatures() { return audioFeatures; }
     public void setAudioFeatures(AudioFeatures audioFeatures) { this.audioFeatures = audioFeatures; }
     public Instant getCreatedAt() { return createdAt; }

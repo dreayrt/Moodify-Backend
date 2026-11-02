@@ -57,9 +57,8 @@ class TrackServiceLicenseFilterTest {
         when(songLicenseRepository.findIneligibleTrackIds())
             .thenReturn(List.of("expired-123"));
 
-        when(trackRepository.findByNameContainingIgnoreCaseOrArtistNameContainingIgnoreCaseOrAlbumNameContainingIgnoreCase(
-            eq("test"), eq("test"), eq("test"), any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of(expiredTrack)));
+        when(trackRepository.searchCatalogPublic(eq(java.util.regex.Pattern.quote("test")), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(expiredTrack)));
 
         TrackPageResponse result = trackService.getTracks(0, 10, "test");
 

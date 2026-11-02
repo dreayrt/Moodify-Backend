@@ -101,6 +101,7 @@ public class KaraokeController {
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         List<Map<String, Object>> matching = new ArrayList<>();
         for (Document track : tracks) {
+            if (!isCatalogVisible(track)) continue;
             String songId = track.getObjectId("_id").toHexString();
             Document asset = assetBySongId.get(songId);
             if (asset == null) continue;
@@ -447,8 +448,18 @@ public class KaraokeController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Track was not found");
         }
         Document track = mongo.findOne(Query.query(Criteria.where("_id").is(new ObjectId(songId))), Document.class, "tracks");
-        if (track == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Track was not found");
+        if (!isCatalogVisible(track)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Track was not found");
         return track;
+    }
+
+    static boolean isCatalogVisible(Document track) {
+        if (track == null) return false;
+        String status = track.getString("status");
+        String visibility = track.getString("visibility");
+        String moderation = track.getString("moderation_status");
+        return !(status != null && (status.equalsIgnoreCase("archived") || status.equalsIgnoreCase("disabled") || status.equalsIgnoreCase("draft")))
+            && !(visibility != null && (visibility.equalsIgnoreCase("private") || visibility.equalsIgnoreCase("unlisted")))
+            && !(moderation != null && moderation.equalsIgnoreCase("rejected"));
     }
 
     private Document readyAsset(String songId) {

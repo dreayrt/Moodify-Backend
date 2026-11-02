@@ -97,7 +97,9 @@ public class PlaylistService {
             trackOpt = trackRepository.findById(trackSpotifyId);
         }
         if (trackOpt.isPresent()) {
-            resolvedId = trackOpt.get().getSpotifyId();
+            Track track = trackOpt.get();
+            resolvedId = track.getSpotifyId() != null && !track.getSpotifyId().isBlank()
+                ? track.getSpotifyId() : track.getId();
         }
 
         List<String> ids = playlist.getTrackSpotifyIds();
@@ -122,7 +124,9 @@ public class PlaylistService {
             trackOpt = trackRepository.findById(trackSpotifyId);
         }
         if (trackOpt.isPresent()) {
-            resolvedId = trackOpt.get().getSpotifyId();
+            Track track = trackOpt.get();
+            resolvedId = track.getSpotifyId() != null && !track.getSpotifyId().isBlank()
+                ? track.getSpotifyId() : track.getId();
         }
 
         List<String> ids = playlist.getTrackSpotifyIds();

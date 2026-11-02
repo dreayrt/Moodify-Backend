@@ -39,6 +39,39 @@ class RecommendationCatalogTest {
         assertThat(RecommendationCatalog.eligible(track,license(),today,true)).isFalse();
     }
 
+    @Test void explicitlyConfiguredPublishedImportCanUsePublicPlaybackPolicyWithoutFakeApproval() {
+        Track imported=track();
+        imported.setCatalogMigrationBatch("moodify-catalog-20261103-v1");
+        imported.setModerationStatus(null);
+        var configured=java.util.Set.of("moodify-catalog-20261103-v1");
+        assertThat(RecommendationCatalog.eligible(imported,null,today,true,configured)).isTrue();
+        assertThat(RecommendationCatalog.eligible(imported,null,today,true,java.util.Set.of())).isFalse();
+        imported.setModerationStatus("rejected");
+        assertThat(RecommendationCatalog.eligible(imported,null,today,true,configured)).isFalse();
+        imported.setModerationStatus("pending");
+        assertThat(RecommendationCatalog.eligible(imported,null,today,true,configured)).isFalse();
+        imported.setModerationStatus(null);
+        SongLicense revoked=license();revoked.setStatus(LicenseStatus.REVOKED);
+        assertThat(RecommendationCatalog.eligible(imported,revoked,today,true,configured)).isFalse();
+        SongLicense expired=license();expired.setExpiryDate(today.minusDays(1));
+        assertThat(RecommendationCatalog.eligible(imported,expired,today,true,configured)).isFalse();
+        imported.setVisibility("private");
+        assertThat(RecommendationCatalog.eligible(imported,null,today,true,configured)).isFalse();
+    }
+
+    @Test void configuredImportAppearsInSnapshotAndTargetedPlayback() {
+        Track imported=track();imported.setCatalogMigrationBatch("import-a");imported.setModerationStatus(null);
+        TrackRepository tracks=mock(TrackRepository.class);SongLicenseRepository licenses=mock(SongLicenseRepository.class);
+        when(tracks.findAll()).thenReturn(List.of(imported));
+        when(tracks.findById("id")).thenReturn(java.util.Optional.of(imported));
+        when(tracks.findBySpotifyIdIn(anyList())).thenReturn(List.of(imported));
+        when(licenses.findByTrackIdIn(anyList())).thenReturn(List.of());
+        var catalog=new RecommendationCatalog(tracks,licenses,mock(PlaylistRepository.class),mock(UserRepository.class),true);
+        org.springframework.test.util.ReflectionTestUtils.setField(catalog,"publicImportBatches","import-a");
+        assertThat(catalog.snapshot().tracks()).containsKey("id");
+        assertThat(catalog.playableTrack("id")).isSameAs(imported);
+    }
+
     @Test void ambiguousExternalAliasesAreNeverGuessed() {
         Track one = track(), two = track(); two.setId("other");
         var aliases = RecommendationCatalog.aliases(List.of(one,two));

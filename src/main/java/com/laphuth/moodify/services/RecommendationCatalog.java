@@ -21,6 +21,11 @@ public class RecommendationCatalog {
     private final UserRepository users;
     private final boolean requireLicense;
 
+    // Explicitly configured public import batches may share the public playback policy.
+    // This does not create a license or a moderation approval for their tracks.
+    @Value("${recommendations.public-import-batches:}")
+    private String publicImportBatches = "";
+
     public RecommendationCatalog(TrackRepository tracks, SongLicenseRepository licenses,
         PlaylistRepository playlists, UserRepository users,
         @Value("${recommendations.require-active-license:true}") boolean requireLicense) {
@@ -45,7 +50,7 @@ public class RecommendationCatalog {
         Map<String, String> aliases = aliases(all);
         for (Track track : all) {
             if (track.getId() == null) continue;
-            if (eligible(track, byTrack.get(track.getId()), today, requireLicense)) eligible.put(track.getId(), track);
+            if (isEligible(track, byTrack.get(track.getId()), today)) eligible.put(track.getId(), track);
         }
         return new Snapshot(eligible, aliases);
     }
@@ -62,7 +67,7 @@ public class RecommendationCatalog {
             identityScope.addAll(tracks.findBySpotifyIdIn(List.of(external)));
         }
         SongLicense license=licensesByCanonicalId(identityScope).get(track.getId());
-        if(!eligible(track,license,LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")),requireLicense)) throw notFound();
+        if(!isEligible(track,license,LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")))) throw notFound();
         return track;
     }
 
@@ -107,7 +112,7 @@ public class RecommendationCatalog {
         int eligible = 0;
         for (Track track : all) {
             SongLicense license = licenseMap.get(track.getId());
-            if (eligible(track, license, today, requireLicense)) eligible++;
+            if (isEligible(track, license, today)) eligible++;
             if (!"published".equalsIgnoreCase(track.getStatus())) issues.merge("NOT_PUBLISHED",1,Integer::sum);
             if (!"public".equalsIgnoreCase(track.getVisibility())) issues.merge("NOT_PUBLIC",1,Integer::sum);
             if (!"approved".equalsIgnoreCase(track.getModerationStatus())) issues.merge("NOT_APPROVED",1,Integer::sum);
@@ -129,7 +134,7 @@ public class RecommendationCatalog {
         int eligibleCount=0;
         for(Track track:all) {
             SongLicense license=mapped.get(track.getId());
-            if(eligible(track,license,today,requireLicense)) { eligibleCount++;continue; }
+            if(isEligible(track,license,today)) { eligibleCount++;continue; }
             List<String> reasons=new ArrayList<>();
             if(!"published".equalsIgnoreCase(track.getStatus()))reasons.add("VERIFY_PUBLICATION");
             if(!"public".equalsIgnoreCase(track.getVisibility()))reasons.add("VERIFY_VISIBILITY");
@@ -155,6 +160,27 @@ public class RecommendationCatalog {
         return license.getStatus() == LicenseStatus.ACTIVE &&
             (license.getIssueDate() == null || !license.getIssueDate().isAfter(date)) &&
             (license.getExpiryDate() == null || !license.getExpiryDate().isBefore(date));
+    }
+
+    private boolean isEligible(Track track, SongLicense license, LocalDate date) {
+        Set<String> configured = Arrays.stream(Objects.requireNonNullElse(publicImportBatches, "").split(","))
+            .map(String::trim).filter(s -> !s.isEmpty()).collect(java.util.stream.Collectors.toSet());
+        return eligible(track, license, date, requireLicense, configured);
+    }
+
+    static boolean eligible(Track track, SongLicense license, LocalDate date, boolean requireLicense,
+                            Set<String> publicImportBatches) {
+        if (eligible(track, license, date, requireLicense)) return true;
+        if (track == null || track.getId() == null || track.getCatalogMigrationBatch() == null ||
+            !publicImportBatches.contains(track.getCatalogMigrationBatch()) ||
+            !"published".equalsIgnoreCase(track.getStatus()) || !"public".equalsIgnoreCase(track.getVisibility()) ||
+            track.getLocalPath() == null || track.getLocalPath().isBlank()) return false;
+        String moderation = track.getModerationStatus();
+        if (moderation != null && !moderation.isBlank() && !"approved".equalsIgnoreCase(moderation)) return false;
+        // An explicit license always wins: never resurrect revoked or expired content.
+        return license == null || (license.getStatus() == LicenseStatus.ACTIVE &&
+            (license.getIssueDate() == null || !license.getIssueDate().isAfter(date)) &&
+            (license.getExpiryDate() == null || !license.getExpiryDate().isBefore(date)));
     }
 
     public List<Playlist> publicPlaylists() {

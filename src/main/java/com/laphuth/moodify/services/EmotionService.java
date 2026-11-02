@@ -145,7 +145,8 @@ public class EmotionService {
         query.addCriteria(Criteria.where("moderationStatus").nin("rejected", "REJECTED"));
         query.addCriteria(Criteria.where("visibility").nin("private", "unlisted"));
         query.addCriteria(Criteria.where("status").nin("archived", "disabled", "draft"));
-        query.addCriteria(Criteria.where("spotifyId").type(2).ne(""));
+        // Uploaded/imported tracks can be playable with a Mongo ID and no Spotify ID.
+        query.addCriteria(Criteria.where("localPath").type(2).ne(""));
 
         record ScoredTrack(Track track, MoodTrackScorer.Score score) {}
         Comparator<ScoredTrack> rankOrder = Comparator

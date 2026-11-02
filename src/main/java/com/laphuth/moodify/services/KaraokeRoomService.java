@@ -578,8 +578,18 @@ public class KaraokeRoomService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TRACK_NOT_AVAILABLE");
         }
         Document track = mongo.findById(new ObjectId(trackId), Document.class, TRACKS);
-        if (track == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TRACK_NOT_AVAILABLE");
+        if (!isCatalogVisible(track)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TRACK_NOT_AVAILABLE");
         return track;
+    }
+
+    static boolean isCatalogVisible(Document track) {
+        if (track == null) return false;
+        String status = track.getString("status");
+        String visibility = track.getString("visibility");
+        String moderation = track.getString("moderation_status");
+        return !(status != null && (status.equalsIgnoreCase("archived") || status.equalsIgnoreCase("disabled") || status.equalsIgnoreCase("draft")))
+            && !(visibility != null && (visibility.equalsIgnoreCase("private") || visibility.equalsIgnoreCase("unlisted")))
+            && !(moderation != null && moderation.equalsIgnoreCase("rejected"));
     }
 
     private static boolean hasStorageKey(Document assets, String role) {

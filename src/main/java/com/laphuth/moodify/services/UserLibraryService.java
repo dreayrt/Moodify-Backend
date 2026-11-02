@@ -118,7 +118,8 @@ public class UserLibraryService {
                 LibraryTrackResponse response = new LibraryTrackResponse();
                 // Copy fields directly from Track entity
                 response.setId(track.getId());
-                response.setSpotifyId(track.getSpotifyId());
+                response.setSpotifyId(track.getSpotifyId() != null && !track.getSpotifyId().isBlank()
+                    ? track.getSpotifyId() : track.getId());
                 response.setName(track.getName());
                 response.setArtistName(track.getArtistName());
                 response.setArtistSpotifyId(track.getArtistSpotifyId());

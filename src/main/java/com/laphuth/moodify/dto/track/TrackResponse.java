@@ -51,7 +51,7 @@ public record TrackResponse(
         }
         return new TrackResponse(
             track.getId(),
-            track.getSpotifyId(),
+            track.getSpotifyId() != null && !track.getSpotifyId().isBlank() ? track.getSpotifyId() : track.getId(),
             track.getName(),
             track.getArtistName(),
             resolvedArtistId,
