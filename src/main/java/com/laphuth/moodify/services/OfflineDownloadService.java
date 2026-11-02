@@ -1,12 +1,16 @@
 package com.laphuth.moodify.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.laphuth.moodify.dto.offline.*;
+import com.laphuth.moodify.dto.offline.OfflineConfirmRequest;
+import com.laphuth.moodify.dto.offline.OfflineDownloadRequest;
+import com.laphuth.moodify.dto.offline.OfflineVerifyRequest;
 import com.laphuth.moodify.dto.track.TrackResponse;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.repositories.UserRepository;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,11 +23,14 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
 public class OfflineDownloadService {
+
+    private static final Logger log = LoggerFactory.getLogger(OfflineDownloadService.class);
 
     private final JdbcTemplate jdbcTemplate;
     private final UserRepository userRepository;
@@ -32,7 +39,7 @@ public class OfflineDownloadService {
     private final UserDeviceService userDeviceService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${jwt.secret:moodify-super-secret-key-for-offline-encryption-2026}")
+    @Value("${security.jwt.secret:${jwt.secret:moodify-super-secret-key-for-offline-encryption-2026}}")
     private String serverSecret;
 
     @Value("${app.maintenance.enabled:true}")
@@ -58,7 +65,7 @@ public class OfflineDownloadService {
     public void initOfflineTables() {
         if (!maintenanceEnabled) return;
         try {
-            // 1. Bảng offline_downloads
+            // Đảm bảo bảng offline_downloads (vốn có sẵn trong schema) được kiểm tra an toàn
             jdbcTemplate.execute(
                 "CREATE TABLE IF NOT EXISTS offline_downloads (" +
                 "    id BIGINT AUTO_INCREMENT PRIMARY KEY," +
@@ -78,52 +85,13 @@ public class OfflineDownloadService {
                 "    INDEX idx_offline_expiry (expires_at)" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
             );
-
-            // 2. Bảng download_license_tokens
-            jdbcTemplate.execute(
-                "CREATE TABLE IF NOT EXISTS download_license_tokens (" +
-                "    id BIGINT AUTO_INCREMENT PRIMARY KEY," +
-                "    token VARCHAR(128) NOT NULL UNIQUE," +
-                "    user_id BIGINT NOT NULL," +
-                "    device_id BIGINT NOT NULL," +
-                "    track_id VARCHAR(64) NOT NULL," +
-                "    offline_download_id BIGINT NULL," +
-                "    encryption_key_hash VARCHAR(128) NOT NULL," +
-                "    status ENUM('ISSUED','USED','EXPIRED','REVOKED') NOT NULL DEFAULT 'ISSUED'," +
-                "    issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-                "    expires_at DATETIME NOT NULL," +
-                "    used_at DATETIME NULL," +
-                "    ip_address VARCHAR(45) NULL," +
-                "    user_agent VARCHAR(500) NULL," +
-                "    INDEX idx_dlt_user (user_id)," +
-                "    INDEX idx_dlt_token (token)," +
-                "    INDEX idx_dlt_status_expiry (status, expires_at)," +
-                "    CONSTRAINT fk_dlt_device FOREIGN KEY (device_id) REFERENCES user_devices(id) ON DELETE CASCADE," +
-                "    CONSTRAINT fk_dlt_download FOREIGN KEY (offline_download_id) REFERENCES offline_downloads(id) ON DELETE SET NULL" +
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-            );
-
-            // 3. Bảng offline_audit_log
-            jdbcTemplate.execute(
-                "CREATE TABLE IF NOT EXISTS offline_audit_log (" +
-                "    id BIGINT AUTO_INCREMENT PRIMARY KEY," +
-                "    user_id BIGINT NOT NULL," +
-                "    device_id BIGINT NULL," +
-                "    action VARCHAR(64) NOT NULL," +
-                "    track_id VARCHAR(64) NULL," +
-                "    metadata JSON NULL," +
-                "    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-                "    INDEX idx_oal_user_action (user_id, action)," +
-                "    INDEX idx_oal_created (created_at)" +
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-            );
         } catch (Exception e) {
-            System.err.println("[OfflineDownloadService] Auto-init tables warning: " + e.getMessage());
+            log.warn("[OfflineDownloadService] Check offline_downloads schema: {}", e.getMessage());
         }
     }
 
     /**
-     * Yêu cầu cấp phép tải nhạc ngoại tuyến (Request Download Token + Encryption Key + Audio URL)
+     * Yêu cầu cấp phép tải nhạc ngoại tuyến (Request Stateless HMAC Download Ticket + Encryption Key + Audio URL)
      */
     @Transactional
     public Map<String, Object> requestDownload(String principal, OfflineDownloadRequest req, String clientIp, String userAgent) {
@@ -195,13 +163,12 @@ public class OfflineDownloadService {
 
         // 6. Sinh khóa mã hóa AES-256 (256-bit Hex) riêng biệt cho bộ (user, device, track)
         String encryptionKey = generateTrackKey(user.getId(), deviceId, track.getId());
-        String encryptionKeyHash = sha256Hex(encryptionKey);
 
-        // 7. Sinh token cấp phép một lần (15 phút TTL)
-        String downloadToken = "DL-" + UUID.randomUUID();
+        // 7. Sinh Stateless HMAC-SHA256 Signed Ticket (15 phút TTL) - Không cần lưu bảng DB
         LocalDateTime tokenExpiresAt = LocalDateTime.now().plusMinutes(15);
+        String downloadToken = createStatelessDownloadTicket(user.getId(), deviceId, track.getId(), tokenExpiresAt);
 
-        // 8. Lưu hoặc cập nhật bản ghi offline_downloads thành QUEUED
+        // 8. Cập nhật bản ghi trong bảng có sẵn offline_downloads thành QUEUED
         jdbcTemplate.update(
             "INSERT INTO offline_downloads (device_id, track_id, status, expires_at, created_at, updated_at) " +
             "VALUES (?, ?, 'QUEUED', ?, NOW(), NOW()) " +
@@ -209,23 +176,10 @@ public class OfflineDownloadService {
             deviceId, track.getId(), expiresAt
         );
 
-        Long offlineDownloadId = jdbcTemplate.queryForObject(
-            "SELECT id FROM offline_downloads WHERE device_id = ? AND track_id = ? LIMIT 1",
-            Long.class,
-            deviceId, track.getId()
-        );
-
-        // 9. Lưu token cấp phép vào download_license_tokens
-        jdbcTemplate.update(
-            "INSERT INTO download_license_tokens (token, user_id, device_id, track_id, offline_download_id, encryption_key_hash, status, issued_at, expires_at, ip_address, user_agent) " +
-            "VALUES (?, ?, ?, ?, ?, ?, 'ISSUED', NOW(), ?, ?, ?)",
-            downloadToken, user.getId(), deviceId, track.getId(), offlineDownloadId, encryptionKeyHash, tokenExpiresAt, clientIp, userAgent
-        );
-
         logAudit(user.getId(), deviceId, "DOWNLOAD_REQUESTED", track.getId(),
-                Map.of("token", downloadToken, "ip", clientIp != null ? clientIp : ""));
+                Map.of("ip", clientIp != null ? clientIp : ""));
 
-        // 10. Trả dữ liệu về Mobile Client
+        // 9. Trả dữ liệu về Mobile Client
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", true);
         result.put("downloadToken", downloadToken);
@@ -244,6 +198,7 @@ public class OfflineDownloadService {
 
     /**
      * Xác nhận tải xuống và mã hóa thành công từ thiết bị Mobile
+     * (Sử dụng Stateless HMAC Token Verification - 0 bảng DB phụ trợ)
      */
     @Transactional
     public Map<String, Object> confirmDownload(String principal, OfflineConfirmRequest req) {
@@ -253,43 +208,27 @@ public class OfflineDownloadService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thiếu downloadToken.");
         }
 
-        List<Map<String, Object>> tokenRows = jdbcTemplate.queryForList(
-            "SELECT id, user_id, device_id, track_id, offline_download_id, status, expires_at " +
-            "FROM download_license_tokens WHERE token = ? LIMIT 1 FOR UPDATE",
-            req.getDownloadToken().trim()
+        // 1. Xác thực chữ ký số HMAC-SHA256 & thời hạn của Stateless Ticket
+        ParsedDownloadTicket ticket = verifyStatelessDownloadTicket(req.getDownloadToken().trim());
+
+        if (!ticket.userId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ticket không thuộc tài khoản của bạn.");
+        }
+
+        Long deviceId = ticket.deviceId();
+        String trackId = ticket.trackId();
+
+        // 2. Kiểm tra bản ghi trong bảng có sẵn offline_downloads
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT id, status FROM offline_downloads WHERE device_id = ? AND track_id = ? LIMIT 1 FOR UPDATE",
+            deviceId, trackId
         );
 
-        if (tokenRows.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Token cấp phép tải xuống không hợp lệ.");
+        if (rows.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu tải tương ứng trên thiết bị.");
         }
 
-        Map<String, Object> tokenData = tokenRows.get(0);
-        Long tokenUserId = ((Number) tokenData.get("user_id")).longValue();
-        if (!tokenUserId.equals(user.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Token không thuộc tài khoản của bạn.");
-        }
-
-        String tokenStatus = (String) tokenData.get("status");
-        if (!"ISSUED".equalsIgnoreCase(tokenStatus)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token này đã được sử dụng hoặc đã bị hủy.");
-        }
-
-        LocalDateTime tokenExpiresAt = toLocalDateTime(tokenData.get("expires_at"));
-        if (tokenExpiresAt != null && tokenExpiresAt.isBefore(LocalDateTime.now())) {
-            jdbcTemplate.update("UPDATE download_license_tokens SET status = 'EXPIRED' WHERE id = ?", tokenData.get("id"));
-            throw new ResponseStatusException(HttpStatus.GONE, "Token cấp phép tải xuống đã hết hạn (quá 15 phút). Vui lòng thử lại!");
-        }
-
-        Long deviceId = ((Number) tokenData.get("device_id")).longValue();
-        String trackId = (String) tokenData.get("track_id");
-
-        // Đánh dấu token đã sử dụng
-        jdbcTemplate.update(
-            "UPDATE download_license_tokens SET status = 'USED', used_at = NOW() WHERE id = ?",
-            tokenData.get("id")
-        );
-
-        // Cập nhật trạng thái offline_downloads sang DOWNLOADED
+        // 3. Cập nhật trạng thái sang DOWNLOADED
         jdbcTemplate.update(
             "UPDATE offline_downloads SET status = 'DOWNLOADED', downloaded_at = NOW(), last_verified_at = NOW(), local_path = ?, updated_at = NOW() " +
             "WHERE device_id = ? AND track_id = ?",
@@ -529,8 +468,69 @@ public class OfflineDownloadService {
     }
 
     // ======================================================================
-    // HELPER METHODS & SECURITY
+    // STATELESS CRYPTOGRAPHIC TOKEN & SECURITY HELPERS
     // ======================================================================
+
+    public record ParsedDownloadTicket(Long userId, Long deviceId, String trackId, long expEpochMilli) {}
+
+    /**
+     * Tạo Stateless HMAC-SHA256 Signed Ticket không cần lưu bảng DB.
+     * Cấu trúc: DLT.<base64Payload>.<hmacSignature>
+     */
+    private String createStatelessDownloadTicket(Long userId, Long deviceId, String trackId, LocalDateTime tokenExpiresAt) {
+        long expEpochMilli = tokenExpiresAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        String nonce = UUID.randomUUID().toString().replace("-", "");
+        String payload = userId + ":" + deviceId + ":" + trackId + ":" + expEpochMilli + ":" + nonce;
+        String signature = computeHmacSha256Hex(payload, serverSecret);
+        String encodedPayload = Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+        return "DLT." + encodedPayload + "." + signature;
+    }
+
+    /**
+     * Giải mã và kiểm tra tính toàn vẹn của Stateless Ticket
+     */
+    private ParsedDownloadTicket verifyStatelessDownloadTicket(String token) {
+        if (token == null || !token.startsWith("DLT.")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token cấp phép tải xuống không hợp lệ.");
+        }
+        String[] parts = token.split("\\.");
+        if (parts.length != 3) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token cấp phép tải xuống bị phân mảnh hoặc không hợp lệ.");
+        }
+        String encodedPayload = parts[1];
+        String providedSignature = parts[2];
+        String payload;
+        try {
+            payload = new String(Base64.getUrlDecoder().decode(encodedPayload), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể giải mã nội dung token.");
+        }
+
+        String expectedSignature = computeHmacSha256Hex(payload, serverSecret);
+        if (!MessageDigest.isEqual(expectedSignature.getBytes(StandardCharsets.UTF_8), providedSignature.getBytes(StandardCharsets.UTF_8))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chữ ký số của token không hợp lệ (Token có dấu hiệu bị can thiệp).");
+        }
+
+        String[] elements = payload.split(":");
+        if (elements.length != 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cấu trúc payload của token không hợp lệ.");
+        }
+
+        try {
+            Long userId = Long.parseLong(elements[0]);
+            Long deviceId = Long.parseLong(elements[1]);
+            String trackId = elements[2];
+            long expEpochMilli = Long.parseLong(elements[3]);
+
+            if (System.currentTimeMillis() > expEpochMilli) {
+                throw new ResponseStatusException(HttpStatus.GONE, "Token cấp phép tải xuống đã hết hạn (quá 15 phút). Vui lòng thử lại!");
+            }
+
+            return new ParsedDownloadTicket(userId, deviceId, trackId, expEpochMilli);
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nội dung số trong token không hợp lệ.");
+        }
+    }
 
     private User findUserByPrincipal(String principal) {
         if (principal == null || principal.isBlank()) {
@@ -565,12 +565,16 @@ public class OfflineDownloadService {
      * Sinh khóa AES-256 (32 bytes = 64 hex characters) riêng cho bộ (userId + deviceId + trackId)
      */
     private String generateTrackKey(Long userId, Long deviceId, String trackId) {
+        String payload = userId + ":" + deviceId + ":" + trackId;
+        return computeHmacSha256Hex(payload, serverSecret);
+    }
+
+    private String computeHmacSha256Hex(String data, String key) {
         try {
-            String payload = userId + ":" + deviceId + ":" + trackId;
             Mac hmac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec secretKey = new SecretKeySpec(serverSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             hmac.init(secretKey);
-            byte[] hash = hmac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+            byte[] hash = hmac.doFinal(data.getBytes(StandardCharsets.UTF_8));
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
                 String hex = Integer.toHexString(0xff & b);
@@ -579,35 +583,21 @@ public class OfflineDownloadService {
             }
             return hexString.toString();
         } catch (Exception e) {
-            throw new RuntimeException("Lỗi sinh khóa mã hóa: " + e.getMessage(), e);
+            throw new RuntimeException("Lỗi sinh chữ ký HMAC: " + e.getMessage(), e);
         }
     }
 
-    private String sha256Hex(String input) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder();
-            for (byte b : hash) {
-                String h = Integer.toHexString(0xff & b);
-                if (h.length() == 1) hex.append('0');
-                hex.append(h);
-            }
-            return hex.toString();
-        } catch (Exception e) {
-            return UUID.randomUUID().toString();
-        }
-    }
-
+    /**
+     * Ghi log kiểm toán hành vi tải ngoại tuyến chuẩn công nghiệp qua SLF4J (0 bảng database rác)
+     */
     private void logAudit(Long userId, Long deviceId, String action, String trackId, Map<String, Object> meta) {
         try {
             String json = meta != null ? objectMapper.writeValueAsString(meta) : "{}";
-            jdbcTemplate.update(
-                "INSERT INTO offline_audit_log (user_id, device_id, action, track_id, metadata, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, NOW())",
-                userId, deviceId, action, trackId, json
-            );
-        } catch (Exception ignored) {}
+            log.info("[OFFLINE_AUDIT] action={} userId={} deviceId={} trackId={} meta={}",
+                    action, userId, deviceId, trackId, json);
+        } catch (Exception ignored) {
+            log.info("[OFFLINE_AUDIT] action={} userId={} deviceId={} trackId={}", action, userId, deviceId, trackId);
+        }
     }
 
     private LocalDateTime toLocalDateTime(Object dateObj) {

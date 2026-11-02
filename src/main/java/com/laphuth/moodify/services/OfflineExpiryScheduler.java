@@ -1,5 +1,7 @@
 package com.laphuth.moodify.services;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -10,6 +12,7 @@ import java.time.LocalDateTime;
 @Service
 public class OfflineExpiryScheduler {
 
+    private static final Logger log = LoggerFactory.getLogger(OfflineExpiryScheduler.class);
     private final JdbcTemplate jdbcTemplate;
 
     @Value("${app.maintenance.enabled:true}")
@@ -31,19 +34,10 @@ public class OfflineExpiryScheduler {
                 "WHERE status = 'DOWNLOADED' AND expires_at IS NOT NULL AND expires_at < NOW()"
             );
             if (expiredCount > 0) {
-                System.out.println("[OfflineExpiryScheduler] Đã chuyển " + expiredCount + " bài hát offline quá hạn sang trạng thái EXPIRED.");
-            }
-
-            // Hủy các token cấp phép tải xuống một lần đã quá 15 phút chưa được sử dụng
-            int expiredTokens = jdbcTemplate.update(
-                "UPDATE download_license_tokens SET status = 'EXPIRED' " +
-                "WHERE status = 'ISSUED' AND expires_at < NOW()"
-            );
-            if (expiredTokens > 0) {
-                System.out.println("[OfflineExpiryScheduler] Đã hủy " + expiredTokens + " token tải xuống quá hạn.");
+                log.info("[OfflineExpiryScheduler] Đã chuyển {} bài hát offline quá hạn sang trạng thái EXPIRED.", expiredCount);
             }
         } catch (Exception e) {
-            System.err.println("[OfflineExpiryScheduler] Lỗi khi quét hạn tải offline: " + e.getMessage());
+            log.error("[OfflineExpiryScheduler] Lỗi khi quét hạn tải offline: {}", e.getMessage(), e);
         }
     }
 
@@ -61,10 +55,10 @@ public class OfflineExpiryScheduler {
                 sevenDaysAgo
             );
             if (purgedCount > 0) {
-                System.out.println("[OfflineExpiryScheduler] Đã đánh dấu REMOVED cho " + purgedCount + " bài hát hết hạn quá 7 ngày.");
+                log.info("[OfflineExpiryScheduler] Đã đánh dấu REMOVED cho {} bài hát hết hạn quá 7 ngày.", purgedCount);
             }
         } catch (Exception e) {
-            System.err.println("[OfflineExpiryScheduler] Lỗi khi dọn dẹp bài hát cũ: " + e.getMessage());
+            log.error("[OfflineExpiryScheduler] Lỗi khi dọn dẹp bài hát cũ: {}", e.getMessage(), e);
         }
     }
 }
