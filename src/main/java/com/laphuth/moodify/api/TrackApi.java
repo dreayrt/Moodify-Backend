@@ -151,7 +151,7 @@ public class TrackApi {
         if (range != null) {
             long start = range.getRangeStart(contentLength);
             long end = range.getRangeEnd(contentLength);
-            long rangeLength = Math.min(1024 * 1024, end - start + 1); // 1MB chunk
+            long rangeLength = end - start + 1;
             ResourceRegion region = new ResourceRegion(resource, start, rangeLength);
             return ResponseEntity.status(org.springframework.http.HttpStatus.PARTIAL_CONTENT)
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
@@ -159,13 +159,12 @@ public class TrackApi {
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
                 .body(region);
         } else {
-            long rangeLength = Math.min(1024 * 1024, contentLength);
-            ResourceRegion region = new ResourceRegion(resource, 0, rangeLength);
             return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
+                .contentLength(contentLength)
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
-                .body(region);
+                .body(resource);
         }
     }
 
