@@ -40,5 +40,15 @@ class TrackAudioFeaturesMappingTest {
         assertEquals(List.of(0.0, 0.5, 1.0), saved.get("waveform_peaks"));
         assertEquals("ReccoBeats", output.get("audio_external_feature_provenance", Document.class).getString("provider"));
         assertEquals("hash", output.get("audio_analysis_v2", Document.class).getString("source_sha256"));
+
+        features.put("spotify_id", null);
+        features.put("key_confidence", null);
+        Document unknownOutput = new Document();
+        converter.write(converter.read(Track.class, input), unknownOutput);
+        Document unknownFeatures = unknownOutput.get("audio_features", Document.class);
+        assertTrue(unknownFeatures.containsKey("spotify_id"));
+        assertNull(unknownFeatures.get("spotify_id"));
+        assertTrue(unknownFeatures.containsKey("key_confidence"));
+        assertNull(unknownFeatures.get("key_confidence"));
     }
 }

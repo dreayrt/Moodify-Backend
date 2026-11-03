@@ -187,13 +187,13 @@ public class Track {
 
     public static class AudioFeatures {
         @Field("success") private Boolean success;
-        @Field("spotify_id") private String spotifyId;
+        @Field(value = "spotify_id", write = Field.Write.ALWAYS) private String spotifyId;
         @Field("duration_sec") private Double durationSec;
         @Field("bitrate_kbps") private Double bitrateKbps;
         @Field("sample_rate") private Integer sampleRate;
         @Field("channels") private Integer channels;
         @Field("tonic") private String tonic;
-        @Field("key_confidence") private Double keyConfidence;
+        @Field(value = "key_confidence", write = Field.Write.ALWAYS) private Double keyConfidence;
         @Field("loudness_lufs") private Double loudnessLufs;
         @Field("waveform_peaks") private List<Double> waveformPeaks;
         @Field("bpm")
