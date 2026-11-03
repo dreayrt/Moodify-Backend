@@ -209,6 +209,7 @@ public class SubscriptionService {
     public Map<String, Object> getCurrentUserSubscription(String principal) {
         User user = findUserByPrincipal(principal);
         Map<String, Object> res = new HashMap<>();
+        LocalDateTime now = LocalDateTime.now();
 
         List<Map<String, Object>> activeSubs = jdbcTemplate.queryForList(
             "SELECT s.id as subscription_id, s.service_package_id, s.start_at, s.end_at, s.status, " +
@@ -216,14 +217,14 @@ public class SubscriptionService {
             "       t.name as tier_name, t.ad_policy, t.ad_free_daily_limit, t.skip_policy, t.skip_daily_limit, " +
             "       t.offline_allowed, t.offline_max_tracks, t.max_devices, " +
             "       t.synced_lyrics, t.vip_badge, t.family_sharing, t.family_members, " +
-            "       DATEDIFF(s.end_at, NOW()) as days_remaining " +
+            "       DATEDIFF(s.end_at, ?) as days_remaining " +
             "FROM subscriptions s " +
             "JOIN service_packages p ON s.service_package_id = p.id " +
             "LEFT JOIN subscription_tiers t ON p.tier_id = t.id " +
-            "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.start_at <= NOW() AND s.end_at > NOW() " +
+            "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.start_at <= ? AND s.end_at > ? " +
             "ORDER BY s.end_at DESC " +
             "LIMIT 1",
-            user.getId()
+            now, user.getId(), now, now
         );
 
         if (!activeSubs.isEmpty()) {
@@ -655,13 +656,13 @@ public class SubscriptionService {
         Map<String, Object> pkg = pkgs.get(0);
         PriceBreakdown price = calculatePackagePrice(user.getId(), String.valueOf(pkg.get("tier_id")), pkg.get("price"));
         int durationDays = ((Number) pkg.get("duration_days")).intValue();
-        PlanApplication preview = previewPaidPackage(user.getId(), pkg, price, LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        PlanApplication preview = previewPaidPackage(user.getId(), pkg, price, now);
 
         // Hủy các đơn PENDING cũ khác của user và ghi lại kết quả vào hộp thư.
         cancelPendingPaymentsForUser(user.getId());
 
         // 2. Tạo subscription trạng thái PENDING
-        LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
             "INSERT INTO subscriptions (user_id, service_package_id, start_at, end_at, auto_renew, status) " +
             "VALUES (?, ?, ?, ?, FALSE, 'PENDING')",
@@ -772,8 +773,8 @@ public class SubscriptionService {
     public List<Map<String, Object>> getPackageQuotes(String principal) {
         User user = findUserByPrincipal(principal);
         Set<String> paidTierIds = findPaidTierIds(user.getId());
-        PlanContext context = getPlanContext(user.getId());
         LocalDateTime now = LocalDateTime.now();
+        PlanContext context = getPlanContext(user.getId(), now);
         List<Map<String, Object>> quotes = new ArrayList<>();
 
         for (Map<String, Object> pkg : getActivePackages()) {
@@ -818,7 +819,7 @@ public class SubscriptionService {
         return tiers;
     }
 
-    private PlanContext getPlanContext(Long userId) {
+    private PlanContext getPlanContext(Long userId, LocalDateTime now) {
         String planSql = "SELECT s.id AS subscription_id, s.service_package_id, s.start_at, s.end_at, " +
                 "p.name AS package_name, p.tier_id, p.price, p.duration_days, " +
                 "(SELECT pt.amount FROM payment_transactions pt " +
@@ -826,18 +827,18 @@ public class SubscriptionService {
                 "AND COALESCE(pt.provider, '') NOT IN ('SANDBOX', 'DEV_SANDBOX') " +
                 "ORDER BY pt.paid_at DESC, pt.id DESC LIMIT 1) AS paid_amount " +
                 "FROM subscriptions s JOIN service_packages p ON p.id = s.service_package_id " +
-                "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.end_at > NOW() ";
+                "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.end_at > ? ";
         List<Map<String, Object>> current = jdbcTemplate.queryForList(
-                planSql + "AND s.start_at <= NOW() ORDER BY s.end_at DESC, s.id DESC LIMIT 1", userId);
+                planSql + "AND s.start_at <= ? ORDER BY s.end_at DESC, s.id DESC LIMIT 1", userId, now, now);
         List<Map<String, Object>> scheduled = jdbcTemplate.queryForList(
-                planSql + "AND s.start_at > NOW() ORDER BY s.end_at DESC, s.id DESC LIMIT 1", userId);
+                planSql + "AND s.start_at > ? ORDER BY s.end_at DESC, s.id DESC LIMIT 1", userId, now, now);
         return new PlanContext(current.isEmpty() ? null : current.get(0),
                 scheduled.isEmpty() ? null : scheduled.get(0));
     }
 
     private PlanApplication previewPaidPackage(Long userId, Map<String, Object> targetPackage,
                                                 PriceBreakdown price, LocalDateTime now) {
-        return previewPaidPackage(userId, targetPackage, price, now, getPlanContext(userId));
+        return previewPaidPackage(userId, targetPackage, price, now, getPlanContext(userId, now));
     }
 
     private PlanApplication previewPaidPackage(Long userId, Map<String, Object> targetPackage,
@@ -1016,14 +1017,14 @@ public class SubscriptionService {
 
     private PlanApplication applyPaidPackage(Long userId, Map<String, Object> targetPackage,
                                              PriceBreakdown price, LocalDateTime now) {
-        PlanContext context = getPlanContext(userId);
+        PlanContext context = getPlanContext(userId, now);
         PlanApplication plan = previewPaidPackage(userId, targetPackage, price, now, context);
 
         if ("UPGRADE".equals(plan.action())) {
             jdbcTemplate.update(
                     "UPDATE subscriptions SET status = 'CANCELLED', updated_at = NOW() " +
-                            "WHERE user_id = ? AND status = 'ACTIVE' AND start_at <= NOW() AND end_at > NOW()",
-                    userId);
+                            "WHERE user_id = ? AND status = 'ACTIVE' AND start_at <= ? AND end_at > ?",
+                    userId, now, now);
         }
         return plan;
     }
