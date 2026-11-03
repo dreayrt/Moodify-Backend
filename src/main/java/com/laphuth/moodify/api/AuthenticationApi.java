@@ -77,6 +77,21 @@ public class AuthenticationApi {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<java.util.Map<String, Object>> changePassword(
+            Authentication authentication,
+            @RequestBody(required = false) java.util.Map<String, String> body
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String currentPassword = body != null ? body.get("currentPassword") : null;
+        String newPassword = body != null ? body.get("newPassword") : null;
+        return ResponseEntity.ok(
+                authenticationService.changePassword(authentication.getName(), currentPassword, newPassword)
+        );
+    }
+
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> me(Authentication authentication) {
         return ResponseEntity.ok(

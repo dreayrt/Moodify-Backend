@@ -211,6 +211,47 @@ public class AuthenticationService {
     }
 
     /**
+     * Self-service password change for any authenticated role (moderator,
+     * content lead, admin, user). Mirrors the login lookup and BCrypt check.
+     */
+    public java.util.Map<String, Object> changePassword(
+            String principal,
+            String currentPassword,
+            String newPassword
+    ) {
+        User currentUser = userRepository
+            .findByEmailOrUsername(
+                normalizeIdentifier(principal),
+                normalizeIdentifier(principal)
+            )
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "Invalid credentials"
+            ));
+
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng nhập mật khẩu hiện tại.");
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải có ít nhất 6 ký tự.");
+        }
+        if (!passwordEncoder.matches(currentPassword, currentUser.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không đúng.");
+        }
+        if (passwordEncoder.matches(newPassword, currentUser.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải khác mật khẩu hiện tại.");
+        }
+
+        currentUser.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(currentUser);
+
+        return java.util.Map.of(
+            "success", true,
+            "message", "Đổi mật khẩu thành công"
+        );
+    }
+
+    /**
      * Đăng nhập Google bằng Authorization Code + PKCE (mobile).
      * Google đã chặn implicit flow (response_type=id_token/token) với các OAuth client
      * tạo mới, nên mobile chỉ nhận được "code" — backend giữ client_secret và tự đổi
