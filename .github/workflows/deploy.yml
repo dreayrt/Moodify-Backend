@@ -9,7 +9,8 @@ on:
 jobs:
   build-and-deploy:
     name: Build & Deploy Backend to Google Cloud VM
-    timeout-minutes: 20
+    # 40m: allow a cold karaoke-media build (mediasoup-worker C++ compile) to finish
+    timeout-minutes: 40
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -47,7 +48,10 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           timeout: 30s
-          command_timeout: 10m
+          # 30m: npm ci for karaoke-media compiles the mediasoup-worker C++ binary,
+          # which can exceed 10m on a cold Docker cache. After that first build the
+          # layer is cached and deploys return to ~2-3 minutes.
+          command_timeout: 30m
           script: |
             set -euo pipefail
             echo "🚀 Reloading moodify-backend on Google Cloud VM..."
