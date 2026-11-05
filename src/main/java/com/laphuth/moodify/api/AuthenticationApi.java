@@ -8,6 +8,7 @@ import com.laphuth.moodify.dto.auth.LoginRequest;
 import com.laphuth.moodify.dto.auth.RefreshTokenRequest;
 import com.laphuth.moodify.dto.auth.RegisterRequest;
 import com.laphuth.moodify.dto.auth.UserProfileResponse;
+import com.laphuth.moodify.dto.auth.UpdateProfileRequest;
 import com.laphuth.moodify.services.AuthenticationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -98,6 +99,12 @@ public class AuthenticationApi {
         return ResponseEntity.ok(
                 authenticationService.getCurrentUserProfile(authentication.getName())
         );
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<UserProfileResponse> updateProfile(
+            Authentication authentication, @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(authenticationService.updateProfile(authentication.getName(), request));
     }
 
     @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

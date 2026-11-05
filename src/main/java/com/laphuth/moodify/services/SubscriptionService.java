@@ -716,6 +716,11 @@ public class SubscriptionService {
         result.put("actionDescription", preview.actionDescription());
         result.put("startAt", preview.startAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         result.put("expiresAt", preview.endAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        // Hạn chót của cửa sổ QR (15 phút, trùng mốc INTERVAL 15 MINUTE trong
+        // expirePendingPayment/getPaymentStatus) để client đếm ngược đúng;
+        // "expiresAt" phía trên là ngày kết thúc kỳ hạn dịch vụ.
+        result.put("paymentExpiresAt", now.plusMinutes(15)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         result.put("bonusDays", preview.bonusDays());
         result.put("bankAccount", sepayBankAccount);
         result.put("bankName", sepayBankName);
@@ -728,6 +733,137 @@ public class SubscriptionService {
         System.out.println("[SePay Checkout] Tạo đơn thanh toán: " + orderCode +
             " | Gói: " + pkg.get("name") + " | Số tiền: " + amountLong + "đ" +
             " | User: " + user.getUsername());
+
+        return result;
+    }
+
+    /**
+     * Mở lại màn thanh toán cho một đơn PENDING còn hiệu lực (người dùng lỡ thoát
+     * giữa chừng mà cửa sổ QR 15 phút chưa hết). QR được sinh deterministic từ
+     * orderCode + amount nên chỉ cần trả lại đúng payload như lần checkout đầu,
+     * không cần gọi gateway. Khác với createPendingPayment, method này KHÔNG hủy
+     * các đơn PENDING khác của user.
+     *
+     * Kết quả:
+     *  - Đơn còn PENDING/SUCCESS → payload đầy đủ như checkout (success=true).
+     *  - Đơn đã CANCELLED/EXPIRED/FAILED → {success=false, status, message}.
+     */
+    @Transactional
+    public Map<String, Object> resumePendingPayment(String principal, String orderCode) {
+        if (sepayBankAccount == null || sepayBankAccount.isBlank()
+                || sepayBankName == null || sepayBankName.isBlank()
+                || sepayAccountName == null || sepayAccountName.isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Thanh toán SePay chưa được cấu hình đầy đủ trên máy chủ."
+            );
+        }
+
+        User user = findUserByPrincipal(principal);
+
+        // Tách paymentId từ orderCode: "MD1001" → 1001 (như getPaymentStatus).
+        String idStr = orderCode.replaceAll("(?i)^MD", "");
+        Long paymentId;
+        try {
+            paymentId = Long.valueOf(idStr);
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã đơn hàng không hợp lệ: " + orderCode);
+        }
+
+        String resumeSql =
+            "SELECT pt.id, pt.status, pt.amount, pt.created_at, " +
+            "       s.id AS subscription_id, s.user_id, " +
+            "       sp.id AS package_id, sp.name AS package_name, sp.tier_id, sp.price, sp.duration_days " +
+            "FROM payment_transactions pt " +
+            "JOIN subscriptions s ON s.id = pt.subscription_id " +
+            "JOIN service_packages sp ON sp.id = s.service_package_id " +
+            "WHERE pt.id = ?";
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(resumeSql, paymentId);
+        if (rows.isEmpty()
+                || ((Number) rows.get(0).get("user_id")).longValue() != user.getId()) {
+            // 404 thay vì 403 để không lộ sự tồn tại của đơn của người khác.
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đơn hàng " + orderCode);
+        }
+        Map<String, Object> row = rows.get(0);
+        String status = (String) row.get("status");
+
+        // Đơn PENDING quá 15 phút → chốt hết hạn ngay tại đây (như getPaymentStatus).
+        if ("PENDING".equals(status)) {
+            expirePendingPayment(paymentId);
+            rows = jdbcTemplate.queryForList(resumeSql, paymentId);
+            row = rows.get(0);
+            status = (String) row.get("status");
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("orderCode", orderCode);
+
+        if (!"PENDING".equals(status) && !"SUCCESS".equals(status)) {
+            LocalDateTime createdAt = toLocalDateTime(row.get("created_at"));
+            boolean expired = "CANCELLED".equals(status)
+                    && createdAt != null && createdAt.plusMinutes(15).isBefore(LocalDateTime.now());
+            result.put("success", false);
+            result.put("status", expired ? "EXPIRED" : status);
+            result.put("message", expired
+                    ? "Đơn " + orderCode + " đã hết hạn thanh toán. Hãy tạo đơn mới để tiếp tục đăng ký gói."
+                    : "Đơn " + orderCode + " không còn hiệu lực để thanh toán (trạng thái: " + status + ").");
+            return result;
+        }
+
+        long amount = ((Number) row.get("amount")).longValue();
+        // Giá/breakdown chỉ để hiển thị; amount lưu trong DB mới là chuẩn để đối soát.
+        PriceBreakdown price = calculatePackagePrice(user.getId(), String.valueOf(row.get("tier_id")), row.get("price"));
+        boolean breakdownValid = price.payableAmount() == amount;
+        long baseAmount = breakdownValid ? price.baseAmount() : amount;
+        long discountAmount = breakdownValid ? price.discountAmount() : 0;
+        boolean discountApplied = breakdownValid && price.discountApplied();
+
+        PlanApplication preview = previewPaidPackage(user.getId(), row, price, LocalDateTime.now());
+
+        LocalDateTime createdAt = toLocalDateTime(row.get("created_at"));
+        String paymentExpiresAt = (createdAt == null ? LocalDateTime.now() : createdAt)
+                .plusMinutes(15)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+        String qrContent = orderCode;
+        String qrUrl = String.format(
+            "https://qr.sepay.vn/img?acc=%s&bank=%s&amount=%d&des=%s&template=compact",
+            URLEncoder.encode(sepayBankAccount, StandardCharsets.UTF_8),
+            URLEncoder.encode(sepayBankName, StandardCharsets.UTF_8),
+            amount,
+            URLEncoder.encode(qrContent, StandardCharsets.UTF_8)
+        );
+
+        result.put("success", true);
+        result.put("paymentId", paymentId);
+        result.put("subscriptionId", ((Number) row.get("subscription_id")).longValue());
+        result.put("packageId", ((Number) row.get("package_id")).longValue());
+        result.put("packageName", row.get("package_name"));
+        result.put("baseAmount", baseAmount);
+        result.put("discountAmount", discountAmount);
+        result.put("discountPercent", discountApplied ? 20 : 0);
+        result.put("discountApplied", discountApplied);
+        result.put("amount", amount);
+        result.put("action", preview.action());
+        result.put("actionLabel", preview.actionLabel());
+        result.put("actionDescription", preview.actionDescription());
+        result.put("startAt", preview.startAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        result.put("expiresAt", preview.endAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        result.put("bonusDays", preview.bonusDays());
+        result.put("paymentExpiresAt", paymentExpiresAt);
+        result.put("bankAccount", sepayBankAccount);
+        result.put("bankName", sepayBankName);
+        result.put("accountName", sepayAccountName);
+        result.put("transferContent", qrContent);
+        result.put("qrUrl", qrUrl);
+        result.put("status", status);
+        result.put("message", "SUCCESS".equals(status)
+                ? "Đơn " + orderCode + " đã được thanh toán."
+                : "Vui lòng quét mã QR hoặc chuyển khoản với nội dung: " + orderCode);
+
+        System.out.println("[SePay Checkout] Mở lại đơn thanh toán: " + orderCode +
+            " | Trạng thái: " + status + " | User: " + user.getUsername());
 
         return result;
     }

@@ -713,6 +713,19 @@ public class AuthenticationService {
         return UserProfileResponse.fromUser(currentUser);
     }
 
+    public UserProfileResponse updateProfile(String principal, com.laphuth.moodify.dto.auth.UpdateProfileRequest request) {
+        User currentUser = userRepository.findByEmailOrUsername(principal, principal)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        String phone = request.phone() == null ? "" : request.phone().trim();
+        if (!phone.isEmpty()) {
+            userRepository.findByPhone(phone).filter(other -> !other.getId().equals(currentUser.getId()))
+                .ifPresent(other -> { throw new ResponseStatusException(HttpStatus.CONFLICT, "Số điện thoại đã được sử dụng."); });
+        }
+        currentUser.setFullName(request.fullName().trim());
+        currentUser.setPhone(phone.isEmpty() ? null : phone);
+        return UserProfileResponse.fromUser(userRepository.save(currentUser));
+    }
+
     public UserProfileResponse updateAvatar(String principal, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Avatar image file is required");

@@ -124,8 +124,9 @@ public class UserLibraryService {
                 response.setArtistName(track.getArtistName());
                 response.setArtistSpotifyId(track.getArtistSpotifyId());
                 response.setAlbumName(track.getAlbumName());
-                response.setDurationMs(track.getDurationMs());
-                response.setPopularity(track.getPopularity());
+                // Imported catalog documents may omit these fields; unboxing null would 500 the library page.
+                response.setDurationMs(track.getDurationMs() != null ? track.getDurationMs() : 0);
+                response.setPopularity(track.getPopularity() != null ? track.getPopularity() : 0);
                 response.setPreviewUrl(null);
                 response.setImageUrl(AudioUrlResolver.resolveImageUrl(track.getImageUrl()));
                 response.setGenres(track.getGenres());
