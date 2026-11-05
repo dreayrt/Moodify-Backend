@@ -361,6 +361,7 @@ public class PlatformTrafficService {
         List<Map<String, Object>> items = jdbcTemplate.query(selectSql, queryParams.toArray(), (rs, rowNum) -> {
             Map<String, Object> m = new HashMap<>();
             m.put("id", rs.getLong("id"));
+            m.put("trackId", rs.getString("track_id"));
             String rawStartedAt = rs.getString("started_at");
             if (rawStartedAt != null && rawStartedAt.length() > 19) {
                 rawStartedAt = rawStartedAt.substring(0, 19);
