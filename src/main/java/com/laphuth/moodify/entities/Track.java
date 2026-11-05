@@ -168,6 +168,8 @@ public class Track {
     public void setLyricsSynced(String lyricsSynced) { this.lyricsSynced = lyricsSynced; }
     public String getLocalPath() { return localPath; }
     public void setLocalPath(String localPath) { this.localPath = localPath; }
+    public String getCatalogMigrationBatch() { return catalogMigrationBatch; }
+    public void setCatalogMigrationBatch(String catalogMigrationBatch) { this.catalogMigrationBatch = catalogMigrationBatch; }
     public String getDownloadStatus() { return downloadStatus; }
     public void setDownloadStatus(String downloadStatus) { this.downloadStatus = downloadStatus; }
     public String getSpotifyUrl() { return spotifyUrl; }
@@ -176,8 +178,6 @@ public class Track {
     public void setModerationStatus(String moderationStatus) { this.moderationStatus = moderationStatus; }
     public Double getModerationScore() { return moderationScore; }
     public void setModerationScore(Double moderationScore) { this.moderationScore = moderationScore; }
-    public String getCatalogMigrationBatch() { return catalogMigrationBatch; }
-    public void setCatalogMigrationBatch(String catalogMigrationBatch) { this.catalogMigrationBatch = catalogMigrationBatch; }
     public AudioFeatures getAudioFeatures() { return audioFeatures; }
     public void setAudioFeatures(AudioFeatures audioFeatures) { this.audioFeatures = audioFeatures; }
     public Instant getCreatedAt() { return createdAt; }

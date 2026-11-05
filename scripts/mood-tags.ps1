@@ -5,6 +5,7 @@ param(
     [string]$ReviewedFile,
     [string]$ManifestFile,
     [string]$ModelProfileSource,
+    [string]$BatchId,
     [Nullable[double]]$MaxDistance,
     [Nullable[double]]$MinMargin,
     [ValidateRange(0.0, 1.0)]
@@ -52,6 +53,9 @@ try {
         '--sync.scheduler.enabled=false',
         "--mood-tags.command=$Mode"
     )
+    if (-not [string]::IsNullOrWhiteSpace($BatchId)) {
+        $arguments += "--mood-tags.batch-id=$($BatchId.Trim())"
+    }
 
     switch ($Mode) {
         'preview' {
@@ -63,13 +67,15 @@ try {
             if (Test-Path -LiteralPath $PreviewFile) {
                 throw "Preview file already exists; choose another path: $PreviewFile"
             }
-            if ($MaxDistance.HasValue -xor $MinMargin.HasValue) {
+            $hasMaxDistance = $null -ne $MaxDistance
+            $hasMinMargin = $null -ne $MinMargin
+            if ($hasMaxDistance -xor $hasMinMargin) {
                 throw 'Set both -MaxDistance and -MinMargin, or leave both unset for ranking-only preview.'
             }
-            if ($MaxDistance.HasValue -and ($MaxDistance.Value -lt 0 -or $MaxDistance.Value -gt 1)) {
+            if ($hasMaxDistance -and ($MaxDistance -lt 0 -or $MaxDistance -gt 1)) {
                 throw '-MaxDistance must be between 0 and 1.'
             }
-            if ($MinMargin.HasValue -and ($MinMargin.Value -lt 0 -or $MinMargin.Value -gt 1)) {
+            if ($hasMinMargin -and ($MinMargin -lt 0 -or $MinMargin -gt 1)) {
                 throw '-MinMargin must be between 0 and 1.'
             }
 
@@ -85,9 +91,9 @@ try {
             $arguments += "--mood-tags.profiles-file=$profilesFile"
             $arguments += "--mood-tags.output=$PreviewFile"
             $arguments += "--mood-tags.min-feature-coverage=$MinFeatureCoverage"
-            if ($MaxDistance.HasValue) {
-                $arguments += "--mood-tags.max-distance=$($MaxDistance.Value)"
-                $arguments += "--mood-tags.min-margin=$($MinMargin.Value)"
+            if ($hasMaxDistance) {
+                $arguments += "--mood-tags.max-distance=$MaxDistance"
+                $arguments += "--mood-tags.min-margin=$MinMargin"
             }
             Write-Host "Creating read-only mood tag preview: $PreviewFile"
         }

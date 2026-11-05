@@ -128,7 +128,14 @@ public class TrackApi {
             throw new ResponseStatusException(NOT_FOUND, "Track not found");
         }
 
-        // 1. Luôn ưu tiên phát nhạc trực tiếp từ máy chủ đám mây trực tuyến (Oracle Music Server)
+        // Serve the exact local audio file when it is available on this backend.
+        // A non-empty localPath does not prove the configured cloud host has that file.
+        File audioFile = resolveAudioFile(track);
+        if (audioFile != null) {
+            return serveAudioFile(audioFile, headers);
+        }
+
+        // 2. Otherwise, use the configured cloud audio host.
         if (track != null) {
             String remoteAudioUrl = AudioUrlResolver.resolve(track.getLocalPath());
             if (remoteAudioUrl != null && !remoteAudioUrl.isBlank()) {
@@ -138,12 +145,10 @@ public class TrackApi {
             }
         }
 
-        // 2. Dự phòng trong trường hợp offline/không có mạng
-        File audioFile = resolveAudioFile(track);
-        if (audioFile == null || !audioFile.exists() || audioFile.length() == 0) {
-            throw new ResponseStatusException(NOT_FOUND, "Audio file not available yet for track: " + id);
-        }
+        throw new ResponseStatusException(NOT_FOUND, "Audio file not available yet for track: " + id);
+    }
 
+    private ResponseEntity<?> serveAudioFile(File audioFile, HttpHeaders headers) throws IOException {
         FileSystemResource resource = new FileSystemResource(audioFile);
         long contentLength = resource.contentLength();
         HttpRange range = headers.getRange().isEmpty() ? null : headers.getRange().get(0);

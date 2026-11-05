@@ -1,0 +1,6268 @@
+{
+  "schemaVersion": 1,
+  "status": "APPLIED",
+  "createdAt": "2026-11-02T20:47:55.791450+00:00",
+  "batchId": "moodify-catalog-20261103-v1",
+  "database": "music_streaming_1",
+  "collection": "tracks",
+  "sourceManifest": "E:\\moodify-backend\\temp\\audio-feature-backfill-backup-20261102-194756.json",
+  "entries": [
+    {
+      "documentId": "{\"$oid\": \"6a8323513cccfc45cd62cd91\"}",
+      "spotifyId": "73RcFjiDtStfP3GCW44vJu",
+      "name": "Ngày Rời Chuyến Bay",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 89.8,
+        "key_signature": "Eb Major",
+        "energy": 0.766,
+        "danceability": 0.976,
+        "valence": 0.597,
+        "acousticness": 0.464
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6a8323513cccfc45cd62cdd7\"}",
+      "spotifyId": "7bFFUPBiF15n8m8RziqS4o",
+      "name": "dự báo thời tiết hôm nay mưa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 153.7,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.546,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6a8323513cccfc45cd62ce0f\"}",
+      "spotifyId": "6Zoi4ue74UdUeYmHXItXnf",
+      "name": "Vùng An Toàn",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 83.9,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.588,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"925f2e4a0c9650bf8eb3519f\"}",
+      "spotifyId": "4nGmLVYg4LA1aZzTuy98MU",
+      "name": "Thành Đô",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 172.3,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.596,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"88eac0eaa057f2b642115692\"}",
+      "spotifyId": "2rSrLECfNaKYJ96UJ4ddDt",
+      "name": "Lưu Niên",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 92.1,
+        "key_signature": "F# Major",
+        "energy": 0.05,
+        "danceability": 1.0,
+        "valence": 0.596,
+        "acousticness": 0.95
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"45c6de9973462568cfa4a594\"}",
+      "spotifyId": "6We0OS95Zrwf2kQgFBLZ65",
+      "name": "CỨ THẾ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 121.0,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.618,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ebff30360c81af7a8472fcab\"}",
+      "spotifyId": "3nFNZqvKoMmexQTD7YCf3m",
+      "name": "Có Anh Ở Đây Rồi - Drill",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 109.9,
+        "key_signature": "A Minor",
+        "energy": 0.05,
+        "danceability": 1.0,
+        "valence": 0.5,
+        "acousticness": 0.95
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"fccfe0d9a2a6c8b635dee31c\"}",
+      "spotifyId": "6TPJJFdSo3hdvTB7zCSJXf",
+      "name": "Xoá Tên Anh (XTA)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 74.9,
+        "key_signature": "G Major",
+        "energy": 0.05,
+        "danceability": 1.0,
+        "valence": 0.607,
+        "acousticness": 0.95
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"fcca832153ebe6905834dc7e\"}",
+      "spotifyId": "7GAfJbpUxarq6dLb5D1PSC",
+      "name": "Khó Giữ Chân Thành (Drill Version)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "Bb Minor",
+        "energy": 0.05,
+        "danceability": 0.909,
+        "valence": 0.514,
+        "acousticness": 0.765
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5338a8bc836b3fc35d46afc9\"}",
+      "spotifyId": "4yy21UkGZ7gZEGbSERllpE",
+      "name": "SỚM MUỘN THÌ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 94.8,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.615,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"383339ff8174b0be5580cc83\"}",
+      "spotifyId": "6cCoo5SiGQIDCJKFpELvVa",
+      "name": "Hôm Nay Của Anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 137.1,
+        "key_signature": "D Major",
+        "energy": 0.05,
+        "danceability": 0.821,
+        "valence": 0.545,
+        "acousticness": 0.765
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6e151974361b71655a1f620e\"}",
+      "spotifyId": "6AH74QQxzjqTsvj7lFQoqy",
+      "name": "ĐOÁ PHÙ DUNG CUỐI CÙNG (feat. Đức Phúc)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 150.9,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.602,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c74165c20686b664a36f6d4b\"}",
+      "spotifyId": "4M0JP3vybYgPQSnIvPrRuW",
+      "name": "Ác Mộng Đẹp",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.1,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.605,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8bcb53b4436fbc2196d51434\"}",
+      "spotifyId": "5H7c7TWQaFz7qQs3UCmtHZ",
+      "name": "Tâm Sự Tuổi 30",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.6,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 0.936,
+        "valence": 0.576,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1e5b22669f9b5b1bcd1473a5\"}",
+      "spotifyId": "78V670OSHmeb1fF4CJBR4P",
+      "name": "Đô Trưởng (Remake)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.7,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 0.966,
+        "valence": 0.582,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"601654d8be92cbd8ef8c4f3a\"}",
+      "spotifyId": "1Jy4SXBKwAxqtNB7jWKCZK",
+      "name": "Trước Hiên Nhà",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 109.6,
+        "key_signature": "G Major",
+        "energy": 0.948,
+        "danceability": 1.0,
+        "valence": 0.56,
+        "acousticness": 0.336
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"02a27c7324d5243a1d911f53\"}",
+      "spotifyId": "1PgMKkHb6w1RdGhocmXS4d",
+      "name": "Day Dream",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 122.1,
+        "key_signature": "F# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.571,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"76d6abf3effeaf8092eaf0be\"}",
+      "spotifyId": "6zwC3vsCniAGu6WpOkg6qV",
+      "name": "Thiên Đường Với Người Thương",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 102.8,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.591,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"82954a8cc2f0b55218914a1a\"}",
+      "spotifyId": "054EYAXtKFW3OoRnfesZZz",
+      "name": "Sự Thật Sau Một Lời Hứa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 103.8,
+        "key_signature": "D Major",
+        "energy": 0.351,
+        "danceability": 1.0,
+        "valence": 0.595,
+        "acousticness": 0.754
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"887497261bb0295b8050e113\"}",
+      "spotifyId": "4ZIwFLm8C7MUe7JR1G9CGa",
+      "name": "vùng vẫy",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 96.0,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.617,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d26a4996483fd47a75105410\"}",
+      "spotifyId": "1fVc7gYABaoFNGhz5QcPx4",
+      "name": "Mối Duyên Vàng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 96.0,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.574,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f337e4e60e054347599c4008\"}",
+      "spotifyId": "6yzR1NyNiAs7FzKJIijEqm",
+      "name": "Tìm Lại Bầu Trời",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 90.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.626,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d1387f6681a75242de24154f\"}",
+      "spotifyId": "69JqUXiDfFTxckAQN58XTC",
+      "name": "YÊU (Acoustic Version)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 116.4,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 0.953,
+        "valence": 0.594,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"693b904b5bd330579f9dc8ba\"}",
+      "spotifyId": "4L9c3f20yJB3CJlqaQKfgN",
+      "name": "DỐC ĐỜI",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 125.0,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.599,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c39e3fbcc91f884290a04d44\"}",
+      "spotifyId": "5KYv3kORBKUmVEoqbRRWxt",
+      "name": "Từng Là Của Nhau",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 113.9,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.573,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bc5cf4d3d5af649a9e2e9d4f\"}",
+      "spotifyId": "4rEks6AbW2u7N2TK2xouLg",
+      "name": "Từng Là Của Nhau/ Không Biết Nên Vui Hay Buồn (Mashup) - Live session",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 184.6,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.551,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0f60808fdf36ed3a61c1feb8\"}",
+      "spotifyId": "36vTcKKh2EafskEYs4ju02",
+      "name": "Em Không Quay Về",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 76.9,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.634,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8e9ef9c5804317d79607e7fb\"}",
+      "spotifyId": "3T7XHOdRcyhKU3QCB6kZG3",
+      "name": "chẳng phải tình đầu sao đau đến thế",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 143.9,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.596,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f029dc4a2eabfd0f97a8895d\"}",
+      "spotifyId": "7uUuftbcr94tzGOCJSM25u",
+      "name": "In Love",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 88.0,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.625,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"46eb9a269426a2145a25f385\"}",
+      "spotifyId": "52IB6Ggiqs8YllCCKQIvs7",
+      "name": "Rain",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 119.9,
+        "key_signature": "F# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.608,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"54d2cdf298d16a8dfce8a241\"}",
+      "spotifyId": "0xDm6J0w71jhpjcxEiVedM",
+      "name": "Dòng Thời Gian - New Version",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 115.9,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.557,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"e12322e49ae935589c318d0e\"}",
+      "spotifyId": "4Q9Vi3NqzpmGHImi6EWR5M",
+      "name": "Xin Anh Đừng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 110.0,
+        "key_signature": "Ab Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.594,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"118177906d3adb3400d9ce8e\"}",
+      "spotifyId": "18lOyX6066BEVE2yBiVUdD",
+      "name": "Ngày Biệt Ly (Losing)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 150.8,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.604,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1c13d22120c1705652f140b4\"}",
+      "spotifyId": "26zqmmkqUK6mCc87XDzPym",
+      "name": "CHÂN THÀNH (feat. RHYDER, Captain, Quang Hùng MasterD, WEAN & Ali Hoàng Dương)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 184.6,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.619,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"30b621a46160b8973e116263\"}",
+      "spotifyId": "3290JxfzpMDVa2Ky3pQRzq",
+      "name": "Có Đôi Điều",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 89.7,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.575,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"210e5ab2e061c8957a19a162\"}",
+      "spotifyId": "0sR5ThoE0uoskXWrm6KDxP",
+      "name": "Hư không",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 114.9,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.603,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9a2574ecf2408d31a60039f0\"}",
+      "spotifyId": "3W77mLoXjQEkNjxvYRifjG",
+      "name": "tâm trí lang thang",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 116.8,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.602,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"cc4504b7cd05beded026ffab\"}",
+      "spotifyId": "0sVd1ZavOfbqd5AHspc1Tr",
+      "name": "Yêu Em Rất Nhiều",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 130.0,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.613,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"af160dba7a3b2bd1fada6266\"}",
+      "spotifyId": "5ca1aUHYwTDNO5E6unithq",
+      "name": "Tiến Hay Lùi (Nụ Hôn Bạc Tỷ Original Soundtrack)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.9,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.603,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"89bcabd4e18d01d363cf9325\"}",
+      "spotifyId": "12DNdwLD9oZOPADqM10oyE",
+      "name": "Forget Me Now",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 136.1,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.576,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0e901dfc2eb9b324cbc00920\"}",
+      "spotifyId": "7Kpr8LcvXFSyj6aJfwr4W2",
+      "name": "CLME",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.1,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.531,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"94b5ab39688d0880eb1205aa\"}",
+      "spotifyId": "1jGzz56TIOz7KIEK3t3e01",
+      "name": "Đừng Xin Lỗi Nữa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 135.9,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 0.956,
+        "valence": 0.535,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"672fa66171a3e369d77299cf\"}",
+      "spotifyId": "5U30iZBlmxkpHqzb1OSnBS",
+      "name": "Yêu 5",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 94.9,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.616,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"373be236dcd2fdaf4b9b7645\"}",
+      "spotifyId": null,
+      "name": "Thu Cuối",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 162.1,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.73,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d6336cbcbefda8b6badcb7c7\"}",
+      "spotifyId": "6tRA1aO8A1v57geP0K3oPk",
+      "name": "Mây Lang Thang",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 147.0,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.585,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d8a777b736b2969a90b70dea\"}",
+      "spotifyId": "3SD6bnXfZlopPhIRQCv7Jn",
+      "name": "Anh Không Đòi Quà",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 121.0,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.616,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"cadd36f2c420ef25aa079fc1\"}",
+      "spotifyId": "5kJMW3pK49PvQDtpVryHf5",
+      "name": "Forget About Her",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.1,
+        "key_signature": "F# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.55,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"904fafcd104cecca2aeb1685\"}",
+      "spotifyId": "5y3m3UvJRHDPCqO2SBq98f",
+      "name": "Nơi Tình Yêu Bắt Đầu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.6,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 0.967,
+        "valence": 0.568,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b0502586eb8098ffdd020266\"}",
+      "spotifyId": "0rtwHli23DZDBobMqluwSd",
+      "name": "Mơ Hồ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 110.0,
+        "key_signature": "F# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.524,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a325963baf8395aec54b79c7\"}",
+      "spotifyId": "56n21o9wtl9IjFVsGe7BG1",
+      "name": "Thuận Theo Ý Trời",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.5,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.535,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b9723b9df9945a973e45e088\"}",
+      "spotifyId": "5BJqg07SKgmFnVLOBmLFvq",
+      "name": "Hẹn Một Mai - From\" 4 Năm 2 Chàng 1 Tình Yêu\"",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.6,
+        "key_signature": "A Major",
+        "energy": 0.537,
+        "danceability": 0.888,
+        "valence": 0.542,
+        "acousticness": 0.424
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"12e55c24177b83c53601f026\"}",
+      "spotifyId": "5rSAUmbOg4giDrM29vUyHe",
+      "name": "Nơi Này Có Anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 91.9,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.638,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f6ac57171d8459187ddf5baa\"}",
+      "spotifyId": "0NyrI1tMvqcK3vU5z9DMdI",
+      "name": "She Neva Knows",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 117.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.632,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"39acf9f3f0566b83e7d25b01\"}",
+      "spotifyId": "0fGJiHH6xSUJU1MAVjxq5m",
+      "name": "Bạn Đời",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 130.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.571,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"433d0a3e6198cd2509ed35ef\"}",
+      "spotifyId": "4fj4Jn4nw8fGX8xdbCntJf",
+      "name": "Sau Cơn Mưa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 82.1,
+        "key_signature": "F# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.598,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"adf4a1c09b5c15805800e74d\"}",
+      "spotifyId": "5cml547MByVlaVrKU2lJTg",
+      "name": "Em iu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.612,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"132c4bfc2a2612ad6014f6e5\"}",
+      "spotifyId": "11E0Czz974QfKWqJ9Niv5A",
+      "name": "An",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.9,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.5,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5731804a8d85d31274531c58\"}",
+      "spotifyId": "2IggMTlkERCVSYu2OIiG49",
+      "name": "No Boyfriend - Original",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 99.9,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.645,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"e374753d83d9ef210ad614a4\"}",
+      "spotifyId": "37KEMM9tMw5Tb5GWlBmOVM",
+      "name": "Dành Cho Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 136.1,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.585,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"072824468c40e722e93f8b7b\"}",
+      "spotifyId": "36OyVzUmUFb1MTTzy3YXbh",
+      "name": "Sau Lời Từ Khước (Theme Song From \"MAI\")",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 102.1,
+        "key_signature": "F# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.604,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"26e450e55bb0fab931cd0f61\"}",
+      "spotifyId": "7tFwBnuaGXqiiONukPRaCo",
+      "name": "Miên Man",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.563,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"701d0a820e7c9aa2d93d46d9\"}",
+      "spotifyId": "3qhYidu0cemx1v9PgTtpS5",
+      "name": "Chúng Ta Của Tương Lai",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 146.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.569,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"cb32c6f5e77ad391aba4a2c4\"}",
+      "spotifyId": "1As1VoCdyEsU9GLuHuYXXQ",
+      "name": "Váy Cưới (Lofi Version)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 99.7,
+        "key_signature": "Bb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.499,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"57afa725601e3631780e425a\"}",
+      "spotifyId": "2nabBYOeHhqVwMPQP7iIXN",
+      "name": "Vài Giây Nữa Thôi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 126.1,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.61,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b1a3d27c570b101e7769dc53\"}",
+      "spotifyId": "6V8KkKDcnkt5ad4NvABSqd",
+      "name": "Lấy Chồng Sớm Làm Gì - Ballad Version",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 114.0,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.583,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"e97a5d62df1376626a0faa70\"}",
+      "spotifyId": null,
+      "name": "Nếu phải xa nhau",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 124.0,
+        "key_signature": "Ab Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.67,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ba7720d4ee8fa3de2eba4138\"}",
+      "spotifyId": "67nxEmWEdIF3HvEQmCppM4",
+      "name": "KHÔNG LẤY ĐƯỢC VỢ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.533,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d89a416b5f4677833c2111d8\"}",
+      "spotifyId": "3fw9v7CztM2mqu1jCtbg9f",
+      "name": "Bóng Phù Hoa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 146.0,
+        "key_signature": "Ab Minor",
+        "energy": 1.0,
+        "danceability": 0.975,
+        "valence": 0.544,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5303778a2f7d447ca5d9818c\"}",
+      "spotifyId": "5qbjUmVV1yOOjcMOInNPYD",
+      "name": "để tôi ôm em bằng giai điệu này",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 87.9,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.554,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"356f915188c4268c0cb8bbff\"}",
+      "spotifyId": "6KIhgRkprgyJNERRMu7Quh",
+      "name": "Có Em Chờ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 80.0,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.631,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"87cf668786dc4fc50ff51ecd\"}",
+      "spotifyId": "7j3XQm7RR8T2EzaYtYK4rc",
+      "name": "Crush 2",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 135.3,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.601,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d4d195f6ced760f04cefdfc5\"}",
+      "spotifyId": "4ylS6C1TlLxNQWKZz71Cme",
+      "name": "Yêu Rồi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 132.1,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 0.974,
+        "valence": 0.555,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6108118ef55ba499e1b7f4b7\"}",
+      "spotifyId": "7h2zqUH4bYyknNUxsYnS5V",
+      "name": "Như Anh Đã Thấy Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.2,
+        "key_signature": "G Major",
+        "energy": 0.797,
+        "danceability": 1.0,
+        "valence": 0.556,
+        "acousticness": 0.442
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"e3610c87cc749cf1c7442f71\"}",
+      "spotifyId": "2m0OpgfuWSdCKkXxNAWxwH",
+      "name": "Vở Kịch Của Em - Remix",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 138.0,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.6,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d1a5698382c734650d5297cb\"}",
+      "spotifyId": "3C4prA4imh0FmAo0rwW2xw",
+      "name": "Dối Lừa (Speed Up)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 106.4,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.616,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"eec24ad8900fe4b9911a1842\"}",
+      "spotifyId": "42Y6HVCYjeGuwZKNUeCiWP",
+      "name": "Kỳ Vọng Sai Lầm (Deep House)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 135.3,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.519,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6a66608aac5caa8390247105\"}",
+      "spotifyId": "3bn9M7bczHJ28eiaiNtLyW",
+      "name": "Liều Thuốc Cho Trái Tim - Remake",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 109.9,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.504,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6eb8b38f4c49158d551a520a\"}",
+      "spotifyId": "1WF3s0FBnYLa68L11tQZy3",
+      "name": "Không Môn Đăng Hộ Đối",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.8,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.531,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"10a7de2429a1a83e163ca056\"}",
+      "spotifyId": "16LxkZoBIPTdI1sbQTzlg4",
+      "name": "3 Phải 6 Đừng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 133.8,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.582,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"805f4c6fd1f86573926888ed\"}",
+      "spotifyId": "0DjFGDEvgTUMnJ7pdHKbcS",
+      "name": "Kẻ Say Tình 2",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 126.0,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 0.973,
+        "valence": 0.501,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ece7e4819e949630e374efa1\"}",
+      "spotifyId": "3vazRRgWcQXqWVmD0PJejS",
+      "name": "Như Một Người Rưng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 134.0,
+        "key_signature": "Eb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.557,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9b483af71f8fd22747455321\"}",
+      "spotifyId": "4zUaQhfFjDQVwe0wBb2K2n",
+      "name": "Vì Anh Quá Đẹp Trai",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 135.1,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.577,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8f5e1c024038e013255c5f18\"}",
+      "spotifyId": "233EmofG4UrX6aLmavJfln",
+      "name": "Ngày Còn Đôi Mươi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 116.5,
+        "key_signature": "Ab Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.588,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"4e276eb2804db703ddf538c1\"}",
+      "spotifyId": "3zLYevIPZQMpSPF5TOaWtt",
+      "name": "THẾ NÀO LÀ ĐÚNG? (OST \"CHỊ CHỊ EM EM 3\")",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 172.3,
+        "key_signature": "F# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.586,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d4fa06c29d2b80f980ad3a20\"}",
+      "spotifyId": "1QaKrTGAqDYzohALdW5IxO",
+      "name": "Chuyện Tình Tứ Cứ Từ Từ Tính",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 124.0,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.597,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b75a623593b0220509c44da6\"}",
+      "spotifyId": "6oulWyNi7NpsMmNZCEr6Bv",
+      "name": "Cô Bé Ơi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.5,
+        "key_signature": "F Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.534,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1b3b980ea5112597e267e63a\"}",
+      "spotifyId": "0iyeAxgyISqzY3AxSVyO1A",
+      "name": "Áo Dài Người Việt",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 143.8,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.523,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b484765f1542f97159e6780f\"}",
+      "spotifyId": "6Yz9zYtPx0WK3cOeDoTD6w",
+      "name": "HELLO EM CÓ KHOẺ KHÔNG",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 163.4,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.618,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1c566235b1bdd2ac69fa3e59\"}",
+      "spotifyId": "35MiWNMLZMftMR1CWXqxBb",
+      "name": "THOẢI MỘNG DUYÊN TAN",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 80.0,
+        "key_signature": "F Minor",
+        "energy": 1.0,
+        "danceability": 0.997,
+        "valence": 0.571,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1e60544fc16141a5a6550219\"}",
+      "spotifyId": "0vY0HP5VCTEqpknzfSIw6U",
+      "name": "Về Đi Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 100.0,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.578,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c6641c303b30900f10197d22\"}",
+      "spotifyId": "0CoswoasgMFlcVzpugbuGX",
+      "name": "KẺ SAY TÌNH",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.593,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a5f29420bf5a4f9fe733c54a\"}",
+      "spotifyId": "0ZhxYHVoEnuNRNAtwFuYnX",
+      "name": "NGÀY GIÓ GIÔNG",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.0,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.538,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"53870b5420158b6e143c5266\"}",
+      "spotifyId": "23DTegrasH0ZgEODEsFI0N",
+      "name": "BTBT",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 101.2,
+        "key_signature": "Bb Minor",
+        "energy": 1.0,
+        "danceability": 0.994,
+        "valence": 0.485,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"91a81163eb22ad8355d4be2f\"}",
+      "spotifyId": "1Tg0girhS2pNYXHMPktKn6",
+      "name": "Dòng Tâm Sự Gửi Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.1,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.536,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"72fa915995742d96b7fe1eb4\"}",
+      "spotifyId": "5Vjy6DYIz43HxclutGDr5N",
+      "name": "Hôm Nay Anh Lại Nhớ Chúng Ta",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.5,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.597,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b310f5078bdab148bb910cfa\"}",
+      "spotifyId": "3p0M5vKINtKsjcBlxG8UCd",
+      "name": "Phong Lan Lạc Lối",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 83.9,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.514,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0e59c1cbb7d78b7676048491\"}",
+      "spotifyId": "6QvlmdC8gK7a9WUnYo5QpC",
+      "name": "Cao Bồi Và Con Mồi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 93.0,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.555,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6c680c79f130500f4cdedb25\"}",
+      "spotifyId": "4SdbAEhg9DJPIKJ3kNGVmj",
+      "name": "Tâm Sự 3: Tình Chênh Phô",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 99.7,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.573,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"14d36e9abe74980e6a967876\"}",
+      "spotifyId": "2togCys2knFT75Impd4ETr",
+      "name": "PHÍA BÊN KIA THÀNH PHỐ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 119.9,
+        "key_signature": "F Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.542,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ad5e3ce624a5b26e78d22149\"}",
+      "spotifyId": "2RU8W7BYkURayqMwImzMGr",
+      "name": "Đến Khi Nào",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.8,
+        "key_signature": "F Major",
+        "energy": 0.556,
+        "danceability": 0.948,
+        "valence": 0.551,
+        "acousticness": 0.611
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1b2bafcf64de6c8bc95fd4b7\"}",
+      "spotifyId": "7iN6r2nba3IZ0u0gB7xIno",
+      "name": "Bóng Tối Yêu Đời - 11:11",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 130.0,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.567,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a69d0e5973c3fb283f9a0a45\"}",
+      "spotifyId": "3KwVhg5VE4ZFcRjdq4cvJq",
+      "name": "Cơm Áo Gạo Tiền",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 92.3,
+        "key_signature": "E Minor",
+        "energy": 0.834,
+        "danceability": 1.0,
+        "valence": 0.516,
+        "acousticness": 0.416
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bb635572a1fd05fd14fce700\"}",
+      "spotifyId": "1eORNhzmbZgfIQkSQslaml",
+      "name": "Ngày Lành Tháng Tốt",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 114.9,
+        "key_signature": "F# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.572,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"182012400274f5e8c3f8a2fe\"}",
+      "spotifyId": "27RtvTUfln3FvTWXA2JrpK",
+      "name": "Trời Xanh Chẳng Thấu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 117.7,
+        "key_signature": "F# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.581,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"23cd38a6be31c517986b06ce\"}",
+      "spotifyId": "5PJDjg6wjSZYEssaA7zhKQ",
+      "name": "Em Bán Đi Hết Chân Tình",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 155.6,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.574,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"cc9e8c2beb06e327220b67ad\"}",
+      "spotifyId": "0gg6wLMTnUrrN2MuF4Iufe",
+      "name": "BÊN ẤY EM CÓ AI RỒI",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 166.2,
+        "key_signature": "D Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.547,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"476aac69d446b8074dc1930e\"}",
+      "spotifyId": "5KlOG7dWMeX9behheWgtrl",
+      "name": "Quá Đủ Rồi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 104.9,
+        "key_signature": "Bb Major",
+        "energy": 0.676,
+        "danceability": 1.0,
+        "valence": 0.57,
+        "acousticness": 0.527
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f5bddc024bda858328f9d102\"}",
+      "spotifyId": "0rJuMzKCgrrymPcbjgQYMr",
+      "name": "người điên NẶNG",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.1,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.517,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f7c9dec3a00635769a740448\"}",
+      "spotifyId": "0pMYB9S236DhhMIMR6p0dY",
+      "name": "Kẻ Say Tình 2",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 125.9,
+        "key_signature": "F# Minor",
+        "energy": 0.466,
+        "danceability": 1.0,
+        "valence": 0.543,
+        "acousticness": 0.474
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"4edf4eef4035181df22222a4\"}",
+      "spotifyId": "14qg4FVW5Iou1VOjqZq2et",
+      "name": "Đi Đêm Có Ngày Gặp Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 117.9,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.537,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"546a5ffc7d57b16aff62bb05\"}",
+      "spotifyId": "0Y83tqgKh9A5Gwgvh84d1h",
+      "name": "Phận Kẻ Bọt Bèo",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 97.0,
+        "key_signature": "Eb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.537,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"cf066edee241c0df75984b07\"}",
+      "spotifyId": "5ePboxGXmhnrsKG7Jxc8m1",
+      "name": "Pick Anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 117.8,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.617,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"72a7720eb72b4e3f0343b8e0\"}",
+      "spotifyId": "1RBxIXnd9ExBTTi1DSG6L6",
+      "name": "Một Lần Nữa Người Dưng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 164.3,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.511,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"13e9ab71ebb8189fca3ef859\"}",
+      "spotifyId": "3kPvxCrRGhEczpwEogfebG",
+      "name": "Sau Này Em Cưới Ai Rồi Official (Ver Kiều Chi)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 144.8,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.551,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"e39ca8d02d5495a383e8f5ea\"}",
+      "spotifyId": "6vuThDeaqN7qiYNExkMBVu",
+      "name": "Hoa Nở Sai Mùa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 87.0,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.524,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"736db435a1cb68b2b6da8cf1\"}",
+      "spotifyId": "5gN8ShKRlpRjKZGqBj75xg",
+      "name": "Em Vá Đời Anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 166.0,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.496,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c3d03afa89667aa85b1cbcda\"}",
+      "spotifyId": "3uweAWTAY2yBEKljqEt8OQ",
+      "name": "Nỗi Nhớ Chơi Vơi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "Bb Major",
+        "energy": 0.86,
+        "danceability": 0.97,
+        "valence": 0.598,
+        "acousticness": 0.398
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b04c33730d38e7430e9872d7\"}",
+      "spotifyId": "00uJszTeSmhaHaaylWopGA",
+      "name": "Em Bán Đi Hết Chân Tình",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 154.6,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.562,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bc179cc34937eabc6500ec99\"}",
+      "spotifyId": "2PWODeJM4pRAEOEFdQ8G3y",
+      "name": "HOA VÀ VÁY",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 125.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.631,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"cae264594444855f1b032b3b\"}",
+      "spotifyId": null,
+      "name": "Tửu Âm",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 95.0,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.522,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2b85164399b878289ae9726f\"}",
+      "spotifyId": "7ocHH1YDT3MEmN87N3y10U",
+      "name": "Khởi Lên",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 144.9,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.581,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5ddc5c380d5d25ad18c1a4d0\"}",
+      "spotifyId": "4m6Qr4Q2f5GUz5JO5tjBrI",
+      "name": "Niềm Tin Phai Màu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 163.4,
+        "key_signature": "F Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.515,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"4ddb6f9187cebb025b7a2e7a\"}",
+      "spotifyId": "1rIs36PjsU3m7mf7HSf5Kc",
+      "name": "Ở Rể",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 122.3,
+        "key_signature": "F Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.511,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"96928f1b3fcf523571770666\"}",
+      "spotifyId": null,
+      "name": "Nhậu Đê Cốt Ơi (TDNetwork x HuyD Remix)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.2,
+        "key_signature": "Eb Minor",
+        "energy": 0.699,
+        "danceability": 1.0,
+        "valence": 0.614,
+        "acousticness": 0.311
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0f5694a329251222addce1d6\"}",
+      "spotifyId": "6RVQYFc1wiLzOxZTD877jF",
+      "name": "Bí Kíp Sinh Tồn Cho Trái Tim Tan Vỡ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 99.0,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 0.992,
+        "valence": 0.569,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"95b02759818aef9eb4fe0759\"}",
+      "spotifyId": "2w1Yw9VwSVBYx0xgGW6zJt",
+      "name": "Không Môn Đăng Hộ Đối - Thái Học Cover",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.7,
+        "key_signature": "Bb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.51,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9f54def416cae1115a60a864\"}",
+      "spotifyId": "2d6pPdckzTcr3j3hSDAA8R",
+      "name": "Cứ Đổ Lỗi Cho Anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 133.6,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.552,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"86e32183772b464999c6c3dd\"}",
+      "spotifyId": "3a3WaZHTwofSVqlXNkvILn",
+      "name": "Hãy Để Em Đi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.2,
+        "key_signature": "D Major",
+        "energy": 0.616,
+        "danceability": 1.0,
+        "valence": 0.581,
+        "acousticness": 0.369
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"851f561831c6f737bcf28ac4\"}",
+      "spotifyId": "3y1XNP7bl3SICwl0ZqLaVN",
+      "name": "Như trong phim",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 122.5,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.602,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9567144c890ba7968d8673e8\"}",
+      "spotifyId": "23eWochcx0byYTCtR6z0BO",
+      "name": "Đồng Tình Luyến Tiếc",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.3,
+        "key_signature": "B Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.556,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"af8a1f22f1d2fe0ebef7b24d\"}",
+      "spotifyId": "5tM9twrvUhPkFuhFAGBPoe",
+      "name": "Anh Nợ Em - Original Soundtrack From \"Ốc Mượn Hồn\"",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 98.5,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.509,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a4e5278889762e2f96b662bd\"}",
+      "spotifyId": null,
+      "name": "Từ Khi Nào",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 114.8,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.555,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"25a83e6f3a76ef660a6a6ad1\"}",
+      "spotifyId": "302yXH7KO0CWr3V879noph",
+      "name": "Còn Đếm Là Còn Thương",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 90.9,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.595,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"73375d95101c9c7e21f7eb6f\"}",
+      "spotifyId": "3bTgBECXT3V4MZ2Bio8ZA2",
+      "name": "Ai Làm Em Khóc",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 172.3,
+        "key_signature": "Eb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.587,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b09aff6be227765700a8fc4e\"}",
+      "spotifyId": "4xvxNlBf94gOmqvAxDMNsq",
+      "name": "Vì Chính Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 143.7,
+        "key_signature": "D Minor",
+        "energy": 1.0,
+        "danceability": 0.974,
+        "valence": 0.536,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"65ce38b16bbc011976629dd1\"}",
+      "spotifyId": "5dcGqWFQf6c29bFijacYGC",
+      "name": "Gấm Hoa Việt Nam",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.9,
+        "key_signature": "Ab Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.577,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8bec710c5302f74fd1b4ce28\"}",
+      "spotifyId": "4MhpY2h279dtPIYYS5m575",
+      "name": "Sơn Ca Đuổi Theo Làn Mây",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 117.8,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.574,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"616407b1848b3b65dbf74543\"}",
+      "spotifyId": null,
+      "name": "Bàn Tay Nắm Chặt Bàn Tay",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 105.3,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.605,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"3214beecc3699377c1b9efd2\"}",
+      "spotifyId": null,
+      "name": "Thương Nhau Đến Thế (H2O Remix)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 139.9,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.507,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"01595967e1fa6971aff4fe6d\"}",
+      "spotifyId": "5M4Y6dFFqpCOF3UPzoStcr",
+      "name": "Hoa Ghi Nhớ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 117.8,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 0.973,
+        "valence": 0.538,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6a2ba85bc8653eb03e828124\"}",
+      "spotifyId": "5WaLn6Xhwvo3nLgxkcMS4r",
+      "name": "Viên Đá Nhỏ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 144.4,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.622,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"119f070147fc45198c54f480\"}",
+      "spotifyId": null,
+      "name": "Vô Giá",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 84.0,
+        "key_signature": "Eb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.528,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"56335b6bf2c24f05525d3122\"}",
+      "spotifyId": "7DmanLxUm2ZGuKHPBqpewA",
+      "name": "EM ĐẾN ĐÂY ĐI",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 134.9,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.582,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"dc78c3407c68af0c818871c0\"}",
+      "spotifyId": "176ERojlLkueLC6aki2T8m",
+      "name": "Chia Tay Quá Đã",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 150.1,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.575,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2f1ecd5615ce51b7d5df7f45\"}",
+      "spotifyId": null,
+      "name": "Thanh Xuân Không Đợi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 151.9,
+        "key_signature": "F Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.496,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"521c11576ea8e64aefba3a4a\"}",
+      "spotifyId": "4KVoaV2vhqo6fnoM5A8OXv",
+      "name": "LÝ DO ANH CƯỜI",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 136.6,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.664,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1fbc0fdeee90a5324933fb2c\"}",
+      "spotifyId": "7gpCVj0hbPn29WHNMkW3eC",
+      "name": "Họa Phận Ái Lưu - OGry Remix",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 137.3,
+        "key_signature": "Ab Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.526,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"3f327b4f7fc7237826d61b05\"}",
+      "spotifyId": "3JIjr27X8FPXg0W5XRgSo9",
+      "name": "Đậm Sâu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 137.0,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.55,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"39574c7b4186c59c48f2ae95\"}",
+      "spotifyId": "6ChVowIMEhSzWXuFSM7YGM",
+      "name": "Kẻ Say Tình 3 (Ngày Gió Giông)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.3,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 0.975,
+        "valence": 0.549,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9ae74706137a1eec3701820f\"}",
+      "spotifyId": "456KPN1LOX1qgbIVQdoBAz",
+      "name": "Em Sẽ Đi Thật Lâu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.1,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.557,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"cd97f329e895f8c7c0327b2b\"}",
+      "spotifyId": "2ztGQMgFRzsMDdP20cAayq",
+      "name": "Lần Này Anh Buông",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 153.9,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.571,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d72cdc025c7f7a8ee278b4b1\"}",
+      "spotifyId": "251z7MoHRghXdptalUMcL1",
+      "name": "Trong Đôi Mắt Thiếu Nữ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 101.8,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 0.988,
+        "valence": 0.6,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"317cb52c1c5740d03c094959\"}",
+      "spotifyId": "1wV0FFCaOiLqZzv1xr9DnI",
+      "name": "NERDY - Làm Khó Nhau Hoài",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 103.0,
+        "key_signature": "Eb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.585,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c0bc68a2f57fd60e76fe0f71\"}",
+      "spotifyId": "0tfs9XLm1ZYhVfpl4Sj8vB",
+      "name": "Người Tốt Nhất Trên Đời",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 125.0,
+        "key_signature": "B Major",
+        "energy": 0.93,
+        "danceability": 1.0,
+        "valence": 0.605,
+        "acousticness": 0.349
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ee94898cdb3ac5d61e5380b1\"}",
+      "spotifyId": "2ZlllPSfukm2KJSQVlRVTt",
+      "name": "Ánh Dương Của Ba",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 95.0,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.575,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"28f049de0ee1195c3f4fcd99\"}",
+      "spotifyId": "5ywtKi3kws5MGypEfAnz5C",
+      "name": "Gái Tây Gốc Việt",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 98.2,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.611,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"22e5a49678dac8972b06dd9f\"}",
+      "spotifyId": "6EeYZmuZcGhNqHT6bi6cqO",
+      "name": "Hai Đường Song Song",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 85.0,
+        "key_signature": "Ab Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.548,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c079bb591acf0706f538b968\"}",
+      "spotifyId": "68z6Rvfa0zuxTm3kYo6F02",
+      "name": "Tâm Sự 5: Đôi Bờ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 104.1,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.547,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6870d21114023c7b91fd2fc9\"}",
+      "spotifyId": "4L04h2OJDNzc0y8sXBv2jv",
+      "name": "Dường Như Em Khóc Nữa Rồi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 91.9,
+        "key_signature": "F Major",
+        "energy": 0.818,
+        "danceability": 1.0,
+        "valence": 0.684,
+        "acousticness": 0.427
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ddc080a8e3960238a0fb8a1e\"}",
+      "spotifyId": "5LrkvEak7BxMsVvxNXAePv",
+      "name": "Nếu Có Thế Giới Song Song - Rock Ver.",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 135.9,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.633,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"4c56a467d5de5f7dfda122a6\"}",
+      "spotifyId": "1hujQBFbQxiVYcPSnXDSzf",
+      "name": "Lời Hứa Năm 18",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 95.0,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.587,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"90fb2fe30271b83b33a8eda7\"}",
+      "spotifyId": "6EJ56kMLqM28Qd5pLOBlsd",
+      "name": "OSCAR",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 145.9,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.587,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5e3591301d4bee48019fce71\"}",
+      "spotifyId": null,
+      "name": "Dạo Bước HongKong 1999",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 99.0,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.603,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f0789d929be36c258b8efec1\"}",
+      "spotifyId": "2JZH5Rwp2WCAWzm3hXYzQf",
+      "name": "SSD",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 134.8,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.549,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0c8a09239df23d46c84b8125\"}",
+      "spotifyId": null,
+      "name": "Hết Tình Cạn Nghĩa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 172.3,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.52,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1ed8d76877bcbbf26f2285df\"}",
+      "spotifyId": "2QXbwqVx7yMAlEfmRHyIGh",
+      "name": "Tâm Sự 4: \"Anh Đã Cỡ Nào\"",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 117.4,
+        "key_signature": "Ab Major",
+        "energy": 0.385,
+        "danceability": 1.0,
+        "valence": 0.545,
+        "acousticness": 0.731
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9b109fbfb4dc1c5eaab8d085\"}",
+      "spotifyId": "6kkQ2uMYbxoh3RMAF6eAB9",
+      "name": "PULL UP",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 135.1,
+        "key_signature": "D Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.594,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"36c5268b633124ff43d7c16f\"}",
+      "spotifyId": "1ujwMxoJvK9gsfg4YeNa1M",
+      "name": "Thế Gian Nào Phải Mình Anh Mắc Sai Lầm",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 94.3,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.515,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6d74bd9ecef3a6060e9b3e54\"}",
+      "spotifyId": "4KJJZCAFcslGdp7LhWIQRL",
+      "name": "Anh Chỉ Yêu Cô Ta",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 84.0,
+        "key_signature": "Bb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.525,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"e29b1d49eba521c33abcba29\"}",
+      "spotifyId": "4C1I9u6n3u547y9U0XNu72",
+      "name": "Yêu 1 Người Mộng Mơ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 78.0,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.541,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"76be2c97d6b7d22023b32aa4\"}",
+      "spotifyId": "7z6MDgYecHau9MlH4BrqRw",
+      "name": "Có Phải Em Đâu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 78.0,
+        "key_signature": "F Minor",
+        "energy": 0.706,
+        "danceability": 1.0,
+        "valence": 0.548,
+        "acousticness": 0.506
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"72bfaea5c7f6213e975c4326\"}",
+      "spotifyId": null,
+      "name": "Tháng 9 Em Qua",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 88.0,
+        "key_signature": "F Major",
+        "energy": 0.85,
+        "danceability": 1.0,
+        "valence": 0.58,
+        "acousticness": 0.405
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"3a5b743ec76a2315d5d952f5\"}",
+      "spotifyId": null,
+      "name": "Chắc Chắn Một Người (Remix)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 100.0,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.528,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ce668bfa0505dbe3e9d8f057\"}",
+      "spotifyId": "2hDxgqrN469UiG5tpE2vAM",
+      "name": "Cầu Được Ước Thấy",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.9,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.574,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"fd3f9c617dc732312ae52551\"}",
+      "spotifyId": "4TYZX6GrhK7797Ridc2U2c",
+      "name": "Em Đâu Thua Một Ai",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 85.0,
+        "key_signature": "B Minor",
+        "energy": 0.95,
+        "danceability": 1.0,
+        "valence": 0.545,
+        "acousticness": 0.335
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"75d82be36aff26895dab73a7\"}",
+      "spotifyId": "6hy5btG1x83zRGmBfcYO1s",
+      "name": "Nếu em không xuất hiện thì sao?",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.7,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 0.975,
+        "valence": 0.643,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a3de04d3eb41e784f59943d8\"}",
+      "spotifyId": "6CTdPSNvUYw7UjerVIkUia",
+      "name": "xương rồng (intro)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.4,
+        "key_signature": "C Major",
+        "energy": 0.489,
+        "danceability": 1.0,
+        "valence": 0.619,
+        "acousticness": 0.458
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"84bc53c37a3f520508997f2b\"}",
+      "spotifyId": "07TkkhRvCmqGIQHe0QrBSb",
+      "name": "KHÔNG XI NHÊ (feat. Touliver)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.0,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.645,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"682fde09f22b0c2afbddfa4f\"}",
+      "spotifyId": null,
+      "name": "Bốn Chữ Cả Đời",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 85.2,
+        "key_signature": "D Minor",
+        "energy": 0.964,
+        "danceability": 1.0,
+        "valence": 0.569,
+        "acousticness": 0.325
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b858837d25d4d88ce3b5dc30\"}",
+      "spotifyId": "5zcvKgiDixEQnpmQfESX51",
+      "name": "ONE MORE NIGHT (TMS Version)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.63,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ca926462fb46ee2cb35a4d40\"}",
+      "spotifyId": "1nWMHO1RvnRUYc1eq9AEhS",
+      "name": "Tình Sâu Phận Mỏng (Lụy Tình 2)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 163.5,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.582,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5f79ba7f02916f8839c561e3\"}",
+      "spotifyId": "32Enf9xLJXV8t423PpEaYX",
+      "name": "Hãy Một Lần Là Em - Piano Version",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 116.6,
+        "key_signature": "C# Minor",
+        "energy": 0.929,
+        "danceability": 0.971,
+        "valence": 0.492,
+        "acousticness": 0.35
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"258e07a64e71db0f648ba2e3\"}",
+      "spotifyId": "5rGtrjNSJWqkcXwP0DSmRu",
+      "name": "Chữ Vấn Chữ Vương",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 90.0,
+        "key_signature": "C# Minor",
+        "energy": 0.633,
+        "danceability": 1.0,
+        "valence": 0.552,
+        "acousticness": 0.557
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8c01548bab79c633378c98d6\"}",
+      "spotifyId": "1U84HVkHzJ6yU9AUplQCr5",
+      "name": "Hôn Lễ Của Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.6,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.626,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d5018aeb7f6b86c8a88042ac\"}",
+      "spotifyId": "3gUtZHFZq8j1ApSaS4XGPz",
+      "name": "gửi con",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 117.1,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.562,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"283c7706fb62f2bb99cfc7d6\"}",
+      "spotifyId": "7HvQQrBIcoHKpplQLkb6D0",
+      "name": "Bóng Tối Đời Con",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 91.5,
+        "key_signature": "Bb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.548,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bbee442e66ca055737a3cd84\"}",
+      "spotifyId": "271jbGpt0HLIY8HafOU2u0",
+      "name": "Thấm Thoát",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 88.5,
+        "key_signature": "F# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.519,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1242eeb8cbd00b89f4a48134\"}",
+      "spotifyId": null,
+      "name": "Chữ Vấn Chữ Vương",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 89.9,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.518,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"da5a8bf5fb37790c2f8c9284\"}",
+      "spotifyId": "0nANFjiv4mpUHoy2A4JVcm",
+      "name": "CỰ TUYỆT",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 118.4,
+        "key_signature": "F# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.581,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"7ddbde30c40011b401a1e892\"}",
+      "spotifyId": "3HPHpFDGNyNGGSAOjmcvDR",
+      "name": "Tình yêu một mùa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.0,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.571,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8ca3c0a064e60e74d268910d\"}",
+      "spotifyId": "7fj7txufCXorWZz1NEK7Ih",
+      "name": "Chẳng Thể Cùng Nhau",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 135.9,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.604,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"fdb9ea9297489dd98b4f8f92\"}",
+      "spotifyId": "4GBhNOfsVYfGwvhX8qh4tJ",
+      "name": "Xin Lỗi Vì Đã Xuất Hiện",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.9,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.592,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8ec7250f0727095931014c25\"}",
+      "spotifyId": "7hVuKUupHeXXClqvElxgbg",
+      "name": "Còn Nhớ Hay Đã Quên",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 104.6,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.558,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"155d40e2d11f690ed7efe1ac\"}",
+      "spotifyId": "6SvMQka2Icns1Ml7VSXhDC",
+      "name": "Gì em cũng biết",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 118.7,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.601,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a007a648bf78fc2fd1bf994c\"}",
+      "spotifyId": "7x10NUYLPftW0qPMwbnEea",
+      "name": "Sự Ưu Tiên Của Em - Cover",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 86.0,
+        "key_signature": "Ab Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.531,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"7743999f0a206052611faaa9\"}",
+      "spotifyId": "28NSjyMJMaBQPWyd7m8vhP",
+      "name": "Chẳng Ai Hiểu Về Tình Yêu - Drill",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 110.0,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.661,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"926580b370ecb8005f672131\"}",
+      "spotifyId": "752RVfIlzh8rPhcT4KfzhE",
+      "name": "Nếu Cả Đời Này Không Rực Rỡ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 150.1,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.651,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ebe70be0f63372fe9e9b4d69\"}",
+      "spotifyId": "7jSSGh0ps42O9bPqhNFMf1",
+      "name": "Quá Lâu - Live Version",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 118.3,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.621,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9de570a0eb7ff50355c98d16\"}",
+      "spotifyId": "7MrTDGBM3nGzdTKoR61eyF",
+      "name": "Cự Tuyệt",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.4,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.547,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"50f63a832f462c73651e3f28\"}",
+      "spotifyId": "6dGn1u4K0b5V4ROCOWdPsO",
+      "name": "Không Nên Lời",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.493,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d67c49ab828bfe360de169c1\"}",
+      "spotifyId": "7JMQpWHl28MZ2h2tt1E7zh",
+      "name": "Tâm Cơ 6677",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 103.9,
+        "key_signature": "C# Minor",
+        "energy": 0.699,
+        "danceability": 1.0,
+        "valence": 0.594,
+        "acousticness": 0.511
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0a5c526603d81b1f8c637a7e\"}",
+      "spotifyId": null,
+      "name": "Yêu Em Thì Gật Đầu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 95.9,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.687,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"269bee48219a86f89fd250b1\"}",
+      "spotifyId": "5YLa8w7wjbFLuceRLAmGkV",
+      "name": "Giữ Vẹn Chữ Tòng - Lo-Fi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 137.0,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.644,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c0038829e0df0b64551d01c2\"}",
+      "spotifyId": null,
+      "name": "I Know",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.7,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.531,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f216a2bfc8845472e1236fd1\"}",
+      "spotifyId": "1fUQRUmUvhAZ5yB6Gp2Y6e",
+      "name": "Phần tối trong anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 136.8,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.585,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bfd69fb4a6ea44c251c9f3b4\"}",
+      "spotifyId": "2zwwCOlchPw9pMBVrBAheL",
+      "name": "Cứ Đi Rồi Sẽ Đến",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 117.5,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.591,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6b4b21191a2d34be4d648ff6\"}",
+      "spotifyId": "4FYSWRR2K6iK0GcwufeOIS",
+      "name": "DÂN BẢY NÚI",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 100.0,
+        "key_signature": "Eb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.528,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2975709447993b1b86622e7d\"}",
+      "spotifyId": "6ELX356o21U28T73ZxruUj",
+      "name": "Tìm Em (feat. Bảo Anh)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 144.3,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.577,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"888972fddda79c7ed2c9fe7e\"}",
+      "spotifyId": "6flJE5kzGGFK30F7kBPPno",
+      "name": "chờ chút... (feat. CONGB)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 172.3,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.593,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b11d579a95359bb1c699ee5d\"}",
+      "spotifyId": "1ApIGNgp1azc0qB61x4GzG",
+      "name": "Không Buông",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 139.7,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 0.913,
+        "valence": 0.605,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"06d366bef277ba111afa0f42\"}",
+      "spotifyId": "2HEd2fkMbbIclpv8pYvWW0",
+      "name": "để dành cho em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 184.6,
+        "key_signature": "F# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.592,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b8c5a573e9795ae687bdb9f2\"}",
+      "spotifyId": "6mKMGpkgP2cH5gmqILWe7b",
+      "name": "vết thương",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 114.7,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.591,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"e717ef238773dff979467b73\"}",
+      "spotifyId": "4s5qAgRqUlN57EE4sgo5H3",
+      "name": "Wrong Times (Remake)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 147.8,
+        "key_signature": "Ab Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.661,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2543d14c8affd8e03c7c431a\"}",
+      "spotifyId": "6Qwl74olNi1rl65FNxG5We",
+      "name": "Và Thế Giới Đã Mất Đi Một Người Cô Đơn",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 136.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.593,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ede8d5ccb335efb64dd2235b\"}",
+      "spotifyId": "4BdB08vuS9r4HOoY7GkAxT",
+      "name": "Nếu Ngày Ấy",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.7,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 0.926,
+        "valence": 0.558,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a25277a4892dabbbe4f41844\"}",
+      "spotifyId": "4TyQKEifYDWTfTSRwpxlYI",
+      "name": "Bông Hoa Đẹp Nhất",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 117.7,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.611,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6a893fda05bfe4c3a3dda1ce\"}",
+      "spotifyId": "2a5hng9yXtbjtTVVm9UviC",
+      "name": "Mơ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 111.7,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.579,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"fe270a673f3eb1681c8abfd7\"}",
+      "spotifyId": "6TGwaBlfUGVoeZMBLzvXGP",
+      "name": "thế giới của anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 104.9,
+        "key_signature": "Ab Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.659,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0f84779ef91dd2d2f56504d1\"}",
+      "spotifyId": "2wZAvkgiOE5tyrnqhB69KA",
+      "name": "Âm Thầm Bên Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 139.9,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.575,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2d99dcb357fe7756c731d395\"}",
+      "spotifyId": "3J3nv18iIrOhca1ZWNeuyW",
+      "name": "Đã Lỡ Yêu Em Nhiều",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 80.1,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.574,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"e7e5adeb082290d8da473e36\"}",
+      "spotifyId": "4CUvVaAYuXtvYURLFz7EIL",
+      "name": "Chuyện Đôi Ta (feat. Muộii)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 99.8,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.616,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"7ff9dc9b078b46acdf8c164c\"}",
+      "spotifyId": "1o6cYDMHvKOfizi4d9Lqxr",
+      "name": "id 072019",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 109.0,
+        "key_signature": "F# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.542,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"27aeff45744c337669785d07\"}",
+      "spotifyId": "7Ap1JyVKsS8dWQgyKUCUwy",
+      "name": "Để Dành Khi Thức Giấc",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.9,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.605,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8eb856f2b93499774b5bac0b\"}",
+      "spotifyId": "41DlPJXKTCypXdf2eSqa03",
+      "name": "bình yên",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 122.6,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.565,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d85d776e31a6e46cdbddd069\"}",
+      "spotifyId": "6Hs2xIgB8nzyGFDvVA8lFa",
+      "name": "Có Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 134.8,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.537,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f0a6483bce59e32b8722e0c4\"}",
+      "spotifyId": "7zJ6yuuOnjjRqbKv1zfCAl",
+      "name": "một đời",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 135.8,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.588,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"fa1765562ee73c80cbe2ac43\"}",
+      "spotifyId": "5cn5oHiXJTLiuthgbgfkMh",
+      "name": "Vết Mưa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 97.5,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 0.939,
+        "valence": 0.582,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2bed7631a637ce114dc5891c\"}",
+      "spotifyId": "50xuQI5QlXggFKpq66IBON",
+      "name": "Sandwich & Story",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 164.1,
+        "key_signature": "Ab Minor",
+        "energy": 1.0,
+        "danceability": 0.945,
+        "valence": 0.531,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c6587d50ca69427e036e8e70\"}",
+      "spotifyId": "5VGOYjxkEaf19LoRPIolD2",
+      "name": "Anh Muốn Nhìn Thấy Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 118.7,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.613,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"69227c61e08e5064693bd0ab\"}",
+      "spotifyId": "6VXVYATpQXEIoZ97NnWCmn",
+      "name": "Vì Anh Đâu Có Biết",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 139.9,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.557,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"63cdc74ae1e2f77514466231\"}",
+      "spotifyId": "5ouxRyInSdRBQubu3KTd97",
+      "name": "nếu lúc đó",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.594,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ffeae46adf2957e1645951d0\"}",
+      "spotifyId": "6nInHlewtrNKguNKlXt0Ur",
+      "name": "Nắng có mang em về",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 151.6,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.55,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0304bddb30cc4b7cbeeafb10\"}",
+      "spotifyId": "2sSsy51uNPKas6x0JWr0TN",
+      "name": "Liệu Giờ (feat. Văn)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 90.0,
+        "key_signature": "F# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.565,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bf51bc9024362d8711375b3c\"}",
+      "spotifyId": null,
+      "name": "J97 - Người Dưng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 94.0,
+        "key_signature": "B Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.542,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b191cb7480a4a19527676099\"}",
+      "spotifyId": "27Z9T0mSWHYWSj9SNOGvyt",
+      "name": "Thằng Điên",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.561,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"18a523e32324d020ec61cfe9\"}",
+      "spotifyId": "2dPJtlvoa3GDowCh035M8P",
+      "name": "Nếu Những Tiếc Nuối",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 146.8,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.561,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"e5a2cf8aec17545c8da80ef7\"}",
+      "spotifyId": "1MiJk3dXC5jzhvLFP0dUM7",
+      "name": "Thức Giấc",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 127.0,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.556,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"91e6c2d0e656fc6ce4c7a75e\"}",
+      "spotifyId": "3DLtPObflLQBodZN8qGODT",
+      "name": "2AM",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.2,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.615,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a5fd98443d8292d86eac10f4\"}",
+      "spotifyId": "5BTzf3doGTigDIYUFtbkI9",
+      "name": "Sinh Ra Đã Là Thứ Đối Lập Nhau (feat. Badbies)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 142.2,
+        "key_signature": "F# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.604,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"669948bb320d9a0e9ec384a2\"}",
+      "spotifyId": "4CVxKSRLUxqUuj2z9vn4fS",
+      "name": "Xin Đừng Lặng Im",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 135.4,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 0.979,
+        "valence": 0.533,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"124236f6d30ee91d8ec08482\"}",
+      "spotifyId": "6vq9mSv7KaZj193QEAAkAt",
+      "name": "Dạo Này",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 139.9,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.6,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"76aa5d03ce60a567e47cee22\"}",
+      "spotifyId": "3x7Hh3zsE1wcXCU2G8l5tP",
+      "name": "DANCING IN THE DARK",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 108.0,
+        "key_signature": "Ab Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.599,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"16276a26de5cb0aa3a045c13\"}",
+      "spotifyId": "36fgG6NiEuQXznNgf5y2Ck",
+      "name": "một bài hát không vui mấy - Extended Version",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 95.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.597,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"dec63db8f7bd67d3cef7a42c\"}",
+      "spotifyId": "6r5o9yIc16ZvymXUKJQ1yy",
+      "name": "2 4",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.587,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ee20a7800cf1e83b98f9fafe\"}",
+      "spotifyId": "31VNCmwspR7nVJ6kruUuJt",
+      "name": "Đừng Làm Trái Tim Anh Đau",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 125.5,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.574,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"989f4c441bc29d811946eaf5\"}",
+      "spotifyId": "3un8UkiPHJjlsrTHQnisXH",
+      "name": "Từng Quen",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 153.7,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.565,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1108d040f10517d3a5cdb1ee\"}",
+      "spotifyId": "7fCeYpR02Q8JVuD88hJZVT",
+      "name": "Bầu Trời Mới",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 90.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.592,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a55dcde4ba4d0688d3e84075\"}",
+      "spotifyId": "0e6fZkLArSmDIHnZcIua7t",
+      "name": "Không Yêu Em Thì Yêu Ai?",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 130.0,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.552,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"3e19f61dcaccd967ce313f74\"}",
+      "spotifyId": "1xoadYaxtOp9gHDwgmPDuz",
+      "name": "Sài Gòn Hôm Nay Mưa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 136.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.579,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ebf243efcada848afe87bed0\"}",
+      "spotifyId": "6GM4ZOBDcDroldUxI8GZ2B",
+      "name": "Ai Ngoài Anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 100.0,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.568,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0d72397d09c76ea15ea8e024\"}",
+      "spotifyId": "6qDzk36tXJDLqHCSlmb885",
+      "name": "hãy đến đây bên anh trong một chiều mùa thu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 109.9,
+        "key_signature": "F Major",
+        "energy": 0.98,
+        "danceability": 1.0,
+        "valence": 0.575,
+        "acousticness": 0.314
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"596dc92fc3b40a74635f1a22\"}",
+      "spotifyId": "43zzuEWDotRcKlSFzrlJqs",
+      "name": "Thêm Bao Nhiêu Lâu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.8,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.612,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"42bf141fd7e93a7769bc2891\"}",
+      "spotifyId": "25h0TqC9H3BcMA7KjK5nHK",
+      "name": "vaicaunoicokhiennguoithaydoi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 87.0,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.537,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bca751cf3eeabbf6ce06e780\"}",
+      "spotifyId": "3t5PCyVOzg7OsCfPh0phO3",
+      "name": "Nhẹ Buông",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 125.0,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.574,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9ef829cecad07d0327316a29\"}",
+      "spotifyId": "1ULhtqJ4p9g0Giyu8bxCb4",
+      "name": "Anh Vẫn Ở Đây",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 143.6,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.573,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"e6c597518122a95889806e03\"}",
+      "spotifyId": "4AgVaW4inG7jygPv2rQ210",
+      "name": "Lỡ Thương Nhau - Bò Sữa Bay Original Soundtrack",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.619,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ece4ed4ade330eaf094ecb78\"}",
+      "spotifyId": "3UJ2gSPFPSkPKZghRI8y1e",
+      "name": "Love is",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 139.1,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.606,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ba0a7b71496145f5cc7ee4ec\"}",
+      "spotifyId": "2pm7K14nHj2fLrpU8j9bit",
+      "name": "10 Ngàn Năm",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.9,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.505,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2710d48c06f62b4f588967be\"}",
+      "spotifyId": "6BnPsHZv1jPbPAsQsm0s5b",
+      "name": "Nếu Như Ta Chẳng Còn (feat. A$AP Ướt Mi)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 91.8,
+        "key_signature": "D Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.523,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"aa014adadc5ee476b38af243\"}",
+      "spotifyId": "2q2DN73j7oY2igLflertN3",
+      "name": "Thích Quá Rùi Nà",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 105.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.662,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"48b270b18297cb4fd746e38f\"}",
+      "spotifyId": null,
+      "name": "NGƯỜI NHƯ ANH XỨNG ĐÁNG CÔ ĐƠN - KHÔNG ĐAU NỮA RỒI",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.3,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.598,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8bb9a059177656321dfcf346\"}",
+      "spotifyId": "0OB5hTu7ELKeVoD6JVRo6m",
+      "name": "Thiên Mệnh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 114.7,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.623,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"cfef79e79d57f5edc0657cd0\"}",
+      "spotifyId": "2w7jOvl0kpplNxisgfnCdT",
+      "name": "Nếu Biết Đó Là Lần Cuối",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 112.9,
+        "key_signature": "F Major",
+        "energy": 0.708,
+        "danceability": 1.0,
+        "valence": 0.56,
+        "acousticness": 0.504
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"26ed30efa833c456666736cf\"}",
+      "spotifyId": "48SDjh34zzai5fZMbvoqUb",
+      "name": "Gói Con Tim Làm Quà - Bò Sữa Bay Original Soundtrack",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 95.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.584,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a72cb919ef789aaefacb082d\"}",
+      "spotifyId": "7mblTCdc14ylJ1JW71MODb",
+      "name": "Giờ Thì",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 144.0,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.568,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5733097cab4a8a88fedfe976\"}",
+      "spotifyId": "3P3rcI48wwVEgxF5vPM6pG",
+      "name": "Buông Đôi Tay Nhau Ra",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 111.0,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.567,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"4e687d32bdab1d0bab7cb1ea\"}",
+      "spotifyId": "0EGwksIbRx7VflNBzuIBvc",
+      "name": "hoá ra…",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 87.2,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.561,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9d2bcfb7c42b4f168b71d74b\"}",
+      "spotifyId": "665icbnONLCTiMFhAM9EPk",
+      "name": "Perfect",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 90.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.557,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"92b58e3db3c40640ffbcbf37\"}",
+      "spotifyId": "0JKEP4dB1riE6l7Kq5kJm1",
+      "name": "Em Đừng Khóc",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.7,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.56,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1b4bf50b280c616423e76ccd\"}",
+      "spotifyId": "3ZbZtdEw9U0uZW4tZItIwq",
+      "name": "Chịu Cách Mình Nói Thua",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 153.8,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.676,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6ab3bd10a2934dcd5a6c691f\"}",
+      "spotifyId": "216277D0dqtJ8sRENjp4uR",
+      "name": "Dầm Mưa (nhưng không cảm lạnh) (feat. Erik)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.8,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.6,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f7d580f852f26ac35ad36d92\"}",
+      "spotifyId": "3qKeW2XJFZU5CvOQKStQW6",
+      "name": "NGƯỜI ĐẦU TIÊN",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 122.2,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.589,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c2925dfa1eee151f6b5e4c12\"}",
+      "spotifyId": "0X28PqBpbQhWdi4usYw0w5",
+      "name": "Tò Te Tí",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 161.7,
+        "key_signature": "D Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.561,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9a5e1067f958b318ac567d56\"}",
+      "spotifyId": "3Ids3RXurYBgySph53qWnB",
+      "name": "Từng Ngày Yêu Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 152.9,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.568,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"750a9d4ba86bdafaaf44d491\"}",
+      "spotifyId": "2Wjghh0RpiBquLsJ932X6R",
+      "name": "nhắn nhủ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.9,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.551,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"67c0d480ae1121ba7009e526\"}",
+      "spotifyId": "6uxuJ8Fr1AAfSPJUF9N1yr",
+      "name": "Bước Qua Mùa Cô Đơn",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 136.0,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.592,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"71a666d6b5795c310010f5fc\"}",
+      "spotifyId": "4N99EuIjwSSFFFMDfTeOLU",
+      "name": "Em Không Khóc (feat. Vũ Phụng Tiên)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 81.0,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.54,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"da5287f0d720a255c03013ff\"}",
+      "spotifyId": "5C3fx9rdM4Bxf1MSOQC4Ym",
+      "name": "An Thần",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 113.1,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.584,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a3ae2e6c1ddfa417428abf58\"}",
+      "spotifyId": "0VWKtnP6P6lNuevoVhR8ur",
+      "name": "shhhhhhh..",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 138.1,
+        "key_signature": "D Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.607,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8187e77cd23dc68862b726eb\"}",
+      "spotifyId": "6jbvNeRq4dq4VxASFko4On",
+      "name": "Crush",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 138.1,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.624,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"4771267e798d59fc30266385\"}",
+      "spotifyId": "7kugDWrt5suA04eU2BYxg1",
+      "name": "Có Ai Hẹn Hò Cùng Em Chưa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 139.7,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.585,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5f368c1d2818bf34a66d4bbe\"}",
+      "spotifyId": "7dlgEjrK3lHbP786dshKDV",
+      "name": "CHỜ ANH VỀ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.5,
+        "key_signature": "Bb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.532,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"268f9bbf7b4a1800d5d1e4b8\"}",
+      "spotifyId": "6UFvSmKzCZ16fxsybf4PhE",
+      "name": "HONGKONG1",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 99.0,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.559,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"75e9cf14f95407acda53224f\"}",
+      "spotifyId": "5tmA5oQDF0ULqRI12LKCDw",
+      "name": "Chiều Hôm Ấy",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 153.2,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 0.992,
+        "valence": 0.59,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"fb94b433d8511b2a6d88f9fc\"}",
+      "spotifyId": "55Eo6NDkVhSRBonrT16kXM",
+      "name": "Đến Đây Bên Anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 114.7,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.597,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"38eeb63623870ff7112d4279\"}",
+      "spotifyId": "58ZlEBxBrzISXtmcOPo476",
+      "name": "giá như",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 125.1,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.533,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"67aeadba83f4bdb4def2baa3\"}",
+      "spotifyId": "1izPmgSW7FV6XFdEOiTvOY",
+      "name": "Em Không Hiểu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 93.0,
+        "key_signature": "C# Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.577,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d4d47edb970520e5de9c7352\"}",
+      "spotifyId": "7AD5F85waSb3yZxZxEXhJM",
+      "name": "Có Ai Thương Em Như Anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 70.0,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.595,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"39722ba24403f1e30a796dc4\"}",
+      "spotifyId": "4QalnBNnw9uK1dj543nf76",
+      "name": "Không Thời Gian",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 96.9,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.605,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"834922b27a5bce7beb0de603\"}",
+      "spotifyId": "4HjBeRYorM50d1rCrl853a",
+      "name": "50 CUỘC GỌI NHỠ (feat. CoolKid, Quang Hùng MasterD, Jaysonlei & CODYNAMVO)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 130.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.617,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"4e528b39a3734cf4c045dfb8\"}",
+      "spotifyId": "5SzJs9cwYXdSm9G3xcXuA2",
+      "name": "Hôm Nay Tôi Buồn",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 134.8,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.62,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f171d9e842b2ea89a50b13a1\"}",
+      "spotifyId": "1WbBYmHCAF5A2crxoW94Lt",
+      "name": "Say You Do - 2nd Single 2015",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 104.0,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 0.989,
+        "valence": 0.641,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"78861a98dd14fa2b6d384a5c\"}",
+      "spotifyId": "6jcLKVmEKAQIXIVHJZ8vzS",
+      "name": "tình yêu chậm trễ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 178.2,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.585,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bf89664b9a3bd246d656e213\"}",
+      "spotifyId": "29sooRGEz16oXmJh9SbKaB",
+      "name": "TRỄ GIỜ CƠM (feat. Quang Hùng MasterD, Xuân Định K.Y, WEAN & Sơn.K)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 109.0,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.586,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"627b39df2771b9ae650317b5\"}",
+      "spotifyId": "4VjLWbQhf8KUPMeuBO5H55",
+      "name": "MVP (MƯA VỘI PHÓNG) (feat. Wren Evans, Ali Hoàng Dương, CODYNAMVO, HYO & 2pillz)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 150.0,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.531,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d72808b2a7ae69ac5dbbf592\"}",
+      "spotifyId": "5TNW2LZ10ZaoP2QR1eR59g",
+      "name": "Hà Nội",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 107.8,
+        "key_signature": "B Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.55,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"96093f28d9d040ea554d9052\"}",
+      "spotifyId": "1J3SmWwlYAG68LGKr86MVH",
+      "name": "Chúng Ta Của Hiện Tại",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 77.9,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.617,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a22d1d010d036f1fca1501b6\"}",
+      "spotifyId": "7pRF83cjFfTtUYX2P4pYgX",
+      "name": "My Everything",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 122.5,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.549,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f916089c4a7b037ac1836d86\"}",
+      "spotifyId": "5tO7bsdjlaBAMriwh1xQC2",
+      "name": "Chẳng Ai Hiểu Về Tình Yêu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 144.9,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.601,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"db09d35c5e5efdbce88cd100\"}",
+      "spotifyId": "7lbVxN06wsMIXHniG8MdCW",
+      "name": "Em Đã Biết",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 145.0,
+        "key_signature": "E Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.585,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"4573c24cd96850eaf418a163\"}",
+      "spotifyId": "2SykQzXuFSeprST1uDjj1m",
+      "name": "trời giấu trời mang đi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 92.0,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.624,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"84532d740e4a6c17542b2982\"}",
+      "spotifyId": "2ppLwHSMgDGEQ5c8o6nAX2",
+      "name": "Simp Gái 808",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 95.1,
+        "key_signature": "Eb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.546,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"7f7072ae6fdd3489cd7e8af3\"}",
+      "spotifyId": "4YMM05vannAm37Mp1dHK1V",
+      "name": "Chìm Sâu",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 101.8,
+        "key_signature": "B Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.583,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"35c02cc02f6fc3b066b5a03b\"}",
+      "spotifyId": "1ordU9Ts6JNRalwVoXgJd6",
+      "name": "đôi mắt kẻ tình si",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 92.9,
+        "key_signature": "Ab Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.568,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ca4de3ef26342655a9626098\"}",
+      "spotifyId": "5dg4e5942EFejbNzdWEnmN",
+      "name": "Thanh Tân - song ca Thùy Chi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 107.1,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.57,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"183b4bfe00e094032729aaee\"}",
+      "spotifyId": "3mAEEsw6zUJlpmjZOHdHPp",
+      "name": "Hoa sữa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.632,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d5c53e3e4665a1b08c29c8a8\"}",
+      "spotifyId": "0pavLg3wbL6PVXAgXoWv4S",
+      "name": "Một Nửa Sự Thật",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 137.0,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.579,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c4abe882451ac1cc31b13361\"}",
+      "spotifyId": "19U8QkwGDiQnYtnNIlspuo",
+      "name": "Nói Dối",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 84.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.543,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"587e832a03f1a94100b14b84\"}",
+      "spotifyId": "1RJ18rerySdcshTdnc0oOk",
+      "name": "Câu Trả Lời",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 94.9,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.58,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9e3eef30914495f0fc64a675\"}",
+      "spotifyId": "1hPbWyZnUPaeAWbOSKwkXJ",
+      "name": "Anh Đã Không Biết Cách Yêu Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 114.7,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.576,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5f89c841ef3a3a2c14c0194d\"}",
+      "spotifyId": "27lfAtyr8kbML8L4woIeEH",
+      "name": "1000 Ánh Mắt",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 143.7,
+        "key_signature": "Ab Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.583,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ae104db18dcac72f2098263c\"}",
+      "spotifyId": "40pWxpbXoBYGPCiofujjZ6",
+      "name": "Chăm Hoa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 108.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.654,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bc7f0a67a63e684fe7e765f8\"}",
+      "spotifyId": "7kgzRBNkBRArtTPkYjWLYT",
+      "name": "bao tiền một mớ bình yên?",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 172.3,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.583,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8706c88c3f51f327139e326c\"}",
+      "spotifyId": "4Iz5EWPCAT8jYNk4IpLoll",
+      "name": "Dù Cho Mai Về Sau",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 103.8,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.58,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d96e5734964a10ef25fa0cc1\"}",
+      "spotifyId": "7H2j1yMCXXNfd9V9aKeodi",
+      "name": "Đường Tôi Chở Em Về",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 94.0,
+        "key_signature": "G Major",
+        "energy": 0.736,
+        "danceability": 1.0,
+        "valence": 0.603,
+        "acousticness": 0.485
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"df0a2dfe052ab845c74c1516\"}",
+      "spotifyId": "4DJZfZPvWYbSeFVFf2b2aS",
+      "name": "Đừng Yêu Nữa, Em Mệt Rồi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 155.6,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.647,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b78af9c22e11406a1d19600a\"}",
+      "spotifyId": "0JF65tQ1nQxBHFzs5IVn8o",
+      "name": "toidaidot",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 100.5,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 0.994,
+        "valence": 0.571,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f1aae6ef26148ea9f153f0e1\"}",
+      "spotifyId": "7J9l9ebYB3IEs5ea5J1M7a",
+      "name": "Nước Mắt Em Lau Bằng Tình Yêu Mới",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 95.0,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.597,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c627d2fcdb0db0b15254872b\"}",
+      "spotifyId": "5Bti0azlFhMattVY76qFr9",
+      "name": "Lạ Lùng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.0,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 0.992,
+        "valence": 0.558,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"43b641873a17b808b86f1be5\"}",
+      "spotifyId": "527UV7H9SbnmTVkxBVg56X",
+      "name": "Chắc Ai Đó Sẽ Về",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 138.3,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.573,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"73881b7ef68ea4c1e62df27f\"}",
+      "spotifyId": "3b34161QoxLwsqhWSPy9i5",
+      "name": "Thanh Xuân",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 90.0,
+        "key_signature": "G Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.502,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"09a656391d53e75b5fe35ed4\"}",
+      "spotifyId": "50cmxP6KlnQA9IG3q5ckKD",
+      "name": "Mascara",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 113.3,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.57,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f273d0789c448dbb91750327\"}",
+      "spotifyId": "2e6uyFP80Vuaz7V7bDWD0e",
+      "name": "Chạy Khỏi Thế Giới Này",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.58,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2ab567eac036364ebaf0812a\"}",
+      "spotifyId": "5pZ8Kli2wnkKAxlAjtRIoa",
+      "name": "Gái Tây Gốc Việt - Air Remix",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 136.7,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.502,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0448025f53f9587f10388834\"}",
+      "spotifyId": "317Lh6QCAz9JpWbV3oxrCf",
+      "name": "EM ĐAU",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 100.0,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.563,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"93b449c7c95db6a9a8e7f563\"}",
+      "spotifyId": "0d6dbFvKczX1Us3J7TsMMv",
+      "name": "Lỡ Say Bye Là Bye",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 144.9,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.607,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"14ac125c5e071e5f61ba454f\"}",
+      "spotifyId": "1LJyhnPdYGRLerwJd8CmL1",
+      "name": "Những Lời Hứa Bỏ Quên",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 135.4,
+        "key_signature": "C Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.583,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a8f6c6395b16dff931a5359c\"}",
+      "spotifyId": "3XRvVlOBvClOq1KpI50uKC",
+      "name": "giữ lấy làm gì",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 83.0,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.595,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2f690ed15db02486d40e4909\"}",
+      "spotifyId": "08ULi904W2Po6pVj8nN7KC",
+      "name": "đưa em về nhàa",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 91.0,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.566,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0e291c0f8f3c24b6be893f38\"}",
+      "spotifyId": "5LjAoCkohTEiMXKJOKCQeF",
+      "name": "Thương Nhau Đến Thế - Jerk Drill x Synth Club",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 110.0,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.558,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"05ed2329b16e0ff730a670f8\"}",
+      "spotifyId": "54UNNgtE3zzERwTuWSQLqd",
+      "name": "có hẹn với thanh xuân",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 99.9,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.555,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"60e0f5f072a9bfb14e5ba106\"}",
+      "spotifyId": "5wYQC7AuxV8ROALWcbVNxc",
+      "name": "Giữ Anh Cho Ngày Hôm Qua",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.63,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"19b6c56b26ee6613f0f6c633\"}",
+      "spotifyId": "1zvL2X6HPrLfvtSY4DpopE",
+      "name": "Em Mới Là Người Yêu Anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 98.0,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.61,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a1a4713e5a5cd4d8792f2348\"}",
+      "spotifyId": "183dqMj5J1smM8JDm4CUBS",
+      "name": "Mùa Hạ Không Còn Ánh Sáng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 122.4,
+        "key_signature": "C# Major",
+        "energy": 0.978,
+        "danceability": 1.0,
+        "valence": 0.547,
+        "acousticness": 0.315
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5c7042b88eaa23e99913a9b4\"}",
+      "spotifyId": "06eBrjCpPiu0aUOrl6rBn6",
+      "name": "uocgicoaynoiyeutoi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 112.5,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.512,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1d413a462d5dcaceef49cb18\"}",
+      "spotifyId": "6YCDBgpYQtgmnuSAdRNtrV",
+      "name": "ĐỢI",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 77.8,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.567,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9d0f2a0490317c2de756e3ce\"}",
+      "spotifyId": "3c8s2bCBk3cn8Taete6Q5B",
+      "name": "Anh Chẳng Thể",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 0.952,
+        "valence": 0.561,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"028ae65afe35c3b95f669659\"}",
+      "spotifyId": "1rVTKF2XF1l3OqHoXNa4kc",
+      "name": "Tìm Thấy Nhau",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 106.1,
+        "key_signature": "Ab Major",
+        "energy": 1.0,
+        "danceability": 0.982,
+        "valence": 0.525,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0cac9ce12a8f3d7c2d6be667\"}",
+      "spotifyId": "3COYA2vgfcUhDyRlVpZy5p",
+      "name": "PHÓNG ZÌN ZÌN",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 101.9,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.594,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"a3452dfbadfbd6ec552d86d8\"}",
+      "spotifyId": "6Q2oEdOhRjZ1DTv2a7j0lN",
+      "name": "Ghé Qua",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 164.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.545,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8cf3db7fd338e44eb2d96a09\"}",
+      "spotifyId": "6E3P4uOfKHYXJLK6Q3s0Tj",
+      "name": "Cơn Mưa Cuối",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 122.0,
+        "key_signature": "Bb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.576,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c14326ef584217f473a2bc5b\"}",
+      "spotifyId": "7dvgKCLkS7nBvtiIGyi7S0",
+      "name": "Con Tim Tan Vỡ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 109.9,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.561,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8010b340b0436f1299c1cc87\"}",
+      "spotifyId": null,
+      "name": "Khi Giấc Mơ Về (ft. Như Loan)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 144.8,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.568,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2fce2bc514c1c35f837e5a2d\"}",
+      "spotifyId": "1G9L8QY0GNNvoPHqTkN0eO",
+      "name": "Yêu Mãi Ngàn Năm",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 150.1,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 0.955,
+        "valence": 0.537,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"93f3a26d9531cc7207dd4eaf\"}",
+      "spotifyId": "03Db5ql5b8WxPHa3EyYG5J",
+      "name": "Hiu Hắt Đời Nhau",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.1,
+        "key_signature": "Eb Minor",
+        "energy": 1.0,
+        "danceability": 0.932,
+        "valence": 0.564,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"37bb61751adb99c9fad497b7\"}",
+      "spotifyId": null,
+      "name": "Thế Giới Không Tình Yêu (Bonus Version)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 99.9,
+        "key_signature": "F# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.565,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d9ff26bd78733f38f9f07419\"}",
+      "spotifyId": "3O8NwF56RBPGhZWpEkCQlX",
+      "name": "Xin mưa đừng rơi",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 178.2,
+        "key_signature": "B Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.573,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ace61a1983eb17df5485c65e\"}",
+      "spotifyId": null,
+      "name": "Liên Khúc Chinese Remix 3",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "A Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.623,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ab0c08cdfbdbae7696fc0003\"}",
+      "spotifyId": null,
+      "name": "Lk Gửi Về Anh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 156.1,
+        "key_signature": "B Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.57,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"63c1c1338e182730b48b0eed\"}",
+      "spotifyId": null,
+      "name": "Liên Khúc Chinese Remix 2",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.596,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bd78965d0edb94f405e8e05d\"}",
+      "spotifyId": null,
+      "name": "Nhớ Người (Chinese Version)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 162.0,
+        "key_signature": "D Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.588,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"21e257a872c5d796e7fdf005\"}",
+      "spotifyId": null,
+      "name": "Đôi Dòng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 97.8,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 0.993,
+        "valence": 0.603,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2fe4183769fd5d9bb317bc44\"}",
+      "spotifyId": "3swqcjF2jQPhzI26ae27qn",
+      "name": "Làm thơ tình em đọc",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 107.0,
+        "key_signature": "Ab Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.598,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"0160f1bf63dbf1257c5f5fd8\"}",
+      "spotifyId": null,
+      "name": "TÌNH NHẠT PHAI - ĐAN NGUYÊN & LÂM NHẬT TIẾN | [OFFICIAL MV]",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 132.0,
+        "key_signature": "Eb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.503,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"caf45d219cfcf22bd9cf0b1d\"}",
+      "spotifyId": null,
+      "name": "Liên Khúc Giáng Sinh",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.1,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.755,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1d28bee57ee1659d7b55e516\"}",
+      "spotifyId": null,
+      "name": "Mãi Yêu Người Thôi | Lâm Nhật Tiến",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 147.8,
+        "key_signature": "D Minor",
+        "energy": 0.813,
+        "danceability": 1.0,
+        "valence": 0.582,
+        "acousticness": 0.231
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"865428aba4254a5048d0ab7d\"}",
+      "spotifyId": null,
+      "name": "Hằng Thương",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.5,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.496,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ebb82f3ae31f767e3a9e6878\"}",
+      "spotifyId": null,
+      "name": "NỤ HỒNG MONG MANH | ĐAN NGUYÊN & LÂM NHẬT TIẾN",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 161.7,
+        "key_signature": "E Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.506,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d20354ca9d3add385ad965aa\"}",
+      "spotifyId": null,
+      "name": "Đỉnh gió hú",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 99.5,
+        "key_signature": "Eb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.577,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f3e217d0ebf3f75a5ed8aa2f\"}",
+      "spotifyId": null,
+      "name": "LK Nhạc Hải Ngoại 2015",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.649,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"75f69f680de178646c532088\"}",
+      "spotifyId": "6kdPwxdvbmlB9xR90cus9i",
+      "name": "Liên khúc 1",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "B Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.589,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"7a0c41aa75121c6665f1ec44\"}",
+      "spotifyId": "2fsVUKW8JecijlzQNl2L2e",
+      "name": "Em Đến Thăm Anh Đêm 30",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 166.0,
+        "key_signature": "F Minor",
+        "energy": 0.123,
+        "danceability": 0.851,
+        "valence": 0.45,
+        "acousticness": 0.714
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f59f899470eec527d4c3d4f3\"}",
+      "spotifyId": null,
+      "name": "Người ở lại Charlie",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 97.9,
+        "key_signature": "F Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.59,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"321edf34ce07f4a038e3bb70\"}",
+      "spotifyId": null,
+      "name": "Liên khúc 2",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "B Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.61,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"b036b097de1dba86f445f0b7\"}",
+      "spotifyId": "7EJKNcro8iNPOaCghXTK0g",
+      "name": "Liên khúc 3",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "G Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.63,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9fb43f763820211489bb9763\"}",
+      "spotifyId": "5tnLorH5HwjXKreSbZiYuP",
+      "name": "Medley Dòng sông kỷ niệm - Em đã quên một dòng sông",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 89.9,
+        "key_signature": "A Minor",
+        "energy": 0.508,
+        "danceability": 1.0,
+        "valence": 0.574,
+        "acousticness": 0.644
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"93e3c15e76316d32e177368f\"}",
+      "spotifyId": null,
+      "name": "That's Why",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 140.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.644,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"71a08e81be8aa8a99efb97fb\"}",
+      "spotifyId": "79VbxAlh0L7tRZ5svW8SEo",
+      "name": "Lonely night",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 138.0,
+        "key_signature": "D Major",
+        "energy": 1.0,
+        "danceability": 0.889,
+        "valence": 0.605,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6d419c878a84293a7ce4eea7\"}",
+      "spotifyId": null,
+      "name": "NHỮNG LỜI DỐI GIAN | ĐAN NGUYÊN & LÂM NHẬT TIẾN",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.4,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.506,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"f52e35956994124c8c7dcf7a\"}",
+      "spotifyId": "3sXmlHqIKtYW3FwblX4FxK",
+      "name": "Tình yêu - Tình người",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 139.9,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.55,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"c4ef76efc27a468314ec59e9\"}",
+      "spotifyId": null,
+      "name": "Mưa Sài Gòn Còn Buồn Không Em",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 0.965,
+        "valence": 0.517,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"04e0d48144817d956d166b8c\"}",
+      "spotifyId": "5MgefmU6YGzy8YvgqKTGsW",
+      "name": "Hãy quay về bên nhau",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 172.3,
+        "key_signature": "B Minor",
+        "energy": 1.0,
+        "danceability": 0.961,
+        "valence": 0.559,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"1cb11b382694036fd2bf7cf2\"}",
+      "spotifyId": null,
+      "name": "EM ĐÃ QUÊN MỘT DÒNG SÔNG | Nhạc Sĩ: Trúc Hồ | LÂM NHẬT TIẾN",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 106.9,
+        "key_signature": "Bb Minor",
+        "energy": 0.392,
+        "danceability": 0.986,
+        "valence": 0.559,
+        "acousticness": 0.726
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bfa08228e00e3bfe36aa5ff6\"}",
+      "spotifyId": "306w3wdXiHmPxZFZlaTOaW",
+      "name": "Rồi mai đây",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 110.0,
+        "key_signature": "F Major",
+        "energy": 0.48,
+        "danceability": 1.0,
+        "valence": 0.687,
+        "acousticness": 0.664
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"86c6631eb95d384ee00b10a8\"}",
+      "spotifyId": null,
+      "name": "Cho Tôi Được Một Lần - Lâm Nhật Tiến & Y Phụng | Nhạc vàng xưa ít người biết",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 88.1,
+        "key_signature": "F Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.554,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"77f6f947bd28d2141721dbf0\"}",
+      "spotifyId": null,
+      "name": "Only love is real (This Is Love) 1995",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 142.6,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.562,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"5ee32113b5dfeba76bbdfaff\"}",
+      "spotifyId": null,
+      "name": "Don't Known Why",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 128.0,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 0.983,
+        "valence": 0.645,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bb88fb045ed2ed66ab9c3753\"}",
+      "spotifyId": null,
+      "name": "Em Có Còn Yêu Anh Cover",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 133.9,
+        "key_signature": "D Minor",
+        "energy": 1.0,
+        "danceability": 0.941,
+        "valence": 0.565,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"d42a9cc2588be91ea6673d27\"}",
+      "spotifyId": null,
+      "name": "Dairy Of Love",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 109.9,
+        "key_signature": "Bb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.586,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"4d381ece826be69b73f49245\"}",
+      "spotifyId": "122Zu8TSsYMZiwVTCBRpRC",
+      "name": "My love how are you",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 123.5,
+        "key_signature": "Eb Major",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.69,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"6854d913da7e53b67af56a2b\"}",
+      "spotifyId": null,
+      "name": "Diary Of Love",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 109.9,
+        "key_signature": "Bb Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.587,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"233454d6d84a8e3f54cd5bc1\"}",
+      "spotifyId": null,
+      "name": "Love You My People",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 138.2,
+        "key_signature": "C# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.564,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"3145e2473c630b0b09235646\"}",
+      "spotifyId": "62KZ6wOsuTVCC43EQZXUqW",
+      "name": "Đã qua thời mong chờ",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 166.3,
+        "key_signature": "D Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.536,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"df2543c4d663dd4acb23d20a\"}",
+      "spotifyId": null,
+      "name": "Những đêm chờ sáng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 120.0,
+        "key_signature": "A Minor",
+        "energy": 0.2,
+        "danceability": 0.909,
+        "valence": 0.517,
+        "acousticness": 0.86
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"8b14606440a1c0284b11a5b3\"}",
+      "spotifyId": "2UTQ3BnNUPlQ4yXsju67h1",
+      "name": "Pray",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 133.0,
+        "key_signature": "A Minor",
+        "energy": 0.715,
+        "danceability": 1.0,
+        "valence": 0.692,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"2c808641b93db69694111e29\"}",
+      "spotifyId": "1ptNzJ0hO8XzLJVrM4bune",
+      "name": "Under the boardwalk",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 126.9,
+        "key_signature": "E Major",
+        "energy": 0.57,
+        "danceability": 1.0,
+        "valence": 0.706,
+        "acousticness": 0.401
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"ba15cecc23b6df66f371d55d\"}",
+      "spotifyId": "3Dsyrsq4DLSo2Ot46tpR3J",
+      "name": "I can be the man you need",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 109.9,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.606,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"067439781e3870d59030de86\"}",
+      "spotifyId": null,
+      "name": "Sorry Seems To Be The Hardest Word (ft. Lưu Bích)",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 78.0,
+        "key_signature": "C Minor",
+        "energy": 1.0,
+        "danceability": 0.996,
+        "valence": 0.581,
+        "acousticness": 0.3
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"9b3183e223994219efce5b91\"}",
+      "spotifyId": null,
+      "name": "Tội Nghiệp Thân Anh, Video clip: Tưởng niệm Trầm Tử Thiêng",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 83.0,
+        "key_signature": "E Minor",
+        "energy": 0.62,
+        "danceability": 1.0,
+        "valence": 0.525,
+        "acousticness": 0.566
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"cd3ca1ddfe9db764d19fbc93\"}",
+      "spotifyId": null,
+      "name": "Tiếc thương",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 152.8,
+        "key_signature": "A Minor",
+        "energy": 1.0,
+        "danceability": 0.978,
+        "valence": 0.52,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    },
+    {
+      "documentId": "{\"$oid\": \"bff398f512ab9be58757e3f1\"}",
+      "spotifyId": null,
+      "name": "THÀNH PHỐ BUỒN - Tuấn Quỳnh ft Lâm Nhật Tiến | Nhạc Bolero Hải Ngoại Hay Nhất",
+      "beforePresent": false,
+      "beforeAudioFeatures": null,
+      "afterAudioFeatures": {
+        "bpm": 129.7,
+        "key_signature": "F# Minor",
+        "energy": 1.0,
+        "danceability": 1.0,
+        "valence": 0.514,
+        "acousticness": 0.1
+      },
+      "status": "APPLIED"
+    }
+  ],
+  "finishedAt": "2026-11-02T20:48:02.914471+00:00"
+}

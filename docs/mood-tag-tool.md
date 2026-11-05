@@ -20,6 +20,24 @@ The distance cutoff uses the backend scorer's 0-to-1 distance scale. The margin 
 
 Each track includes its source metrics, scores for all model profiles, closest profile, distance margin, feature coverage, existing `mood_tags`, and an initially `null` `approvedMoodTags`. Save a separate reviewed copy of the preview, then review every track and fill that field with either one canonical label from the model profile list (`enjoyment`, `sadness`, `anger`, `fear`, `surprise`, `disgust`, or `other`) or `[]` when the evidence is insufficient or ambiguous. Keep the metrics and score fields intact. A proposal is not automatically written to MongoDB.
 
+### Limit a run to one import batch
+
+Pass `-BatchId` to make preview/apply/rollback operate only on documents whose `catalog_migration_batch` exactly matches the value. For the November 3 import, the batch ID is `moodify-catalog-20261103-v1`:
+
+```powershell
+.\scripts\mood-tags.ps1 -Mode preview -BatchId moodify-catalog-20261103-v1
+```
+
+The preview records the batch ID; apply requires the same ID and all valid-Spotify-ID tracks in that batch exactly once. Documents in the batch without a valid Spotify ID are reported as ignored. The rollback manifest also records the batch and rollback refuses a different batch selection. Without `-BatchId`, the tool retains its full-catalog behavior.
+
+After reviewing a batch preview and filling `approvedMoodTags`, apply it with the same batch ID and a new manifest path:
+
+```powershell
+.\scripts\mood-tags.ps1 -Mode apply -BatchId moodify-catalog-20261103-v1 -ReviewedFile .\docs\mood-tags-reviewed-import-20261103.json -ManifestFile .\docs\mood-tags-rollback-import-20261103.json
+```
+
+The November 3 import dump contains 399 documents, of which 348 have a valid `spotify_id`; the other 51 are excluded by this tool's identity-safety rule. Of those 348, only 8 contain all six audio features used for mood scoring. The remaining 340 can only be approved with an empty tag array unless their audio features are populated first.
+
 ## Apply the reviewed file
 
 Applying requires an explicit reviewed file and a new manifest path. The command validates all current track IDs, the unchanged model profile hash, unchanged audio metrics and existing tags, and the approved label values before writing. It writes only `mood_tags`, and uses compare-and-set filters so it will stop if a track changes concurrently.

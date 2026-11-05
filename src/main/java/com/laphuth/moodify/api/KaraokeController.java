@@ -227,6 +227,40 @@ public class KaraokeController {
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
+    @GetMapping("/sessions/{sessionId}/pitch-reference")
+    public Map<String, Object> getSessionPitchReference(@PathVariable String sessionId,
+                                                        Authentication authentication) {
+        Document session = ownedSession(sessionId, authentication);
+        if (!"started".equals(session.getString("status")) || expired(session)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Scoring session is no longer active");
+        }
+        Document asset = readyAsset(session.getString("songId"));
+        if (!session.getString("assetVersion").equals(asset.getString("assetVersion"))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "The prepared song version changed after this session started");
+        }
+        Document assetFiles = asset.get("assets", Document.class);
+        Document referenceAsset = assetFiles == null ? null : assetFiles.get("pitchReference", Document.class);
+        if (referenceAsset == null
+                || !session.getString("referenceVersion").equals(referenceAsset.getString("referenceVersion"))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "The scoring reference no longer matches this session");
+        }
+
+        try {
+            byte[] bytes = fetchReference(asset, referenceAsset, session.getString("referenceSha256"));
+            Document reference = Document.parse(new String(bytes, StandardCharsets.UTF_8));
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("referenceVersion", reference.getString("reference_version"));
+            response.put("sampleRate", reference.getInteger("sample_rate"));
+            response.put("hopLength", reference.getInteger("hop_length"));
+            response.put("durationSeconds", reference.get("duration_seconds"));
+            response.put("f0Hz", reference.get("f0_hz"));
+            response.put("voicedProbability", reference.get("voiced_probability"));
+            return response;
+        } catch (IOException | RuntimeException error) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not load the pitch reference for live scoring");
+        }
+    }
+
     @GetMapping("/sessions/{sessionId}")
     public Map<String, Object> getSession(@PathVariable String sessionId, Authentication authentication) {
         Document session = ownedSession(sessionId, authentication);

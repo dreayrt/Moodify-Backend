@@ -84,6 +84,9 @@ public class MoodTaggingCommand implements ApplicationRunner {
     @Value("${mood-tags.min-feature-coverage:1.0}")
     private double minFeatureCoverage;
 
+    @Value("${mood-tags.batch-id:}")
+    private String batchId;
+
     public MoodTaggingCommand(
         MongoTemplate mongoTemplate,
         ConfigurableApplicationContext applicationContext
@@ -149,6 +152,7 @@ public class MoodTaggingCommand implements ApplicationRunner {
         document.put("generatedAt", Instant.now().toString());
         document.put("profileSourcePath", bundle.sourcePath());
         document.put("profileSourceSha256", bundle.sourceSha256());
+        document.put("batchId", normalizedBatchId());
         document.put("ignoredDocumentsWithoutValidSpotifyId", ignoredDocuments);
         document.put("ignoredDocumentSamples", readIgnoredDocumentSamples());
         document.put("profileLabels", bundle.profiles().stream().map(EmotionProfile::tag).toList());
@@ -159,7 +163,9 @@ public class MoodTaggingCommand implements ApplicationRunner {
         document.put("tracks", previews);
         writeNewJson(Path.of(outputFile), document);
 
-        long candidateCount = previews.stream().filter(item -> "CANDIDATE".equals(item.status())).count();
+        long candidateCount = previews.stream()
+            .filter(item -> "CANDIDATE_REQUIRES_REVIEW".equals(item.status()))
+            .count();
         log.info(
             "Mood tag preview created: {} valid tracks, {} ignored documents without valid spotify_id, {} candidates, output={}",
             tracks.size(), ignoredDocuments, candidateCount, Path.of(outputFile).toAbsolutePath()
@@ -247,6 +253,9 @@ public class MoodTaggingCommand implements ApplicationRunner {
             throw new IllegalStateException("Mapped track count differs from raw MongoDB document count");
         }
         JsonNode reviewedTracks = review.path("tracks");
+        if (!java.util.Objects.equals(review.path("batchId").asText(""), normalizedBatchId())) {
+            throw new IllegalStateException("Reviewed file batchId differs from the selected batch; create a fresh preview");
+        }
         if (review.path("ignoredDocumentsWithoutValidSpotifyId").asLong(-1) != countIgnoredDocuments()
             || !objectMapper.valueToTree(readIgnoredDocumentSamples()).equals(review.path("ignoredDocumentSamples"))) {
             throw new IllegalStateException("MongoDB documents without valid spotify_id changed since preview");
@@ -303,6 +312,7 @@ public class MoodTaggingCommand implements ApplicationRunner {
         manifest.put("createdAt", Instant.now().toString());
         manifest.put("profileSourcePath", bundle.sourcePath());
         manifest.put("profileSourceSha256", bundle.sourceSha256());
+        manifest.put("batchId", normalizedBatchId());
         manifest.put("entries", entries);
         writeNewJson(Path.of(manifestFile), manifest);
 
@@ -339,6 +349,9 @@ public class MoodTaggingCommand implements ApplicationRunner {
         String status = manifest.path("status").asText();
         if (!"PREPARED".equals(status) && !"APPLIED".equals(status)) {
             throw new IllegalArgumentException("Only PREPARED or APPLIED manifests can be rolled back");
+        }
+        if (!java.util.Objects.equals(manifest.path("batchId").asText(""), normalizedBatchId())) {
+            throw new IllegalStateException("Manifest batchId differs from the selected batch");
         }
         JsonNode entriesNode = manifest.path("entries");
         if (!entriesNode.isArray()) throw new IllegalArgumentException("Manifest entries are missing");
@@ -409,19 +422,26 @@ public class MoodTaggingCommand implements ApplicationRunner {
 
     private List<Track> readValidTracks() {
         Query query = new Query(Criteria.where("spotifyId").type(2).ne(""));
-        return mongoTemplate.find(query, Track.class, "tracks");
+        if (!normalizedBatchId().isEmpty()) {
+            query.addCriteria(Criteria.where("catalogMigrationBatch").is(normalizedBatchId()));
+        }
+        List<Track> tracks = mongoTemplate.find(query, Track.class, "tracks");
+        if (!normalizedBatchId().isEmpty() && tracks.isEmpty()) {
+            throw new IllegalStateException("No tracks with a valid spotify_id found for catalog_migration_batch=" + normalizedBatchId());
+        }
+        return tracks;
     }
 
     private long countIgnoredDocuments() {
         MongoCollection<Document> collection = mongoTemplate.getCollection("tracks");
-        long total = collection.countDocuments();
+        long total = collection.countDocuments(scopeFilter());
         long valid = collection.countDocuments(validTrackFilter());
         return total - valid;
     }
 
     private List<IgnoredDocumentSample> readIgnoredDocumentSamples() {
         MongoCollection<Document> collection = mongoTemplate.getCollection("tracks");
-        return collection.find(Filters.nor(validTrackFilter()))
+        return collection.find(Filters.and(scopeFilter(), Filters.nor(baseValidTrackFilter())))
             .projection(Projections.include("_id", "name", "spotify_id"))
             .limit(20)
             .into(new ArrayList<>())
@@ -446,11 +466,26 @@ public class MoodTaggingCommand implements ApplicationRunner {
             .toList();
     }
 
-    private static Bson validTrackFilter() {
+    private Bson scopeFilter() {
+        String selectedBatchId = normalizedBatchId();
+        return selectedBatchId.isEmpty()
+            ? new Document()
+            : Filters.eq("catalog_migration_batch", selectedBatchId);
+    }
+
+    private Bson validTrackFilter() {
+        return Filters.and(scopeFilter(), baseValidTrackFilter());
+    }
+
+    private static Bson baseValidTrackFilter() {
         return Filters.and(
             Filters.type("spotify_id", BsonType.STRING),
             Filters.ne("spotify_id", "")
         );
+    }
+
+    private String normalizedBatchId() {
+        return batchId == null ? "" : batchId.trim();
     }
 
     private static Map<String, Object> audioFeatureValues(Track track) {
@@ -493,7 +528,7 @@ public class MoodTaggingCommand implements ApplicationRunner {
     }
 
     private StoredState readState(MongoCollection<Document> collection, String spotifyId) {
-        List<Document> documents = collection.find(Filters.eq("spotify_id", spotifyId))
+        List<Document> documents = collection.find(Filters.and(Filters.eq("spotify_id", spotifyId), scopeFilter()))
             .projection(Projections.include("spotify_id", "mood_tags"))
             .limit(2)
             .into(new ArrayList<>());
@@ -559,9 +594,10 @@ public class MoodTaggingCommand implements ApplicationRunner {
         return left.present() == right.present() && java.util.Objects.equals(left.tags(), right.tags());
     }
 
-    private static Bson stateFilter(String spotifyId, StoredState expected) {
+    private Bson stateFilter(String spotifyId, StoredState expected) {
         List<Bson> conditions = new ArrayList<>();
         conditions.add(Filters.eq("spotify_id", spotifyId));
+        conditions.add(scopeFilter());
         if (!expected.present()) {
             conditions.add(Filters.exists("mood_tags", false));
         } else {

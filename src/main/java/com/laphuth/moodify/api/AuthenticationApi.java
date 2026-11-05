@@ -49,12 +49,13 @@ public class AuthenticationApi {
         return ResponseEntity.ok(authenticationService.loginWithGoogle(request));
     }
 
-    // Mobile: Authorization Code + PKCE (Google đã chặn implicit flow với client mới)
+    // Popup web and native clients both exchange an authorization code here.
     @PostMapping("/google/code")
     public ResponseEntity<AuthResponse> loginWithGoogleCode(
-            @Valid @RequestBody GoogleCodeRequest request
+            @Valid @RequestBody GoogleCodeRequest request,
+            @RequestHeader(value = "X-Requested-With", required = false) String requestedWith
     ) {
-        return ResponseEntity.ok(authenticationService.loginWithGoogleCode(request));
+        return ResponseEntity.ok(authenticationService.loginWithGoogleCode(request, requestedWith));
     }
 
     @PostMapping("/facebook")

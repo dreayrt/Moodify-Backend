@@ -1,0 +1,2430 @@
+{
+  "schemaVersion" : 1,
+  "status" : "APPLIED",
+  "createdAt" : "2026-11-03T06:51:38.689309500Z",
+  "profileSourcePath" : "E:\\Model-Detect_CamXuc\\DetectEmotions\\music_mapping.py",
+  "profileSourceSha256" : "05942764ee5b585a469c68f2d071f170b8601e12b719827f10006306ba18b968",
+  "batchId" : "",
+  "entries" : [ {
+    "spotifyId" : "00uJszTeSmhaHaaylWopGA",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "03Db5ql5b8WxPHa3EyYG5J",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "04Sj1n92DjKj9R3kw9aoez",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "054EYAXtKFW3OoRnfesZZz",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "05mU8pZ5AIaxyC45dteVyv",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "06eBrjCpPiu0aUOrl6rBn6",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "07TkkhRvCmqGIQHe0QrBSb",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "07d8eaOuAWdC0DANq3tdPd",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "08ULi904W2Po6pVj8nN7KC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0BX2eDMZJrGzApf4ZGXrFi",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "0CoswoasgMFlcVzpugbuGX",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0DjFGDEvgTUMnJ7pdHKbcS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0EGwksIbRx7VflNBzuIBvc",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0JF65tQ1nQxBHFzs5IVn8o",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0JKEP4dB1riE6l7Kq5kJm1",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "0NyrI1tMvqcK3vU5z9DMdI",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "0OB5hTu7ELKeVoD6JVRo6m",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0Q7Xs2yP9ynY269qA5Ox9i",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0RKggS4he8LozKqMv09IrM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0TTEmtxf3IK6S8sI4po8Sw",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "0UyEt2uBS1uMerdYTBdNH9",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "0VWKtnP6P6lNuevoVhR8ur",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0WjdaO545q9Qn4SQtzRQu9",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0X28PqBpbQhWdi4usYw0w5",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0Y83tqgKh9A5Gwgvh84d1h",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0ZhxYHVoEnuNRNAtwFuYnX",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0ad1bitM6QMNHiIyuDcdJs",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0bCr0rDZR3egGRYhD14PkJ",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "0d6dbFvKczX1Us3J7TsMMv",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "0e6fZkLArSmDIHnZcIua7t",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "0fGJiHH6xSUJU1MAVjxq5m",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "0gg6wLMTnUrrN2MuF4Iufe",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0hB27T4dy9qBUcZabsrLOj",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "0hiQvlWSSTr7n1kc1X2Lus",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "0hnF3AHtLhMmyRjHH2pwrY",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "0iyeAxgyISqzY3AxSVyO1A",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0jlCWa1s3lx4jSgmttF1By",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "0nANFjiv4mpUHoy2A4JVcm",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0nVlY4IVVIY4gr7FKreThp",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "0nZ3etEeG7MuKeMRWmDc5W",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "0pMYB9S236DhhMIMR6p0dY",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "0pavLg3wbL6PVXAgXoWv4S",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "0qqMLxCVDvfqlnAy9oNLvx",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "0rJuMzKCgrrymPcbjgQYMr",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "0rR27Ayle8G7sKoCt8OWUr",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0rtwHli23DZDBobMqluwSd",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "0s7RyyUlQfd8mnnboHe18n",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "0sR5ThoE0uoskXWrm6KDxP",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0sVd1ZavOfbqd5AHspc1Tr",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "0tfs9XLm1ZYhVfpl4Sj8vB",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0vY0HP5VCTEqpknzfSIw6U",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0wvpRHXXuImyrccNEPAXBo",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "0xDm6J0w71jhpjcxEiVedM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "11E0Czz974QfKWqJ9Niv5A",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "122Zu8TSsYMZiwVTCBRpRC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "12DNdwLD9oZOPADqM10oyE",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "14qg4FVW5Iou1VOjqZq2et",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "16LxkZoBIPTdI1sbQTzlg4",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "176ERojlLkueLC6aki2T8m",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "17vk9T9G69b4gM7mCNfixx",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "183dqMj5J1smM8JDm4CUBS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "18lOyX6066BEVE2yBiVUdD",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "19U8QkwGDiQnYtnNIlspuo",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1ApIGNgp1azc0qB61x4GzG",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "1As1VoCdyEsU9GLuHuYXXQ",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "1DIPQewy94lfmxo2SJ8Hb5",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1E6uunyQFl0szSu51TvcfO",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "1G9L8QY0GNNvoPHqTkN0eO",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1HIGvBEkqODXGfmfK3eJgc",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1J12HjUuXfJnaUdubTEzSR",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1J3SmWwlYAG68LGKr86MVH",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1JnTnAWsfL3jWBlSwWAbQC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "1Jy4SXBKwAxqtNB7jWKCZK",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1K0HQ30Wc11okzlcnFA7Ub",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1LJyhnPdYGRLerwJd8CmL1",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "1LnYWwOh0cv0UepjGK4HEy",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "1MiJk3dXC5jzhvLFP0dUM7",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "1PgMKkHb6w1RdGhocmXS4d",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1QaKrTGAqDYzohALdW5IxO",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1RBxIXnd9ExBTTi1DSG6L6",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1RJ18rerySdcshTdnc0oOk",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "1SAs6z5wG7GSFLbf5XGzFA",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "1SJnS1Qv4CqMB74OSsLMi9",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "1Sn4XlNq0D93Z0YXmzDQwo",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "1Tg0girhS2pNYXHMPktKn6",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1U84HVkHzJ6yU9AUplQCr5",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "1ULhtqJ4p9g0Giyu8bxCb4",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "1UQNU5O9VttUgO16pxUnjw",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "1WF3s0FBnYLa68L11tQZy3",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1WbBYmHCAF5A2crxoW94Lt",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "1eORNhzmbZgfIQkSQslaml",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1fUQRUmUvhAZ5yB6Gp2Y6e",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "1fVc7gYABaoFNGhz5QcPx4",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1gj08DDIc52LL4IPfPZXI4",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1hPbWyZnUPaeAWbOSKwkXJ",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1hujQBFbQxiVYcPSnXDSzf",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1izPmgSW7FV6XFdEOiTvOY",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1jF6ctFxoebFqI4TFHssR6",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "1jGzz56TIOz7KIEK3t3e01",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1jMLf0YujLR4Nz00xofb2Z",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "1nWMHO1RvnRUYc1eq9AEhS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "1o6cYDMHvKOfizi4d9Lqxr",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1ordU9Ts6JNRalwVoXgJd6",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1ptNzJ0hO8XzLJVrM4bune",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1rIs36PjsU3m7mf7HSf5Kc",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1rVTKF2XF1l3OqHoXNa4kc",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "1ujwMxoJvK9gsfg4YeNa1M",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1wV0FFCaOiLqZzv1xr9DnI",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "1xoadYaxtOp9gHDwgmPDuz",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "1zvL2X6HPrLfvtSY4DpopE",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "216277D0dqtJ8sRENjp4uR",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "233EmofG4UrX6aLmavJfln",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "23DTegrasH0ZgEODEsFI0N",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "23eWochcx0byYTCtR6z0BO",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "24rpfLVTfoegXCsm7xGBZl",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "251z7MoHRghXdptalUMcL1",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "25h0TqC9H3BcMA7KjK5nHK",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "26zqmmkqUK6mCc87XDzPym",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "271jbGpt0HLIY8HafOU2u0",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "27RtvTUfln3FvTWXA2JrpK",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "27Z9T0mSWHYWSj9SNOGvyt",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "27lfAtyr8kbML8L4woIeEH",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "28NSjyMJMaBQPWyd7m8vhP",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "29sooRGEz16oXmJh9SbKaB",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "2Au9E9wwk7b7KmdBnoWp5Q",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "2E0lqOSuobhLTaCv4LEjnx",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2FdWnvtXCnhuaAy7pLtdeY",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2Fm8QdRzWXWjscoOqXvffN",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2GE2p2dFpxp7OIz2QOFBzW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2HEd2fkMbbIclpv8pYvWW0",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "2HI8i89f0ysqMvEeFS0Np7",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2IggMTlkERCVSYu2OIiG49",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "2JZH5Rwp2WCAWzm3hXYzQf",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "2M9ULmQwTaTGmAdXaXpfz5",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2PWODeJM4pRAEOEFdQ8G3y",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "2QXbwqVx7yMAlEfmRHyIGh",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "2R1sqa3gaeCXkqwjNF6YLC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "2RU8W7BYkURayqMwImzMGr",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "2SykQzXuFSeprST1uDjj1m",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "2TuA06Z1JpEi9vWp0BwGPE",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "2UTQ3BnNUPlQ4yXsju67h1",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "2UvqD395dhlJWO0SxHJ89n",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "2WGyA3UIA2w7s3s6hGfuzW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "2Wjghh0RpiBquLsJ932X6R",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "2YjoG9Ybi20ul0Mp4GO0gX",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "2ZTCXuXxx39wghKsi0aHJm",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "2ZlllPSfukm2KJSQVlRVTt",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2a5hng9yXtbjtTVVm9UviC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "2cJ2E3LVbReB22HeBJTo91",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2d6pPdckzTcr3j3hSDAA8R",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "2dPJtlvoa3GDowCh035M8P",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "2e6uyFP80Vuaz7V7bDWD0e",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "2fbphWgWgaTouwG0sdM1yG",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "2fsVUKW8JecijlzQNl2L2e",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "2hDxgqrN469UiG5tpE2vAM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "2m0OpgfuWSdCKkXxNAWxwH",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2mqpV50s3xB9noRSefEy6Z",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "2nabBYOeHhqVwMPQP7iIXN",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "2okQLnTjzORjUtzjRbzvT7",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "2pJ6xTDWWb7qer87o7RP5L",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "2pm7K14nHj2fLrpU8j9bit",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "2ppLwHSMgDGEQ5c8o6nAX2",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2q2DN73j7oY2igLflertN3",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "2rSrLECfNaKYJ96UJ4ddDt",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "fear" ]
+  }, {
+    "spotifyId" : "2sSsy51uNPKas6x0JWr0TN",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "2togCys2knFT75Impd4ETr",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2w1Yw9VwSVBYx0xgGW6zJt",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "2w7jOvl0kpplNxisgfnCdT",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "2wZAvkgiOE5tyrnqhB69KA",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "2xlWR8hho46G7yl8yUF9jL",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "2zoci1Endv9cwcyYF00mYr",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "2ztGQMgFRzsMDdP20cAayq",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "2zwwCOlchPw9pMBVrBAheL",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "302yXH7KO0CWr3V879noph",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "306w3wdXiHmPxZFZlaTOaW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "317Lh6QCAz9JpWbV3oxrCf",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "31VNCmwspR7nVJ6kruUuJt",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3290JxfzpMDVa2Ky3pQRzq",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "32Enf9xLJXV8t423PpEaYX",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "331pu1rdL2Yn7Z3F1RNXBR",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "35MiWNMLZMftMR1CWXqxBb",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "36OyVzUmUFb1MTTzy3YXbh",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "36fgG6NiEuQXznNgf5y2Ck",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "36vTcKKh2EafskEYs4ju02",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "37KEMM9tMw5Tb5GWlBmOVM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "39XiO6D9cuMfJXObD6gVjY",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "3A8kymweJzCUH5wqVT45E6",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "3C4prA4imh0FmAo0rwW2xw",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3COYA2vgfcUhDyRlVpZy5p",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3DLtPObflLQBodZN8qGODT",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "3Dsyrsq4DLSo2Ot46tpR3J",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3HPHpFDGNyNGGSAOjmcvDR",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "3Ids3RXurYBgySph53qWnB",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "3J3nv18iIrOhca1ZWNeuyW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "3JIjr27X8FPXg0W5XRgSo9",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3KwVhg5VE4ZFcRjdq4cvJq",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3LlEZ4J1ORcgP1WmTF9pIX",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3NJsaAgSkUJvGY8099Zb2m",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "3O8NwF56RBPGhZWpEkCQlX",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3OnVuSd2KSCfgNHPnS5NwW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "3P3rcI48wwVEgxF5vPM6pG",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3SD6bnXfZlopPhIRQCv7Jn",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3T7XHOdRcyhKU3QCB6kZG3",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "3UJ2gSPFPSkPKZghRI8y1e",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "3W0j4uBNfn6kilhrVeZM8o",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3W77mLoXjQEkNjxvYRifjG",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3XRvVlOBvClOq1KpI50uKC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3Z8a30QInSAcRJ8xRJuHJL",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "3ZbZtdEw9U0uZW4tZItIwq",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "3a3WaZHTwofSVqlXNkvILn",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3b2kCFZhX9GYnQ58qL1cAM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3b34161QoxLwsqhWSPy9i5",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "3bTgBECXT3V4MZ2Bio8ZA2",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3bZGGKrMQLDGg18y2QqKFF",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3bn9M7bczHJ28eiaiNtLyW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3c8s2bCBk3cn8Taete6Q5B",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "3fw9v7CztM2mqu1jCtbg9f",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3gUtZHFZq8j1ApSaS4XGPz",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3hsFVEUGsOttyDShYLa7ji",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "3jDRIknmf7FLHFopymGjbC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "3jNW0QxiGEJrwU86WdWTFd",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3kPvxCrRGhEczpwEogfebG",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "3mAEEsw6zUJlpmjZOHdHPp",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "3nFNZqvKoMmexQTD7YCf3m",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "3p0M5vKINtKsjcBlxG8UCd",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3qKeW2XJFZU5CvOQKStQW6",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3qhYidu0cemx1v9PgTtpS5",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "3qwIw2DRkmZKQxFbkT07yy",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "3sXmlHqIKtYW3FwblX4FxK",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "3swqcjF2jQPhzI26ae27qn",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "3t5PCyVOzg7OsCfPh0phO3",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3un8UkiPHJjlsrTHQnisXH",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "3uweAWTAY2yBEKljqEt8OQ",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3vazRRgWcQXqWVmD0PJejS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "3x7Hh3zsE1wcXCU2G8l5tP",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3y1XNP7bl3SICwl0ZqLaVN",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "3zLYevIPZQMpSPF5TOaWtt",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "40pWxpbXoBYGPCiofujjZ6",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "41DlPJXKTCypXdf2eSqa03",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "42Y6HVCYjeGuwZKNUeCiWP",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "43zzuEWDotRcKlSFzrlJqs",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "446ygEWkggc5FMbBPQSMuM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "448TwxYok5nggugWsxC5bH",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "456KPN1LOX1qgbIVQdoBAz",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "48SDjh34zzai5fZMbvoqUb",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4AgVaW4inG7jygPv2rQ210",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4BdB08vuS9r4HOoY7GkAxT",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4C1I9u6n3u547y9U0XNu72",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4CUvVaAYuXtvYURLFz7EIL",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4CVxKSRLUxqUuj2z9vn4fS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "4D3LJMppz3GuX6138qOmjx",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4DJZfZPvWYbSeFVFf2b2aS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "4FYSWRR2K6iK0GcwufeOIS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4GBhNOfsVYfGwvhX8qh4tJ",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4HjBeRYorM50d1rCrl853a",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4Iz5EWPCAT8jYNk4IpLoll",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "4Jp3HONKA2ztto0nDs8Qgt",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4KJJZCAFcslGdp7LhWIQRL",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4KVoaV2vhqo6fnoM5A8OXv",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4L04h2OJDNzc0y8sXBv2jv",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4L9c3f20yJB3CJlqaQKfgN",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4LAdZsiks8vsw3e1iZQgVY",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4M0JP3vybYgPQSnIvPrRuW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4MhpY2h279dtPIYYS5m575",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4Mx3NZEoT8zTqpqkJhr45a",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "4N99EuIjwSSFFFMDfTeOLU",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4Q9Vi3NqzpmGHImi6EWR5M",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4QNH4OjJ9W10afDYAHi03I",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4QalnBNnw9uK1dj543nf76",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4RpHkKbIFAc96Q2ep2eg6y",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4SdbAEhg9DJPIKJ3kNGVmj",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4TYZX6GrhK7797Ridc2U2c",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4TyQKEifYDWTfTSRwpxlYI",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "4V2MZcxyltQ4oKSdXOZoV0",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4VjLWbQhf8KUPMeuBO5H55",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4XkEva4YsNmPQBLe8V126L",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4YMM05vannAm37Mp1dHK1V",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4ZIwFLm8C7MUe7JR1G9CGa",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4ZbHPwPlbR7ia3OXfto6ZZ",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4fj4Jn4nw8fGX8xdbCntJf",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "4kDwySY37r14q0TFjySiJ4",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "4m6Qr4Q2f5GUz5JO5tjBrI",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4nGmLVYg4LA1aZzTuy98MU",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4nXrVH5xwN1w6TpmP7uu8n",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "4rEks6AbW2u7N2TK2xouLg",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "4s5qAgRqUlN57EE4sgo5H3",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4uZs35Zm7ivjQCM7v5nQj8",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "4wD6v7xAl1Hhfl2rli4q0n",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4xRcbmzmgIt0nhJ9EAsUeS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "4xvxNlBf94gOmqvAxDMNsq",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4ylS6C1TlLxNQWKZz71Cme",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "4yy21UkGZ7gZEGbSERllpE",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "4zGTfXR2v4TWFvwbxBrrN7",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4zUaQhfFjDQVwe0wBb2K2n",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "4zcRAyXVEg49sMffgRIu0R",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "50WjeoNacrSiDum2P3yWtb",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "50cmxP6KlnQA9IG3q5ckKD",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "50xuQI5QlXggFKpq66IBON",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "527UV7H9SbnmTVkxBVg56X",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "52IB6Ggiqs8YllCCKQIvs7",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "54UNNgtE3zzERwTuWSQLqd",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "54w3CUwFmj02KNZMuK1Cwn",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "55Eo6NDkVhSRBonrT16kXM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "55nxEY2bGgcxSVLQ9hOFeR",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "56RZrGkLlgQzD1tvZDTU2j",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "56n21o9wtl9IjFVsGe7BG1",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "57lYw21pS9FprSeJimskIC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "58ZlEBxBrzISXtmcOPo476",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "59LeatGytui1mQleoiEnWM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "5BJqg07SKgmFnVLOBmLFvq",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "fear" ]
+  }, {
+    "spotifyId" : "5BQiPezloUKjOlTHlFW2S4",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5BTzf3doGTigDIYUFtbkI9",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5Bti0azlFhMattVY76qFr9",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "fear" ]
+  }, {
+    "spotifyId" : "5C3fx9rdM4Bxf1MSOQC4Ym",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "5FdSbWlwpUTKGjtCPNAI4W",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5G9kwWUmTzgKMAsbwwPiPC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5GjAqS2bonPX1ymfvMTlIk",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5H7c7TWQaFz7qQs3UCmtHZ",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "5JsXeGg5ukJTFBJrcInUTw",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5KYv3kORBKUmVEoqbRRWxt",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "5KlOG7dWMeX9behheWgtrl",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "5KzRocC5BSxcmR73kP4N1V",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5LbDxCAdTh6tZ4jzCLNTU8",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "5LjAoCkohTEiMXKJOKCQeF",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5LrkvEak7BxMsVvxNXAePv",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5M4Y6dFFqpCOF3UPzoStcr",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "5MIaegSRmOLB6Se76xP4dB",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "5MgefmU6YGzy8YvgqKTGsW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "5PJDjg6wjSZYEssaA7zhKQ",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5RHpbukk4yy6tAwhT6YP98",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5SzJs9cwYXdSm9G3xcXuA2",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5TNW2LZ10ZaoP2QR1eR59g",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5TtNxUZBjYR4wgzOpHpS7h",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5U30iZBlmxkpHqzb1OSnBS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "5UUNrCgGtC6JOrATM3y3ZT",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5VGOYjxkEaf19LoRPIolD2",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "5Vjy6DYIz43HxclutGDr5N",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5WKMqYQRIaNIsMLhHEzssC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5WaLn6Xhwvo3nLgxkcMS4r",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5YLa8w7wjbFLuceRLAmGkV",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5cY01Gpd3FrBbgGmOtSsyW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5ca1aUHYwTDNO5E6unithq",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5cml547MByVlaVrKU2lJTg",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5cn5oHiXJTLiuthgbgfkMh",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "5dcGqWFQf6c29bFijacYGC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5dg4e5942EFejbNzdWEnmN",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "5ePboxGXmhnrsKG7Jxc8m1",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "5gN8ShKRlpRjKZGqBj75xg",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5kJMW3pK49PvQDtpVryHf5",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5kamDErlytQkd8D2JSBHL5",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "5ouxRyInSdRBQubu3KTd97",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5pZ8Kli2wnkKAxlAjtRIoa",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5pkc0l8uul7CdFwsp0BSsQ",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "5qbjUmVV1yOOjcMOInNPYD",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "5rGtrjNSJWqkcXwP0DSmRu",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "5rSAUmbOg4giDrM29vUyHe",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "5sH0if4Vv864eWpFqqOF9M",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5tM9twrvUhPkFuhFAGBPoe",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "5tO7bsdjlaBAMriwh1xQC2",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5tmA5oQDF0ULqRI12LKCDw",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5tnLorH5HwjXKreSbZiYuP",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "5u28QaMKbSePO69187D470",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "5vHpqVh2vGjGyByoD73Ii0",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "5wYQC7AuxV8ROALWcbVNxc",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "5y3m3UvJRHDPCqO2SBq98f",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "5ywtKi3kws5MGypEfAnz5C",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "5zcvKgiDixEQnpmQfESX51",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "62KZ6wOsuTVCC43EQZXUqW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "65aTHDZWUdh6WIafu9MtNF",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "665icbnONLCTiMFhAM9EPk",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "66KPRzt1W3AYN3GZpsvwp1",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "67nxEmWEdIF3HvEQmCppM4",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "67xBcPJFM6lcUsl7VX09Gp",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "68z6Rvfa0zuxTm3kYo6F02",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "69JqUXiDfFTxckAQN58XTC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6AH74QQxzjqTsvj7lFQoqy",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6BnPsHZv1jPbPAsQsm0s5b",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6CTdPSNvUYw7UjerVIkUia",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6ChVowIMEhSzWXuFSM7YGM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6D94p9ASguBcYlDC0o56vx",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6E3P4uOfKHYXJLK6Q3s0Tj",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "6EJ56kMLqM28Qd5pLOBlsd",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6ELX356o21U28T73ZxruUj",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6EeYZmuZcGhNqHT6bi6cqO",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6GM4ZOBDcDroldUxI8GZ2B",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6HlzkK5yMzj53NFPWFgdDO",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6Hs2xIgB8nzyGFDvVA8lFa",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "6IOwS15F3L61kX1gq81HQM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "6IxPiUQI4Cd0mL0pBIOjAg",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6KEtkFxYWgoSf40jBg1QIC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6KIhgRkprgyJNERRMu7Quh",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "6Lj4wUXcGOzrwVmBIlLy34",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6Q2oEdOhRjZ1DTv2a7j0lN",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "6QvlmdC8gK7a9WUnYo5QpC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6Qwl74olNi1rl65FNxG5We",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "6RVQYFc1wiLzOxZTD877jF",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6ReQb2i0z22H7mVsEqlNyb",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6SdPpLl72QarBuaxv7FNGw",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "6SvMQka2Icns1Ml7VSXhDC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6TGwaBlfUGVoeZMBLzvXGP",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "6TPJJFdSo3hdvTB7zCSJXf",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "fear" ]
+  }, {
+    "spotifyId" : "6UFvSmKzCZ16fxsybf4PhE",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "6V8KkKDcnkt5ad4NvABSqd",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6VXVYATpQXEIoZ97NnWCmn",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "6We0OS95Zrwf2kQgFBLZ65",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6XqgWhCvFPIRZLS5HIYoPh",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6YCDBgpYQtgmnuSAdRNtrV",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6Yz9zYtPx0WK3cOeDoTD6w",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6Zoi4ue74UdUeYmHXItXnf",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6cCoo5SiGQIDCJKFpELvVa",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "6dGn1u4K0b5V4ROCOWdPsO",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6flJE5kzGGFK30F7kBPPno",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6gOALilVdtHyGJT8eWqKkn",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "6hy5btG1x83zRGmBfcYO1s",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6i9DeSRJl6WdY43FdyG7Si",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6jCuMr48K2UjFZMXGlX1IU",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6jbvNeRq4dq4VxASFko4On",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6jcLKVmEKAQIXIVHJZ8vzS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6kdPwxdvbmlB9xR90cus9i",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6kkQ2uMYbxoh3RMAF6eAB9",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6lRlM6bClcoOBLQi0zfA34",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6mKMGpkgP2cH5gmqILWe7b",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "6nInHlewtrNKguNKlXt0Ur",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6oulWyNi7NpsMmNZCEr6Bv",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6qDzk36tXJDLqHCSlmb885",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "6r5o9yIc16ZvymXUKJQ1yy",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "6tRA1aO8A1v57geP0K3oPk",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "6uxuJ8Fr1AAfSPJUF9N1yr",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "6vPN9DtSjUpKK1t4zZYu6w",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6vq9mSv7KaZj193QEAAkAt",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "6vuThDeaqN7qiYNExkMBVu",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "6yLbighkE0kn1OH9zd4aBi",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "6yzR1NyNiAs7FzKJIijEqm",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6zP11Nw7gRKb52mpH5xJ3l",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "6zwC3vsCniAGu6WpOkg6qV",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "71luUs5K7N1fdf7ecMKg04",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "72hqOaj7KXAgd1X8nEdJBy",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "7326q9PcJDcKuAFcrSkN0t",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "73RcFjiDtStfP3GCW44vJu",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "752RVfIlzh8rPhcT4KfzhE",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "78V670OSHmeb1fF4CJBR4P",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "79VbxAlh0L7tRZ5svW8SEo",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "7AD5F85waSb3yZxZxEXhJM",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "7Ap1JyVKsS8dWQgyKUCUwy",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "7Cgupl5jndMQhet0oSyFqS",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "7DmanLxUm2ZGuKHPBqpewA",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "7EJKNcro8iNPOaCghXTK0g",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "7GAfJbpUxarq6dLb5D1PSC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "sadness" ]
+  }, {
+    "spotifyId" : "7H2j1yMCXXNfd9V9aKeodi",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "7HvQQrBIcoHKpplQLkb6D0",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7J9l9ebYB3IEs5ea5J1M7a",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "7JMQpWHl28MZ2h2tt1E7zh",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "7Jpl4KZMnuxujpQnLXOMRr",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "7K1yMkQqA9ZxHfa2y4XsY6",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "7Kpr8LcvXFSyj6aJfwr4W2",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7MrTDGBM3nGzdTKoR61eyF",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7bFFUPBiF15n8m8RziqS4o",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "7dlgEjrK3lHbP786dshKDV",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7dvgKCLkS7nBvtiIGyi7S0",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7fCeYpR02Q8JVuD88hJZVT",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "7fj7txufCXorWZz1NEK7Ih",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "7gpCVj0hbPn29WHNMkW3eC",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7h2zqUH4bYyknNUxsYnS5V",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "fear" ]
+  }, {
+    "spotifyId" : "7hVuKUupHeXXClqvElxgbg",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7iN6r2nba3IZ0u0gB7xIno",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7j3XQm7RR8T2EzaYtYK4rc",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "7jSSGh0ps42O9bPqhNFMf1",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "7kgzRBNkBRArtTPkYjWLYT",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "7kugDWrt5suA04eU2BYxg1",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "7lbVxN06wsMIXHniG8MdCW",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "7mblTCdc14ylJ1JW71MODb",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "7nXL24YeHwgPdHZ4bdIMST",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "disgust" ]
+  }, {
+    "spotifyId" : "7ocHH1YDT3MEmN87N3y10U",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "7pDx0GAKEUZu2KsrVgCV8W",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "7pRF83cjFfTtUYX2P4pYgX",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7sipbCUbqNJXyP1vGHD9Fx",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "7tFwBnuaGXqiiONukPRaCo",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "other" ]
+  }, {
+    "spotifyId" : "7td8DTWoGC9u9db37mGHX6",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ ]
+  }, {
+    "spotifyId" : "7uUuftbcr94tzGOCJSM25u",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "7vTtal7VDu9NGXu1deHD1i",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7x10NUYLPftW0qPMwbnEea",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "anger" ]
+  }, {
+    "spotifyId" : "7z6MDgYecHau9MlH4BrqRw",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "surprise" ]
+  }, {
+    "spotifyId" : "7zJ6yuuOnjjRqbKv1zfCAl",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  }, {
+    "spotifyId" : "7zwuoHtRMNpXlhVdmnPFB8",
+    "beforePresent" : false,
+    "beforeTags" : null,
+    "afterTags" : [ "enjoyment" ]
+  } ],
+  "appliedAt" : "2026-11-03T06:51:40.194205500Z"
+}

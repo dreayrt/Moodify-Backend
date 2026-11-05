@@ -252,18 +252,36 @@ public class AuthenticationService {
     }
 
     /**
-     * Đăng nhập Google bằng Authorization Code + PKCE (mobile).
-     * Google đã chặn implicit flow (response_type=id_token/token) với các OAuth client
-     * tạo mới, nên mobile chỉ nhận được "code" — backend giữ client_secret và tự đổi
-     * code lấy access token, sau đó tái sử dụng nguyên flow đăng nhập Google hiện có.
+     * Backward-compatible entry point for native clients using Authorization Code + PKCE.
      */
     public AuthResponse loginWithGoogleCode(GoogleCodeRequest request) {
-        // Code có thể đến từ client web (có secret) hoặc client native Android/iOS
-        // (Google không phát hành secret cho native — exchange theo dạng installed app).
+        return loginWithGoogleCode(request, null);
+    }
+
+    /**
+     * Exchange a Google authorization code from either a web popup or a native PKCE client.
+     */
+    public AuthResponse loginWithGoogleCode(GoogleCodeRequest request, String requestedWith) {
         String exchangeClientId = request.clientId() != null && !request.clientId().isBlank()
             ? request.clientId().trim()
             : googleClientId;
-        boolean isWebClient = exchangeClientId.equals(googleClientId);
+        boolean isWebClient = googleClientId != null
+            && !googleClientId.isBlank()
+            && googleClientId.equals(exchangeClientId);
+
+        if (isWebClient && (requestedWith == null || !"XmlHttpRequest".equalsIgnoreCase(requestedWith.trim()))) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Google popup request is missing the required CSRF header"
+            );
+        }
+
+        if (!isWebClient && (request.codeVerifier() == null || request.codeVerifier().isBlank())) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "PKCE code verifier is required for native Google clients"
+            );
+        }
 
         if (isWebClient && (googleClientSecret == null || googleClientSecret.isBlank())) {
             throw new ResponseStatusException(
@@ -282,7 +300,9 @@ public class AuthenticationService {
                 form.append("&client_secret=").append(java.net.URLEncoder.encode(googleClientSecret, java.nio.charset.StandardCharsets.UTF_8));
             }
             form.append("&redirect_uri=").append(java.net.URLEncoder.encode(request.redirectUri(), java.nio.charset.StandardCharsets.UTF_8));
-            form.append("&code_verifier=").append(java.net.URLEncoder.encode(request.codeVerifier(), java.nio.charset.StandardCharsets.UTF_8));
+            if (request.codeVerifier() != null && !request.codeVerifier().isBlank()) {
+                form.append("&code_verifier=").append(java.net.URLEncoder.encode(request.codeVerifier(), java.nio.charset.StandardCharsets.UTF_8));
+            }
             form.append("&grant_type=authorization_code");
 
             java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
@@ -469,7 +489,7 @@ public class AuthenticationService {
 
         try {
             java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
-            String graphUrl = "https://graph.facebook.com/v19.0/me?fields=id,name,email,picture.width(500).height(500)&access_token="
+            String graphUrl = "https://graph.facebook.com/v26.0/me?fields=id,name,email,picture.width(500).height(500)&access_token="
                 + java.net.URLEncoder.encode(rawToken, java.nio.charset.StandardCharsets.UTF_8);
 
             java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
