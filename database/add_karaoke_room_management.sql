@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS karaoke_room_queue (
     PRIMARY KEY (id),
     KEY idx_karaoke_room_queue_fifo (room_id, created_at, id),
     KEY idx_karaoke_room_queue_requester (requester_user_id),
-    UNIQUE KEY uk_karaoke_room_queue_requester (room_id, requester_user_id),
+    KEY idx_karaoke_room_queue_room_requester (room_id, requester_user_id),
     CONSTRAINT fk_karaoke_room_queue_room
         FOREIGN KEY (room_id) REFERENCES karaoke_rooms (id) ON DELETE CASCADE,
     CONSTRAINT fk_karaoke_room_queue_requester

@@ -18,7 +18,7 @@ Các mô tả triển khai được đối chiếu với mã nguồn và script 
 | --- | --- |
 | `karaoke_rooms` | Bảng mới có 8 cột quản lý phòng ban đầu, sau đó thêm 5 cột playback; tổng cộng 13 cột trong mô hình hiện tại. |
 | `karaoke_room_members` | Bảng mới có 4 cột; dùng khóa chính ghép `(room_id, user_id)`. |
-| `karaoke_room_queue` | Bảng mới có 5 cột; một lượt chờ cho mỗi tài khoản trong một phòng. |
+| `karaoke_room_queue` | Bảng có 5 cột; mỗi tài khoản xếp được nhiều bài khác nhau trong một phòng. |
 | `users` | Tái sử dụng `id`, `full_name` và `avatar_url`; các migration phòng không thêm cột vào bảng này. |
 | MongoDB `tracks` | Tái sử dụng metadata bài hát và lời; phần quản lý phòng không thêm field vào collection này. |
 | MongoDB `karaoke_assets` | Schema tài nguyên của chức năng karaoke đã có trong pipeline; module phòng đọc lại. Công cụ căn lời có thể cập nhật thêm `lyricTimeline`. |
@@ -205,7 +205,7 @@ Khóa chính (room_id, user_id) ngăn một tài khoản chiếm nhiều chỗ t
 | `track_id` | VARCHAR(64) NOT NULL | Tham chiếu logic MongoDB tracks._id; backend kiểm tra tài nguyên trước khi thêm. |
 | `created_at` | DATETIME NOT NULL<br>DEFAULT CURRENT_TIMESTAMP | Kết hợp id để xếp FIFO ổn định. |
 
-UNIQUE uk_karaoke_room_queue_requester (room_id, requester_user_id) bảo đảm mỗi tài khoản chỉ có một mục đang chờ trong một phòng. Không ngăn hai tài khoản đăng ký cùng một bài. Index FIFO: (room_id, created_at, id); index người đăng ký: (requester_user_id). FK room và requester đều ON DELETE CASCADE.
+Index thường idx_karaoke_room_queue_room_requester (room_id, requester_user_id) cho phép mỗi tài khoản xếp nhiều bài trong một phòng. Backend khóa room khi thêm bài và chặn cùng tài khoản thêm trùng một bài đang chờ; hai tài khoản vẫn có thể đăng ký cùng một bài. Index FIFO: (room_id, created_at, id); index người đăng ký: (requester_user_id). FK room và requester đều ON DELETE CASCADE. Database cũ cần áp dụng database/allow_multiple_karaoke_queue_items.sql trước khi dùng backend mới; schema đầy đủ riêng bảng tại database/create_karaoke_room_queue.sql.
 
 ### Giới hạn mô hình hiện tại
 
@@ -524,7 +524,7 @@ CREATE TABLE IF NOT EXISTS karaoke_room_queue (
     PRIMARY KEY (id),
     KEY idx_karaoke_room_queue_fifo (room_id, created_at, id),
     KEY idx_karaoke_room_queue_requester (requester_user_id),
-    UNIQUE KEY uk_karaoke_room_queue_requester (room_id, requester_user_id),
+    KEY idx_karaoke_room_queue_room_requester (room_id, requester_user_id),
     CONSTRAINT fk_karaoke_room_queue_room
         FOREIGN KEY (room_id) REFERENCES karaoke_rooms (id) ON DELETE CASCADE,
     CONSTRAINT fk_karaoke_room_queue_requester

@@ -270,15 +270,18 @@ public class KaraokeRoomService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ROOM_NOT_FOUND"));
         ensureOpen(room);
         requireActiveMember(room, requester.getId());
-        if (queueRepository.existsByRoom_IdAndRequester_Id(roomId, requester.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "QUEUE_ALREADY_REQUESTED");
-        }
         Document track = findUsableKaraokeTrack(request.trackId());
+        // Serialize queue changes with the room lock. A member can request many
+        // different songs; only duplicate requests for the same song are rejected.
+        String trackId = track.getObjectId("_id").toHexString();
+        if (queueRepository.existsByRoom_IdAndRequester_IdAndTrackId(roomId, requester.getId(), trackId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "QUEUE_TRACK_ALREADY_REQUESTED");
+        }
 
         KaraokeRoomQueueItem item = new KaraokeRoomQueueItem();
         item.setRoom(room);
         item.setRequester(requester);
-        item.setTrackId(request.trackId());
+        item.setTrackId(trackId);
         item = queueRepository.saveAndFlush(item);
         return toQueueItem(item, track, requester.getId());
     }
@@ -571,6 +574,7 @@ public class KaraokeRoomService {
         if (!ObjectId.isValid(trackId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TRACK_NOT_AVAILABLE");
         }
+        trackId = new ObjectId(trackId).toHexString();
         Document asset = mongo.findOne(Query.query(Criteria.where("songId").is(trackId)
                 .and("status").is("ready")), Document.class, ASSETS);
         Document files = asset == null ? null : asset.get("assets", Document.class);

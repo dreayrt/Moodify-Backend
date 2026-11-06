@@ -649,7 +649,9 @@ async function main() {
   if (allowedOrigins.size === 0) throw new Error("MEDIASOUP_ALLOWED_ORIGINS must list the application origins");
   wss.on("connection", (socket, request) => {
     const origin = request.headers.origin;
-    if (typeof origin !== "string" || !allowedOrigins.has(origin)) {
+    // Native clients (Flutter dart:io) send no Origin header; browsers always
+    // do and must match the allowlist. One-use tickets remain the real gate.
+    if (origin !== undefined && !allowedOrigins.has(origin)) {
       socket.close(1008, "origin not allowed");
       return;
     }

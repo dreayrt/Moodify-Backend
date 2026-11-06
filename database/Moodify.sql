@@ -801,7 +801,7 @@ CREATE TABLE karaoke_room_queue (
         requester_user_id
     ),
 
-    UNIQUE KEY uk_karaoke_room_queue_requester (
+    KEY idx_karaoke_room_queue_room_requester (
         room_id,
         requester_user_id
     ),

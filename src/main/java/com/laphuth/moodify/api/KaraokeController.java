@@ -34,6 +34,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -98,7 +99,7 @@ public class KaraokeController {
 
         List<Document> tracks = trackIds.isEmpty() ? List.of()
                 : mongo.find(Query.query(Criteria.where("_id").in(trackIds)), Document.class, "tracks");
-        String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        String normalizedQuery = normalizeSearchText(query);
         List<Map<String, Object>> matching = new ArrayList<>();
         for (Document track : tracks) {
             if (!isCatalogVisible(track)) continue;
@@ -111,8 +112,8 @@ public class KaraokeController {
             title = title == null || title.isBlank() ? "Bài hát không tên" : title;
             artist = artist == null ? "" : artist;
             if (!normalizedQuery.isEmpty()
-                    && !title.toLowerCase(Locale.ROOT).contains(normalizedQuery)
-                    && !artist.toLowerCase(Locale.ROOT).contains(normalizedQuery)) {
+                    && !normalizeSearchText(title).contains(normalizedQuery)
+                    && !normalizeSearchText(artist).contains(normalizedQuery)) {
                 continue;
             }
 
@@ -155,6 +156,14 @@ public class KaraokeController {
         response.put("totalElements", totalElements);
         response.put("totalPages", totalPages);
         return response;
+    }
+
+    private static String normalizeSearchText(String text) {
+        if (text == null) return "";
+        return Normalizer.normalize(text, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd').replace('Đ', 'D')
+                .trim().toLowerCase(Locale.ROOT);
     }
 
     @GetMapping("/tracks/{songId}")
@@ -669,26 +678,65 @@ public class KaraokeController {
         catch (Exception error) { throw new IllegalStateException(error); }
     }
 
-    private static Document publicScoreDocument(Document upstream) {
-        Object rawScore = upstream.get("score");
-        Object rawOverall = rawScore instanceof Map<?, ?> map ? map.get("overall") : null;
-        Object score = rawOverall instanceof Number number
-                ? new Document("overall", number.doubleValue())
-                : null;
-        return new Document("status", upstream.getString("status")).append("score", score);
+    static Document publicScoreDocument(Document upstream) {
+        return new Document(publicScoreResult(upstream));
     }
 
-    private static Map<String, Object> publicScoreResult(Object stored) {
+    static Map<String, Object> publicScoreResult(Object stored) {
         if (!(stored instanceof Map<?, ?> result)) return null;
         Object rawScore = result.get("score");
         Object rawOverall = rawScore instanceof Map<?, ?> map ? map.get("overall") : null;
         Object score = rawOverall instanceof Number number
-                ? Map.of("overall", number.doubleValue())
+                && Double.isFinite(number.doubleValue())
+                ? numericFields(rawScore, "overall", "pitch", "rhythm", "coverage")
                 : null;
         Map<String, Object> safe = new LinkedHashMap<>();
         safe.put("status", result.get("status"));
         safe.put("score", score);
+        for (String key : List.of("scoring_version", "reference_version", "request_id")) {
+            if (result.get(key) instanceof String value) safe.put(key, value.substring(0, Math.min(128, value.length())));
+        }
+        if (result.get("quality") instanceof Map<?, ?> quality) {
+            Map<String, Object> summary = numericFields(quality, "voiced_seconds", "applied_global_octave_shift_semitones");
+            if (quality.get("status") instanceof String status) summary.put("status", status);
+            summary.put("warnings", boundedStrings(quality.get("warnings")));
+            safe.put("quality", summary);
+        }
+        if (result.get("diagnostics") instanceof Map<?, ?> diagnostics) {
+            Map<String, Object> summary = numericFields(diagnostics,
+                    "schema_version", "reference_duration_seconds", "recording_duration_seconds",
+                    "reference_voiced_seconds", "recording_voiced_seconds", "paired_voiced_seconds",
+                    "rejected_pitch_frames", "recording_frame_count", "reference_event_count", "recording_event_count", "rms_dbfs", "clipped_fraction",
+                    "recording_start_offset_ms", "capture_latency_ms", "median_signed_pitch_error_cents",
+                    "median_absolute_pitch_error_cents", "pitch_accuracy_when_detected",
+                    "applied_octave_shift_semitones", "suggested_latency_adjustment_ms",
+                    "alignment_gain", "alignment_search_limit_ms");
+            summary.put("flags", boundedStrings(diagnostics.get("flags")));
+            if (diagnostics.get("windows") instanceof List<?> windows) {
+                summary.put("windows", windows.stream().limit(180).filter(Map.class::isInstance)
+                        .map(window -> numericFields(window, "start_seconds", "end_seconds",
+                                "expected_voiced_seconds", "coverage", "pitch")).toList());
+            }
+            safe.put("diagnostics", summary);
+        }
         return safe;
+    }
+
+    private static Map<String, Object> numericFields(Object source, String... keys) {
+        Map<String, Object> safe = new LinkedHashMap<>();
+        if (source instanceof Map<?, ?> map) {
+            for (String key : keys) {
+                if (map.get(key) instanceof Number number && Double.isFinite(number.doubleValue())) {
+                    safe.put(key, number.doubleValue());
+                }
+            }
+        }
+        return safe;
+    }
+
+    private static List<String> boundedStrings(Object source) {
+        return source instanceof List<?> list ? list.stream().filter(String.class::isInstance)
+                .map(String.class::cast).limit(10).map(s -> s.substring(0, Math.min(240, s.length()))).toList() : List.of();
     }
 
     private static String urlFor(String base, String key) {

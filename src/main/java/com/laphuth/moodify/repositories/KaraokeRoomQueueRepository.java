@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface KaraokeRoomQueueRepository extends JpaRepository<KaraokeRoomQueueItem, Long> {
     List<KaraokeRoomQueueItem> findAllByRoom_IdOrderByCreatedAtAscIdAsc(Long roomId);
     Optional<KaraokeRoomQueueItem> findByIdAndRoom_Id(Long id, Long roomId);
-    boolean existsByRoom_IdAndRequester_Id(Long roomId, Long requesterId);
+    boolean existsByRoom_IdAndRequester_IdAndTrackId(Long roomId, Long requesterId, String trackId);
 
     @Modifying
     @Query("delete from KaraokeRoomQueueItem item where item.room.id in :roomIds")
