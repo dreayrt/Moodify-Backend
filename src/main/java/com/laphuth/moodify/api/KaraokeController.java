@@ -243,7 +243,7 @@ public class KaraokeController {
         if (!"started".equals(session.getString("status")) || expired(session)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Scoring session is no longer active");
         }
-        Document asset = readyAsset(session.getString("songId"));
+        Document asset = com.laphuth.moodify.services.KaraokeAssetVersions.resolve(mongo, session.getString("songId"), session.getString("assetVersion"));
         if (!session.getString("assetVersion").equals(asset.getString("assetVersion"))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "The prepared song version changed after this session started");
         }
@@ -327,7 +327,7 @@ public class KaraokeController {
         }
 
         try {
-            Document asset = readyAsset(claimed.getString("songId"));
+            Document asset = com.laphuth.moodify.services.KaraokeAssetVersions.resolve(mongo, claimed.getString("songId"), claimed.getString("assetVersion"));
             if (!claimed.getString("assetVersion").equals(asset.getString("assetVersion"))) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "The prepared song version changed after this session started");
             }
@@ -392,7 +392,7 @@ public class KaraokeController {
         }
 
         try {
-            Document asset = readyAsset(claimed.getString("songId"));
+            Document asset = com.laphuth.moodify.services.KaraokeAssetVersions.resolve(mongo, claimed.getString("songId"), claimed.getString("assetVersion"));
             if (!claimed.getString("assetVersion").equals(asset.getString("assetVersion"))) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "The prepared song version changed after this session started");
             }
@@ -460,7 +460,7 @@ public class KaraokeController {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Scoring service credentials are not configured");
         }
         try {
-            Document asset = readyAsset(songId);
+            Document asset = com.laphuth.moodify.services.KaraokeAssetVersions.resolve(mongo, songId, expectedAssetVersion);
             if (!expectedAssetVersion.equals(asset.getString("assetVersion"))) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "The prepared song version changed during room scoring");
             }

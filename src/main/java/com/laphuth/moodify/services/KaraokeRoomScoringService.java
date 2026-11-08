@@ -73,8 +73,7 @@ public class KaraokeRoomScoringService {
                 .and("playbackRunId").is(playback.playbackRunId()));
         Document existing = mongo.findOne(lookup, Document.class, COLLECTION);
         if (existing == null) {
-            Document asset = mongo.findOne(Query.query(Criteria.where("songId").is(playback.track().trackId())
-                    .and("status").is("ready")), Document.class, ASSETS);
+            Document asset = KaraokeAssetVersions.forRoom(mongo, roomId, playback.playbackRunId(), playback.track().trackId());
             Document assetFiles = asset == null ? null : asset.get("assets", Document.class);
             Document reference = assetFiles == null ? null : assetFiles.get("pitchReference", Document.class);
             Document scoringReference = asset == null ? null : asset.get("scoringReference", Document.class);

@@ -1,0 +1,23 @@
+services:
+  karaoke-processing:
+    image: ${KARAOKE_PROCESSING_IMAGE:?set the published CPU worker image}
+    container_name: moodify-karaoke-processing
+    restart: unless-stopped
+    init: true
+    cpus: 1.0
+    stop_grace_period: 30s
+    env_file:
+      - ${KARAOKE_PROCESSING_ENV_FILE:-/opt/moodify-karaoke/processing.env}
+    environment:
+      PROCESSING_BACKEND_URL: http://moodify-backend:8080
+      PROCESSING_ROOT: /srv/moodify/karaoke
+    volumes:
+      - /srv/moodify/karaoke:/srv/moodify/karaoke
+      - /opt/music-data-collector/data/audio:/opt/music-data-collector/data/audio:ro
+      - /opt/moodify/uploads:/app/uploads:ro
+    networks:
+      - moodify-net
+networks:
+  moodify-net:
+    external: true
+    name: moodify_moodify-net

@@ -461,8 +461,9 @@ public class KaraokeRoomService {
         if (room.getCurrentTrackId() != null && ObjectId.isValid(room.getCurrentTrackId())) {
             ObjectId trackId = new ObjectId(room.getCurrentTrackId());
             Document track = mongo.findById(trackId, Document.class, TRACKS);
-            Document asset = mongo.findOne(Query.query(Criteria.where("songId").is(room.getCurrentTrackId())
-                    .and("status").is("ready")), Document.class, ASSETS);
+            Document asset;
+            try { asset = KaraokeAssetVersions.forRoom(mongo, room.getId(), room.getPlaybackRunId(), room.getCurrentTrackId()); }
+            catch (ResponseStatusException unavailable) { asset = null; }
             if (track != null && asset != null) {
                 Document assets = asset.get("assets", Document.class);
                 Document instrumental = assets == null ? null : assets.get("instrumental", Document.class);
