@@ -1,7 +1,7 @@
 package com.laphuth.moodify.dto.moderator;
 
-import com.laphuth.moodify.entities.SongLicense;
 import com.laphuth.moodify.entities.Track;
+import com.laphuth.moodify.repositories.SongLicenseDetailsProjection;
 
 import java.util.List;
 
@@ -23,10 +23,13 @@ public record ModerationQueueTrackResponse(
     List<Double> waveform,
     
     // License Info (from MySQL song_licenses)
+    boolean licenseRecordExists,
     String licenseType,
     String copyrightOwner,
     Long distributorId,
+    String distributorName,
     Long distributionContractId,
+    String distributionContractCode,
     String issueDate,
     String expiryDate,
     String licenseStatus,
@@ -35,7 +38,7 @@ public record ModerationQueueTrackResponse(
     // Audio Features (from MongoDB tracks.audio_features)
     Track.AudioFeatures audioFeatures
 ) {
-    public static ModerationQueueTrackResponse from(Track track, SongLicense license) {
+    public static ModerationQueueTrackResponse from(Track track, SongLicenseDetailsProjection license) {
         String genre = (track.getGenres() != null && !track.getGenres().isEmpty()) 
             ? track.getGenres().get(0) 
             : "Pop";
@@ -60,14 +63,17 @@ public record ModerationQueueTrackResponse(
             track.isExplicit(),
             track.getLyricsPlain(),
             List.of(0.2, 0.4, 0.7, 0.5, 0.9, 0.6, 0.8, 0.4, 0.3, 0.5),
-            license != null ? license.getLicenseType() : "DIRECT_LICENSE",
+            license != null,
+            license != null ? license.getLicenseType() : null,
             license != null ? license.getCopyrightOwner() : null,
             license != null ? license.getDistributorId() : null,
+            license != null ? license.getDistributorName() : null,
             license != null ? license.getDistributionContractId() : null,
-            (license != null && license.getIssueDate() != null) ? license.getIssueDate().toString() : null,
-            (license != null && license.getExpiryDate() != null) ? license.getExpiryDate().toString() : null,
-            license != null ? license.getStatus().name() : "PENDING",
-            license != null ? license.getDocumentSonglicensesUrl() : null,
+            license != null ? license.getDistributionContractCode() : null,
+            license != null ? license.getIssueDate() : null,
+            license != null ? license.getExpiryDate() : null,
+            license != null ? license.getLicenseStatus() : null,
+            license != null ? license.getLicenseDocumentUrl() : null,
             track.getAudioFeatures()
         );
     }

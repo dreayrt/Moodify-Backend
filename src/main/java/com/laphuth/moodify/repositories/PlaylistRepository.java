@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PlaylistRepository extends MongoRepository<Playlist, String> {
+    java.util.List<Playlist> findByOwnerUserIdOrderByCreatedAtDesc(Long ownerUserId);
+
     List<Playlist> findByUsernameOrderByCreatedAtDesc(String username);
 
     List<Playlist> findByIsPublicTrueOrderByCreatedAtDesc();

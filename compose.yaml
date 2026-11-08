@@ -1,62 +1,134 @@
+# Compose manages databases and supporting services for the local Moodify stack.
+# Start the frontend and backend separately on the host; they connect through
+# the localhost ports published below.
+# Copy .env.example to .env to configure credentials and local service URLs.
+# KARAOKE_SCORING_IMAGE can point to a published image instead of building locally:
+# KARAOKE_SCORING_IMAGE=dreayrt/audio_separator_for_karaoke:0.4.3-score
+# KARAOKE_SCORING_PULL_POLICY=always
+
 services:
-  mongodb:
-    image: 'mongo:latest'
-    environment:
-      - 'MONGO_INITDB_DATABASE=music_streaming'
-      - 'MONGO_INITDB_ROOT_PASSWORD=secret'
-      - 'MONGO_INITDB_ROOT_USERNAME=root'
-    ports:
-      - '27018:27017'
   mysql:
-    image: 'mysql:latest'
+    image: mysql:8.4
+    restart: unless-stopped
     environment:
-      - 'MYSQL_DATABASE=moodify'
-      - 'MYSQL_ROOT_PASSWORD=${DATABASE_PASSWORD:-verysecret}'
+      MYSQL_DATABASE: moodify
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD:-verysecret}
     ports:
-      - '3307:3306'
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  mongodb:
+    image: mongo:8.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-music_streaming_1}
+    ports:
+      - "127.0.0.1:27018:27017"
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "quit(db.adminCommand('ping').ok ? 0 : 2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   detect-emotions:
-    image: 'dreayrt/detect-emotions:latest'
-    container_name: 'moodify-detect-emotions'
-    restart: 'unless-stopped'
+    image: dreayrt/detect-emotions:latest
+    restart: unless-stopped
     ports:
-      - '8000:8000'
-    stdin_open: true
-    tty: true
+      - "127.0.0.1:8000:8000"
     deploy:
       resources:
         limits:
           memory: 4G
-          cpus: '2.0'
+          cpus: "2.0"
 
   ocr-service:
-    image: 'dreayrt/ocr-service:latest'
-    container_name: 'moodify-ocr-service'
-    restart: 'unless-stopped'
+    build:
+      context: ../ocr-service
+      dockerfile: Dockerfile
+    image: moodify-ocr-service:local
+    restart: unless-stopped
     ports:
-      - '8001:8000'
-    stdin_open: true
-    tty: true
+      - "127.0.0.1:8001:8000"
+    environment:
+      APP_NAME: "OCR Service"
+      APP_ENV: production
+      DEBUG: "false"
+      HOST: 0.0.0.0
+      PORT: "8000"
+      MAX_UPLOAD_SIZE_MB: "10"
+      OCR_LANGUAGE: vi
+      PDF_RENDER_DPI: "200"
+      MIN_TEXT_LENGTH_THRESHOLD: "20"
     deploy:
       resources:
         limits:
           memory: 4G
-          cpus: '2.0'
+          cpus: "2.0"
 
-  audio-analysis-service:
+  karaoke-scoring:
+    image: ${KARAOKE_SCORING_IMAGE:-moodify-karaoke-scoring:local}
+    pull_policy: ${KARAOKE_SCORING_PULL_POLICY:-build}
     build:
-      context: ../Moodify-Audio-Service
-    image: 'moodify-audio-analysis:local'
-    container_name: 'moodify-audio-analysis'
-    restart: 'unless-stopped'
+      context: ../python-audio-separator
+      dockerfile: Dockerfile.karaoke
+      target: scoring-api
+    restart: unless-stopped
     ports:
-      - '8002:8000'
-    stdin_open: true
-    tty: true
+      - "127.0.0.1:8003:8000"
+    environment:
+      AI_API_KEY: ${KARAOKE_SCORING_KEY:-local-karaoke-dev-key-change-before-deployment}
+      AI_ENV: ${KARAOKE_SCORING_ENV:-dev}
+      AI_CPU_THREADS: ${KARAOKE_SCORING_CPU_THREADS:-1}
+      AI_DEVICE: cpu
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: '2.0'
+          cpus: ${KARAOKE_SCORING_CPUS:-1.0}
 
+  # Local mediasoup voice service. Keep the generated container name so this
+  # service can coexist with a stopped container from the standalone compose.
+  moodify-karaoke-media:
+    build:
+      context: ./supporting-services/karaoke-media
+      dockerfile: Dockerfile
+    image: moodify-karaoke-media:local
+    restart: unless-stopped
+    environment:
+      PORT: "3001"
+      KARAOKE_MEDIA_TICKET_SECRET: ${KARAOKE_MEDIA_TICKET_SECRET:?set KARAOKE_MEDIA_TICKET_SECRET in .env}
+      KARAOKE_MEDIA_SERVICE_SECRET: ${KARAOKE_MEDIA_SERVICE_SECRET:?set KARAOKE_MEDIA_SERVICE_SECRET in .env}
+      KARAOKE_BACKEND_INTERNAL_URL: ${KARAOKE_BACKEND_INTERNAL_URL:-http://host.docker.internal:8080}
+      MEDIASOUP_ALLOWED_ORIGINS: ${MEDIASOUP_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      MEDIASOUP_AUTH_TIMEOUT_MS: ${MEDIASOUP_AUTH_TIMEOUT_MS:-5000}
+      KARAOKE_MEDIA_TICKET_CLOCK_TOLERANCE_SECONDS: ${KARAOKE_MEDIA_TICKET_CLOCK_TOLERANCE_SECONDS:-120}
+      MEDIASOUP_LISTEN_IP: 0.0.0.0
+      MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:-127.0.0.1}
+      MEDIASOUP_MIN_PORT: ${MEDIASOUP_MIN_PORT:-40000}
+      MEDIASOUP_MAX_PORT: ${MEDIASOUP_MAX_PORT:-40031}
+      WEBRTC_ICE_SERVERS: "${WEBRTC_ICE_SERVERS:-}"
+      TURN_SERVER_URLS: "${TURN_SERVER_URLS:-[]}"
+      TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:-}
+      TURN_CREDENTIAL_TTL_SECONDS: "600"
+    ports:
+      - "127.0.0.1:3001:3001/tcp"
+      - "127.0.0.1:${MEDIASOUP_MIN_PORT:-40000}-${MEDIASOUP_MAX_PORT:-40031}:${MEDIASOUP_MIN_PORT:-40000}-${MEDIASOUP_MAX_PORT:-40031}/udp"
+      - "127.0.0.1:${MEDIASOUP_MIN_PORT:-40000}-${MEDIASOUP_MAX_PORT:-40031}:${MEDIASOUP_MIN_PORT:-40000}-${MEDIASOUP_MAX_PORT:-40031}/tcp"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
 
+volumes:
+  mysql-data:
+  mongodb-data:

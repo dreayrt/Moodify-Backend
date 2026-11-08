@@ -1,7 +1,9 @@
--- ============================================================
--- MOODIFY - COMPLETE RELATIONAL DATABASE SCHEMA (MYSQL 8.0+)
--- ============================================================
-
+-- Moodify: lược đồ MySQL tham khảo, chỉ tạo cấu trúc; không chứa seed hoặc lệnh thử nghiệm.
+-- Dành cho cơ sở dữ liệu trống. Với cơ sở dữ liệu đang có dữ liệu, dùng migration riêng.
+-- Track/artist/album lưu tại MongoDB: các cột *_id tương ứng là tham chiếu logic,
+-- không thể khai báo FOREIGN KEY MySQL sang MongoDB.
+-- Bản này giữ cả revenue_playback_sessions và qualified_streams theo schema bạn cung cấp.
+-- DATETIME(3) của hai bảng doanh thu dùng UTC; các cột thời gian cũ giữ nguyên quy ước hiện tại.
 DROP DATABASE IF EXISTS moodify;
 
 CREATE DATABASE moodify
@@ -11,20 +13,20 @@ CREATE DATABASE moodify
 USE moodify;
 
 -- ============================================================
--- 1. NGƯỜI DÙNG (USERS)
--- Ánh xạ lớp User và phân quyền theo role.
--- Hỗ trợ đăng nhập mật khẩu và Google OAuth2 (password NULL).
+-- 1. NGƯỜI DÙNG
+-- Ánh xạ lớp cha User và các lớp con phân biệt theo role trong sơ đồ lớp.
+-- Admin / Listener (User) / Content Lead (Phụ trách nội dung) / ContentModerator được biểu diễn thông qua field role.
 -- ============================================================
 CREATE TABLE users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20) NULL UNIQUE,
+    phone VARCHAR(20) UNIQUE,
     email VARCHAR(150) NOT NULL UNIQUE,
     username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NULL,
     avatar_url VARCHAR(500) NULL,
     role ENUM('USER','CONTENT_LEAD','MODERATOR','ADMIN') NOT NULL DEFAULT 'USER',
-    artist_spotify_id VARCHAR(80) NULL UNIQUE,  -- Liên kết mã nghệ sĩ / Spotify catalog do Content Lead quản lý
+    artist_spotify_id VARCHAR(80) NULL UNIQUE,  -- Cột liên kết mã catalog / Spotify artist ID do Content Lead phụ trách
     status ENUM('ACTIVE','INACTIVE','BANNED') NOT NULL DEFAULT 'ACTIVE',
     last_login_at DATETIME NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -33,11 +35,11 @@ CREATE TABLE users (
     INDEX idx_users_role_status (role, status),
     INDEX idx_users_artist_spotify (artist_spotify_id),
     INDEX idx_users_created_at (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 -- ============================================================
--- 2. THƯ VIỆN BÀI HÁT CÁ NHÂN (USER LIBRARY TRACKS)
--- Lưu bài hát người dùng thêm vào thư viện; track_id tham chiếu logic sang MongoDB tracks._id.
+-- 2. THƯ VIỆN BÀI HÁT CÁ NHÂN
+-- Lưu các bài hát người dùng thêm vào thư viện cá nhân; dữ liệu chi tiết track vẫn nằm trong MongoDB.
 -- ============================================================
 CREATE TABLE user_library_tracks (  
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -51,10 +53,12 @@ CREATE TABLE user_library_tracks (
 
     INDEX idx_library_track (track_id),
     INDEX idx_library_user_added (user_id, added_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- ============================================================
--- 3. BÀI HÁT YÊU THÍCH (FAVORITE SONGS)
+-- 3. BÀI HÁT YÊU THÍCH
+-- Ánh xạ trực tiếp lớp FavoriteSong trong sơ đồ lớp mức thiết kế.
+-- track_id tham chiếu logic đến MongoDB tracks._id.
 -- ============================================================
 CREATE TABLE favorite_songs (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -68,15 +72,17 @@ CREATE TABLE favorite_songs (
 
     INDEX idx_favorite_song_track (track_id),
     INDEX idx_favorite_song_user_time (user_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- ============================================================
--- 4. NGHỆ SĨ YÊU THÍCH (FAVORITE ARTISTS / FOLLOW ARTIST)
+-- 4. NGHỆ SĨ YÊU THÍCH
+-- Ánh xạ trực tiếp lớp FavoriteArtist trong sơ đồ lớp mức thiết kế.
+-- artist_id tham chiếu logic đến MongoDB artists._id.
 -- ============================================================
 CREATE TABLE favorite_artists (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    artist_id VARCHAR(80) NOT NULL,
+    artist_id VARCHAR(64) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_favorite_artist_user
@@ -85,28 +91,72 @@ CREATE TABLE favorite_artists (
 
     INDEX idx_favorite_artist_artist (artist_id),
     INDEX idx_favorite_artist_user_time (user_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- ============================================================
--- 5. TRANG HỒ SƠ NGHỆ SĨ (ARTIST PROFILES)
--- Lưu tiểu sử, banner, mạng xã hội, tích xanh của nghệ sĩ
+-- 5. ALBUM YÊU THÍCH
+-- Tách riêng để đáp ứng yêu cầu người dùng có thể yêu thích album.
+-- album_id tham chiếu logic đến MongoDB albums._id.
 -- ============================================================
+CREATE TABLE favorite_albums (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    album_id VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_favorite_album_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT uk_favorite_album UNIQUE (user_id, album_id),
+
+    INDEX idx_favorite_album_album (album_id),
+    INDEX idx_favorite_album_user_time (user_id, created_at)
+) ;
+
+-- ============================================================
+-- 6. LỊCH SỬ NGHE NHẠC
+-- Ánh xạ lớp ListeningHistory trong sơ đồ lớp.
+-- Lưu lịch sử phát để người dùng xem lại; không phải sổ doanh thu.
+-- ============================================================
+CREATE TABLE listening_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    track_id VARCHAR(64) NOT NULL,
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at DATETIME NULL,
+    listened_duration_ms INT UNSIGNED NOT NULL DEFAULT 0, 
+    last_position_ms INT UNSIGNED NOT NULL DEFAULT 0,
+    source ENUM('HOME','SEARCH','PLAYLIST','ALBUM','ARTIST','LIBRARY','FAVORITES','EMOTION','OTHER')
+        NOT NULL DEFAULT 'OTHER',
+    source_id VARCHAR(64) NULL,
+    device_type ENUM('WEB','ANDROID','IOS','OTHER') NOT NULL DEFAULT 'WEB',
+
+    CONSTRAINT fk_listening_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    INDEX idx_listening_user_time (user_id, started_at),
+    INDEX idx_listening_track_time (track_id, started_at)
+) ;
+
 CREATE TABLE artist_profiles (
-    artist_id VARCHAR(80) PRIMARY KEY,              -- Mã định danh nghệ sĩ (Spotify ID hoặc Mongo ID)
-    user_id BIGINT NULL,                           -- Tài khoản User sở hữu (nếu là Content Lead nội bộ)
-    bio TEXT NULL,                                 -- Tiểu sử nghệ sĩ
-    banner_url VARCHAR(500) NULL,                  -- Banner đầu trang cá nhân
+    artist_id VARCHAR(80) PRIMARY KEY,
+    user_id BIGINT NULL,
+    bio TEXT NULL,
+    banner_url VARCHAR(500) NULL,
     facebook_url VARCHAR(255) NULL,
     instagram_url VARCHAR(255) NULL,
     youtube_url VARCHAR(255) NULL,
-    verified BOOLEAN NOT NULL DEFAULT TRUE,        -- Huy hiệu tích xanh xác minh
+    verified BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_artist_profile_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE SET NULL,
+
     CONSTRAINT uk_artist_profile_user UNIQUE (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 -- ============================================================
 -- 6. ĐÁNH GIÁ & NHẬN XÉT NGHỆ SĨ (ARTIST REVIEWS)
@@ -122,20 +172,32 @@ CREATE TABLE artist_reviews (
     artist_reply TEXT NULL,
     artist_replied_at DATETIME NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_artist_review_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT uk_user_artist_review UNIQUE (user_id, artist_id),
-    CONSTRAINT chk_review_rating CHECK (rating >= 1 AND rating <= 5),
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_artist_review_artist
+        FOREIGN KEY (artist_id)
+        REFERENCES artist_profiles(artist_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uk_user_artist_review
+        UNIQUE (user_id, artist_id),
+
+    CONSTRAINT chk_review_rating
+        CHECK (rating >= 1 AND rating <= 5),
 
     INDEX idx_artist_reviews_artist_status (artist_id, status),
     INDEX idx_artist_reviews_user (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 -- ============================================================
--- 7. ALBUMS (BẢNG ALBUM CỦA USER / NGHỆ SĨ)
--- Tương thích với AlbumEntity trong Spring Boot
+-- 5. ALBUMS (NGƯỜI DÙNG / CONTENT LEAD TẠO)
+-- Quản lý Album phát hành tự tạo trong hệ thống Moodify.
 -- ============================================================
 CREATE TABLE albums (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -157,7 +219,10 @@ CREATE TABLE albums (
     INDEX idx_albums_public_status (is_public, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Danh sách bài hát trong Album (Quan hệ N-N giữa Album và Track)
+-- ============================================================
+-- 5.1 BÀI HÁT TRONG ALBUM
+-- Liên kết Track (MongoDB) vào Album (MySQL)
+-- ============================================================
 CREATE TABLE album_tracks (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     album_id BIGINT NOT NULL,
@@ -172,48 +237,11 @@ CREATE TABLE album_tracks (
     INDEX idx_album_tracks_order (album_id, track_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ============================================================
--- 8. ALBUM YÊU THÍCH (FAVORITE ALBUMS)
--- ============================================================
-CREATE TABLE favorite_albums (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    album_id VARCHAR(80) NOT NULL,                     -- Tham chiếu MySQL album ID hoặc MongoDB album ID
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_favorite_album_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT uk_favorite_album UNIQUE (user_id, album_id),
-
-    INDEX idx_favorite_album_album (album_id),
-    INDEX idx_favorite_album_user_time (user_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 9. LỊCH SỬ NGHE NHẠC (LISTENING HISTORY)
--- ============================================================
-CREATE TABLE listening_history (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    track_id VARCHAR(64) NOT NULL,
-    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ended_at DATETIME NULL,
-    listened_duration_ms INT UNSIGNED NOT NULL DEFAULT 0, 
-    last_position_ms INT UNSIGNED NOT NULL DEFAULT 0,
-    source ENUM('HOME','SEARCH','PLAYLIST','ALBUM','ARTIST','LIBRARY','FAVORITES','EMOTION','OTHER')
-        NOT NULL DEFAULT 'OTHER',
-    source_id VARCHAR(64) NULL,
-    device_type ENUM('WEB','ANDROID','IOS','OTHER') NOT NULL DEFAULT 'WEB',
-
-    CONSTRAINT fk_listening_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-
-    INDEX idx_listening_user_time (user_id, started_at),
-    INDEX idx_listening_track_time (track_id, started_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
--- 10. SỰ KIỆN PHÁT NHẠC (PLAYBACK EVENTS)
+-- 7. SỰ KIỆN PHÁT NHẠC
+-- Ghi nhận Play / Pause / Resume / Seek / Next / Previous để quản lý phát nhạc và phục vụ thống kê.
+-- Bản ghi phụ thuộc listening_history và sẽ bị xóa khi lịch sử nghe bị xóa.
 -- ============================================================
 CREATE TABLE playback_events (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -228,10 +256,11 @@ CREATE TABLE playback_events (
 
     INDEX idx_playback_history_time (listening_history_id, occurred_at),
     INDEX idx_playback_type_time (event_type, occurred_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- ============================================================
--- 11. LỊCH SỬ TÌM KIẾM (SEARCH HISTORY)
+-- 8. LỊCH SỬ TÌM KIẾM
+-- Ánh xạ SearchHistory, hỗ trợ tìm kiếm thông thường và tìm kiếm theo cảm xúc.
 -- ============================================================
 CREATE TABLE search_history (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -252,31 +281,13 @@ CREATE TABLE search_history (
     INDEX idx_search_user_time (user_id, searched_at),
     INDEX idx_search_keyword (keyword),
     INDEX idx_search_emotion (detected_emotion)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
+
 
 -- ============================================================
--- 12. LƯỢT TRUY CẬP ĐA NỀN TẢNG (PLATFORM TRAFFIC EVENTS)
--- ============================================================
-CREATE TABLE platform_traffic_events (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    target_type ENUM('TRACK', 'ARTIST', 'GENERAL') NOT NULL DEFAULT 'TRACK',
-    target_id VARCHAR(64) NOT NULL,
-    platform ENUM('WEB', 'ANDROID', 'IOS', 'OTHER') NOT NULL DEFAULT 'WEB',
-    referrer_type ENUM('DIRECT', 'SEARCH', 'TIKTOK', 'FACEBOOK', 'AI_RECOMMEND', 'OTHER') NOT NULL DEFAULT 'DIRECT',
-    user_id BIGINT NULL,
-    session_id VARCHAR(64) NULL,
-    visited_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_traffic_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-
-    INDEX idx_traffic_target_time (target_id, visited_at),
-    INDEX idx_traffic_platform (platform),
-    INDEX idx_traffic_visited_at (visited_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
--- 13. BẬC QUYỀN LỢI THUÊ BAO (SUBSCRIPTION TIERS)
+-- 9. BẬC QUYỀN LỢI THUÊ BAO (SUBSCRIPTION TIERS)
+-- Chuẩn hóa dữ liệu 3NF: Lưu trữ độc lập chính sách quảng cáo,
+-- hạn ngạch chuyển bài, tải offline và số thiết bị.
 -- ============================================================
 CREATE TABLE subscription_tiers (
     id VARCHAR(50) PRIMARY KEY,
@@ -298,24 +309,28 @@ CREATE TABLE subscription_tiers (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 14. GÓI DỊCH VỤ (SERVICE PACKAGES)
+-- 10. GÓI DỊCH VỤ
+-- Ánh xạ ServicePackage trong sơ đồ lớp.
+-- Quyền lợi của gói được chuẩn hóa thành bảng riêng thay vì hard-code thành nhiều cột.
 -- ============================================================
 CREATE TABLE service_packages (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tier_id VARCHAR(50) NOT NULL DEFAULT 'INDIVIDUAL_BASIC',
     name VARCHAR(100) NOT NULL,
     description VARCHAR(1000) NULL, 
     price DECIMAL(12,2) NOT NULL DEFAULT 0,
     duration_days INT UNSIGNED NOT NULL,
     display_order INT NOT NULL DEFAULT 0,
     status ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    tier_id VARCHAR(50) NOT NULL DEFAULT 'INDIVIDUAL_BASIC',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    CONSTRAINT chk_service_package_price CHECK (price >= 0),
-    CONSTRAINT chk_service_package_duration CHECK (duration_days > 0),
-    CONSTRAINT fk_service_package_tier 
-        FOREIGN KEY (tier_id) REFERENCES subscription_tiers(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_service_package_price
+        CHECK (price >= 0),
+    CONSTRAINT chk_service_package_duration
+        CHECK (duration_days > 0),
+    CONSTRAINT fk_service_package_tier
+        FOREIGN KEY (tier_id) REFERENCES subscription_tiers(id) ON UPDATE CASCADE,
 
     INDEX idx_service_package_status (status),
     INDEX idx_service_package_display (display_order),
@@ -323,7 +338,9 @@ CREATE TABLE service_packages (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 15. ĐĂNG KÝ GÓI (SUBSCRIPTIONS)
+-- 11. ĐĂNG KÝ/GIA HẠN GÓI
+-- Ánh xạ Subscription trong sơ đồ lớp.
+-- Dữ liệu thanh toán được tách riêng sang bảng payment_transactions.
 -- ============================================================
 CREATE TABLE subscriptions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -336,21 +353,21 @@ CREATE TABLE subscriptions (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_subscription_user 
+    CONSTRAINT fk_subscription_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_subscription_package 
-        FOREIGN KEY (service_package_id) REFERENCES service_packages(id) ON DELETE RESTRICT,
-    CONSTRAINT chk_subscription_dates 
-        CHECK (end_at > start_at),
+
+	CONSTRAINT fk_subscription_package
+		FOREIGN KEY (service_package_id) REFERENCES service_packages(id),
+    CONSTRAINT chk_subscription_dates CHECK (end_at > start_at),
 
     INDEX idx_subscription_user_status (user_id, status),
     INDEX idx_subscription_end (end_at),
-    INDEX idx_subscription_package (service_package_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    INDEX idx_subscription_package  (service_package_id)
+) ;
 
 -- ============================================================
--- 16. GIAO DỊCH THANH TOÁN (PAYMENT TRANSACTIONS)
--- ON DELETE RESTRICT để bảo toàn lịch sử kiểm toán tài chính
+-- 12. GIAO DỊCH THANH TOÁN
+-- Ánh xạ PaymentTransaction và hỗ trợ các cổng thanh toán online.
 -- ============================================================
 CREATE TABLE payment_transactions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -364,70 +381,18 @@ CREATE TABLE payment_transactions (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_payment_subscription 
-        FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE RESTRICT,
-    CONSTRAINT chk_payment_amount 
-        CHECK (amount >= 0),
+    CONSTRAINT fk_payment_subscription
+        FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
+    CONSTRAINT chk_payment_amount CHECK (amount >= 0),
 
     UNIQUE KEY uk_payment_provider_tx (provider, provider_transaction_id),
     INDEX idx_payment_subscription_time (subscription_id, created_at),
     INDEX idx_payment_status_time (status, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- ============================================================
--- 17. NHẬT KÝ WEBHOOK CỔNG THANH TOÁN (PAYMENT WEBHOOK LOGS)
--- Chống lặp và idempotent xử lý giao dịch
--- ============================================================
-CREATE TABLE payment_webhook_logs (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    provider VARCHAR(50) NOT NULL DEFAULT 'SEPAY',
-    provider_transaction_id VARCHAR(150) NOT NULL,
-    reference_code VARCHAR(100) NULL,
-    order_code VARCHAR(50) NULL,
-    payment_id BIGINT NULL,
-    amount DECIMAL(12,2) NOT NULL DEFAULT 0,
-    transfer_type VARCHAR(20) NOT NULL DEFAULT 'in',
-    raw_payload LONGTEXT NULL,
-    status VARCHAR(30) NOT NULL,
-    message VARCHAR(255) NULL,
-    processed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_webhook_payment 
-        FOREIGN KEY (payment_id) REFERENCES payment_transactions(id) ON DELETE SET NULL,
-
-    UNIQUE KEY uk_payment_webhook_provider_tx (provider, provider_transaction_id),
-    INDEX idx_payment_webhook_order (order_code),
-    INDEX idx_payment_webhook_provider (provider)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
--- 18. KHÓA IDEMPOTENCY THANH TOÁN (PAYMENT IDEMPOTENCY KEYS)
--- Ngăn người dùng click đúp gửi giao dịch thanh toán trùng lặp
--- ============================================================
-CREATE TABLE payment_idempotency_keys (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    idempotency_key VARCHAR(120) NOT NULL,
-    user_id BIGINT NOT NULL,
-    provider VARCHAR(50) NULL DEFAULT 'SEPAY',
-    endpoint VARCHAR(100) NULL DEFAULT 'CHECKOUT',
-    package_id BIGINT NULL,
-    response_payload LONGTEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_payment_idemp_user 
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_payment_idemp_package 
-        FOREIGN KEY (package_id) REFERENCES service_packages(id) ON DELETE SET NULL,
-    CONSTRAINT uk_user_idemp_key 
-        UNIQUE (user_id, idempotency_key),
-
-    INDEX idx_payment_idemp_created (created_at),
-    INDEX idx_payment_idemp_provider (provider)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
--- 19. THIẾT BỊ NGƯỜI DÙNG (USER DEVICES)
--- Quản lý thiết bị đăng nhập và tải nhạc offline
+-- 15. THIẾT BỊ NGƯỜI DÙNG
+-- Xác định các thiết bị Mobile được sử dụng cho chức năng nghe nhạc offline.
 -- ============================================================
 CREATE TABLE user_devices (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -438,18 +403,19 @@ CREATE TABLE user_devices (
     status ENUM('ACTIVE','REVOKED') NOT NULL DEFAULT 'ACTIVE',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_device_user 
+    CONSTRAINT fk_device_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT uk_user_device 
-        UNIQUE (user_id, device_uuid),
+    CONSTRAINT uk_user_device UNIQUE (user_id, device_uuid),
 
     INDEX idx_device_user_status (user_id, status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- ============================================================
--- 20. TẢI NHẠC OFFLINE (OFFLINE DOWNLOADS)
+-- MOODIFY OFFLINE DOWNLOAD SYSTEM MIGRATION
 -- ============================================================
-CREATE TABLE offline_downloads (
+
+-- 1. Đảm bảo bảng offline_downloads tồn tại với đầy đủ cột và index
+CREATE TABLE IF NOT EXISTS offline_downloads (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     device_id BIGINT NOT NULL,
     track_id VARCHAR(64) NOT NULL,
@@ -461,10 +427,9 @@ CREATE TABLE offline_downloads (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_offline_device 
+    CONSTRAINT fk_offline_device
         FOREIGN KEY (device_id) REFERENCES user_devices(id) ON DELETE CASCADE,
-    CONSTRAINT uk_offline_device_track 
-        UNIQUE (device_id, track_id),
+    CONSTRAINT uk_offline_device_track UNIQUE (device_id, track_id),
 
     INDEX idx_offline_device_status (device_id, status),
     INDEX idx_offline_track (track_id),
@@ -472,29 +437,36 @@ CREATE TABLE offline_downloads (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- 21. YÊU CẦU KIỂM DUYỆT NỘI DUNG (CONTENT REVIEW REQUESTS)
+-- 15. YÊU CẦU KIỂM DUYỆT NỘI DUNG
+-- Hỗ trợ Artist.submitForReview() và quy trình kiểm duyệt TRACK/ALBUM của Moderator.
+-- Nội dung Track/Album thực tế vẫn được lưu trong MongoDB.
 -- ============================================================
 CREATE TABLE content_review_requests (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     artist_user_id BIGINT NOT NULL,
     content_type ENUM('TRACK','ALBUM') NOT NULL,
     content_id VARCHAR(64) NOT NULL,
+    content_title VARCHAR(500) NULL,
+    artist_name VARCHAR(255) NULL,
+    content_genre VARCHAR(255) NULL,
+    content_cover_url VARCHAR(2048) NULL,
     request_type ENUM('PUBLISH','UPDATE') NOT NULL DEFAULT 'PUBLISH',
     status ENUM('PENDING','IN_REVIEW','APPROVED','REJECTED','CANCELLED') NOT NULL DEFAULT 'PENDING',
     submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     resolved_at DATETIME NULL,
 
-    CONSTRAINT fk_review_request_artist 
+    CONSTRAINT fk_review_request_artist
         FOREIGN KEY (artist_user_id) REFERENCES users(id) ON DELETE CASCADE,
 
     INDEX idx_review_queue (status, submitted_at),
     INDEX idx_review_artist (artist_user_id, submitted_at),
     INDEX idx_review_content (content_type, content_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- ============================================================
--- 22. KẾT QUẢ/HÀNH ĐỘNG KIỂM DUYỆT (CONTENT REVIEW ACTIONS)
--- Giữ lịch sử quyết định kiểm duyệt bằng ON DELETE RESTRICT với moderator
+-- 16. KẾT QUẢ/XỬ LÝ KIỂM DUYỆT
+-- Ánh xạ các thao tác reviewSong/approveSong/rejectSong của ContentModerator.
+-- Giữ lịch sử kiểm duyệt để audit; không ghi đè các quyết định cũ.
 -- ============================================================
 CREATE TABLE content_review_actions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -504,22 +476,23 @@ CREATE TABLE content_review_actions (
     reason VARCHAR(1000) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_review_action_request 
+    CONSTRAINT fk_review_action_request
         FOREIGN KEY (review_request_id) REFERENCES content_review_requests(id) ON DELETE CASCADE,
-    CONSTRAINT fk_review_action_moderator 
-        FOREIGN KEY (moderator_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_review_action_moderator
+        FOREIGN KEY (moderator_user_id) REFERENCES users(id),
 
     INDEX idx_review_action_request_time (review_request_id, created_at),
     INDEX idx_review_action_moderator_time (moderator_user_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- ============================================================
--- 23. NHÀ PHÂN PHỐI (DISTRIBUTORS)
+-- 17. NHÀ PHÂN PHỐI
+-- Thông tin bên phân phối được chọn ở bước khai báo giấy phép bài hát.
 -- ============================================================
 CREATE TABLE distributors (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     company_name VARCHAR(150) NOT NULL,
-    country VARCHAR(150) NOT NULL,
+    country varchar(150) not null,
     contact_name VARCHAR(100) NULL,
     contact_email VARCHAR(150) NULL,
     contact_phone VARCHAR(30) NULL,
@@ -529,10 +502,12 @@ CREATE TABLE distributors (
 
     INDEX idx_distributor_name (company_name),
     INDEX idx_distributor_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- ============================================================
--- 24. HỢP ĐỒNG PHÂN PHỐI (DISTRIBUTION CONTRACTS)
+-- 18. HỢP ĐỒNG PHÂN PHỐI
+-- Hợp đồng thuộc một nhà phân phối; revenue_share là tỷ lệ hợp đồng,
+-- không phải tỷ lệ chia 75/25 của thống kê doanh thu lượt nghe.
 -- ============================================================
 CREATE TABLE distribution_contracts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -542,110 +517,90 @@ CREATE TABLE distribution_contracts (
     signed_date DATE NOT NULL,
     effective_from DATE NULL,
     effective_to DATE NULL,
-    revenue_share DOUBLE NULL,
+    revenue_share double,
     status ENUM('DRAFT','ACTIVE','EXPIRED','TERMINATED') NOT NULL DEFAULT 'ACTIVE',
     document_url VARCHAR(1000) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_distribution_contract_distributor 
-        FOREIGN KEY (distributor_id) REFERENCES distributors(id) ON DELETE RESTRICT,
-    CONSTRAINT chk_distribution_contract_dates 
+    CONSTRAINT fk_distribution_contract_distributor
+        FOREIGN KEY (distributor_id) REFERENCES distributors(id),
+    CONSTRAINT chk_distribution_contract_dates
         CHECK (effective_to IS NULL OR effective_from IS NULL OR effective_to >= effective_from),
 
     INDEX idx_distribution_contract_distributor (distributor_id),
     INDEX idx_distribution_contract_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- ============================================================
--- 25. GIẤY PHÉP BÀI HÁT (SONG LICENSES)
+-- 19. GIẤY PHÉP BÀI HÁT
+-- Ánh xạ SongLicense; track_id tham chiếu logic đến tracks trong MongoDB.
+-- acquisition_cost_vnd là chi phí mua quyền cho bài hát do OCR trích xuất
+-- và người phụ trách xác nhận. NULL = chưa xác định; 0 = không phát sinh chi phí.
+-- Hoàn vốn được so với phần doanh thu Content Lead đã được duyệt, không phải doanh thu gộp.
 -- ============================================================
 CREATE TABLE song_licenses (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     track_id VARCHAR(64) NOT NULL,
     distributor_id BIGINT NULL,
     distribution_contract_id BIGINT NULL,
+    distribution_contract_code VARCHAR(80) NULL,
     license_type VARCHAR(80) NOT NULL,
     copyright_owner VARCHAR(200) NULL,
-    acquisition_cost_vnd DECIMAL(18,0) NULL,
     issue_date DATE NULL,
     expiry_date DATE NULL,
     status ENUM('ACTIVE','EXPIRED','REVOKED','PENDING') NOT NULL DEFAULT 'ACTIVE',
     document_songlicenses_url VARCHAR(1000) NULL,
+    acquisition_cost_vnd DECIMAL(18,0) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_song_license_distributor 
-        FOREIGN KEY (distributor_id) REFERENCES distributors(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_song_license_contract 
-        FOREIGN KEY (distribution_contract_id) REFERENCES distribution_contracts(id) ON DELETE SET NULL,
-    CONSTRAINT chk_song_license_owner CHECK (
-        (distributor_id IS NOT NULL AND copyright_owner IS NULL)
-        OR (distributor_id IS NULL AND copyright_owner IS NOT NULL)
-    ),
-    CONSTRAINT chk_song_license_dates 
+    CONSTRAINT fk_song_license_distributor
+        FOREIGN KEY (distributor_id) REFERENCES distributors(id),
+    CONSTRAINT fk_song_license_contract
+        FOREIGN KEY (distribution_contract_id)
+        REFERENCES distribution_contracts(id) ON DELETE SET NULL,
+    CONSTRAINT chk_song_license_owner
+        CHECK (distributor_id IS NOT NULL OR copyright_owner IS NOT NULL),
+    CONSTRAINT chk_song_license_dates
         CHECK (expiry_date IS NULL OR issue_date IS NULL OR expiry_date >= issue_date),
-    CONSTRAINT chk_song_license_acquisition_cost 
+    CONSTRAINT chk_song_license_acquisition_cost
         CHECK (acquisition_cost_vnd IS NULL OR acquisition_cost_vnd >= 0),
 
     INDEX idx_song_license_track (track_id),
     INDEX idx_song_license_status (status),
     INDEX idx_song_license_distributor (distributor_id),
     INDEX idx_song_license_contract (distribution_contract_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+);
 -- ============================================================
--- 26. PHIÊN PHÁT NHẠC TÍNH DOANH THU (REVENUE PLAYBACK SESSIONS)
+-- 20. LƯU LƯỢNG TRUY CẬP NỀN TẢNG
+-- Ghi lượt truy cập vào track, artist hoặc trang chung theo nguồn giới thiệu.
+-- Đây là lượt truy cập trang, không phải lượt nghe hợp lệ có trả tiền.
 -- ============================================================
-CREATE TABLE revenue_playback_sessions (
-    session_key CHAR(36) PRIMARY KEY,
-    listening_history_id BIGINT NOT NULL UNIQUE,
-    last_seen_at DATETIME(3) NOT NULL,
-    continuous_ms BIGINT NOT NULL DEFAULT 0,
-    playing BOOLEAN NOT NULL DEFAULT FALSE,
-    closed BOOLEAN NOT NULL DEFAULT FALSE,
-
-    CONSTRAINT fk_revenue_session_history
-        FOREIGN KEY (listening_history_id) REFERENCES listening_history(id) ON DELETE CASCADE,
-
-    INDEX idx_revenue_session_active (playing, closed, last_seen_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
--- 27. LƯỢT STREAM HỢP LỆ TRẢ TIỀN NGHỆ SĨ (QUALIFIED STREAMS)
--- ============================================================
-CREATE TABLE qualified_streams (
+CREATE TABLE platform_traffic_events (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    session_key CHAR(36) NOT NULL UNIQUE,
-    listener_user_id BIGINT NOT NULL,
-    content_lead_user_id BIGINT NOT NULL,
-    track_id VARCHAR(64) NOT NULL,
-    qualified_at DATETIME(3) NOT NULL,
-    gross_vnd DECIMAL(18,0) NOT NULL DEFAULT 1000,
-    content_lead_vnd DECIMAL(18,0) NOT NULL DEFAULT 750,
-    platform_vnd DECIMAL(18,0) NOT NULL DEFAULT 250,
-    policy_version VARCHAR(32) NOT NULL DEFAULT 'V1_60S_75_25',
-    status ENUM('APPROVED','PENDING_REVIEW','REJECTED') NOT NULL DEFAULT 'APPROVED',
-    review_reason VARCHAR(255) NULL,
-    reviewed_by BIGINT NULL,
-    reviewed_at DATETIME(3) NULL,
+    target_type ENUM('TRACK', 'ARTIST', 'GENERAL') NOT NULL DEFAULT 'TRACK',
+    target_id VARCHAR(64) NOT NULL,
+    platform ENUM('WEB', 'ANDROID', 'IOS', 'OTHER') NOT NULL DEFAULT 'WEB',
+    referrer_type ENUM(
+        'DIRECT', 'SEARCH', 'TIKTOK', 'FACEBOOK', 'AI_RECOMMEND', 'OTHER'
+    ) NOT NULL DEFAULT 'DIRECT',
+    user_id BIGINT NULL,
+    session_id VARCHAR(64) NULL
+        COMMENT 'Phiên truy cập; không phải session_key của lượt nghe trả tiền',
+    visited_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_stream_listener
-        FOREIGN KEY (listener_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_stream_content_lead
-        FOREIGN KEY (content_lead_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_stream_reviewer
-        FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT chk_qualified_stream_split 
-        CHECK (gross_vnd = content_lead_vnd + platform_vnd),
-
-    INDEX idx_stream_lead_time (content_lead_user_id, status, qualified_at),
-    INDEX idx_stream_track_time (track_id, status, qualified_at),
-    INDEX idx_stream_listener_track_time (listener_user_id, track_id, qualified_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    CONSTRAINT fk_platform_traffic_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_traffic_target_time (target_id, visited_at),
+    INDEX idx_traffic_platform (platform),
+    INDEX idx_traffic_visited_at (visited_at)
+);
 
 -- ============================================================
--- 28. THÔNG BÁO CÁ NHÂN (NOTIFICATIONS)
+-- 21. THÔNG BÁO CÁ NHÂN
+-- Một dòng cho một người nhận; read_at NULL nghĩa là chưa đọc.
+-- dedupe_key/source_mongo_id chống tạo trùng khi tác vụ chạy lại hoặc di trú MongoDB.
 -- ============================================================
 CREATE TABLE notifications (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -660,20 +615,18 @@ CREATE TABLE notifications (
     dedupe_key VARCHAR(190) CHARACTER SET ascii COLLATE ascii_bin NULL,
     source_mongo_id VARCHAR(64) NULL,
     PRIMARY KEY (id),
-
-    CONSTRAINT fk_notifications_user 
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT fk_notifications_created_by 
-        FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL,
-
     UNIQUE KEY uk_notifications_dedupe_key (dedupe_key),
     UNIQUE KEY uk_notifications_source_mongo_id (source_mongo_id),
     KEY idx_notifications_user_created (user_id, created_at, id),
-    KEY idx_notifications_user_read (user_id, read_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+    KEY idx_notifications_user_read (user_id, read_at),
+    CONSTRAINT fk_notifications_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_notifications_created_by FOREIGN KEY (created_by)
+        REFERENCES users (id) ON DELETE SET NULL
+);
 -- ============================================================
--- 29. LỊCH SỬ PHÁT THÔNG BÁO HỆ THỐNG (NOTIFICATION BROADCASTS)
+-- 22. LỊCH SỬ GỬI THÔNG BÁO HÀNG LOẠT
+-- Lưu thông điệp, vai trò đích, người gửi và số người nhận của một lần phát.
 -- ============================================================
 CREATE TABLE notification_broadcasts (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -686,45 +639,210 @@ CREATE TABLE notification_broadcasts (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     source_mongo_id VARCHAR(64) NULL,
     PRIMARY KEY (id),
-
-    CONSTRAINT fk_notification_broadcasts_created_by 
-        FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL,
-
     UNIQUE KEY uk_notification_broadcast_source_mongo_id (source_mongo_id),
-    KEY idx_notification_broadcasts_created (created_at, id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    KEY idx_notification_broadcasts_created (created_at, id),
+    CONSTRAINT fk_notification_broadcasts_created_by FOREIGN KEY (created_by)
+        REFERENCES users (id) ON DELETE SET NULL
+) ;
 
 
 -- ============================================================
--- DỮ LIỆU MẪU (SEED DATA)
--- Mật khẩu mặc định tất cả user mẫu: Password123@
--- BCrypt Hash: $2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS
+-- 23. PHIÊN PHÁT PHỤC VỤ XÉT LƯỢT NGHE
+-- Trạng thái tạm thời: vị trí phát, tổng thời gian và số mili giây liên tục.
+-- Một session_key chỉ thuộc một lượt phát; heartbeat không tự tạo doanh thu.
+-- Các cột DATETIME(3) trong phần doanh thu được ghi theo UTC.
+-- Nếu chuyển trạng thái này sang Redis sau này, cần migration riêng.
 -- ============================================================
+CREATE TABLE revenue_playback_sessions (
+    session_key CHAR(36) PRIMARY KEY
+        COMMENT 'UUID duy nhất cho một lần phát',
+    listening_history_id BIGINT NOT NULL UNIQUE
+        COMMENT 'Khóa ngoại tới lịch sử nghe',
+    last_seen_at DATETIME(3) NOT NULL
+        COMMENT 'Thời điểm backend nhận sự kiện gần nhất, UTC',
+    continuous_ms BIGINT NOT NULL DEFAULT 0
+        COMMENT 'Thời gian nghe liên tục hiện tại, mili giây',
+    playing BOOLEAN NOT NULL DEFAULT FALSE
+        COMMENT 'Phiên đang ở trạng thái phát',
+    closed BOOLEAN NOT NULL DEFAULT FALSE
+        COMMENT 'Phiên đã kết thúc',
 
--- 1. USERS
+    CONSTRAINT fk_revenue_session_history
+        FOREIGN KEY (listening_history_id)
+        REFERENCES listening_history(id) ON DELETE CASCADE,
+    INDEX idx_revenue_session_active (playing, closed, last_seen_at)
+);
+
+-- ============================================================
+-- 24. LƯỢT NGHE HỢP LỆ VÀ SỔ DOANH THU
+-- Một session_key chỉ sinh tối đa một dòng doanh thu. Sau 60 giây nghe liên tục,
+-- phần gộp mặc định là 1.000 VND: Content Lead 750, nền tảng 250.
+-- Chỉ APPROVED được tính vào báo cáo/hoàn vốn; PENDING_REVIEW chờ kiểm duyệt.
+-- Không lưu listening_history_id: người dùng có thể xóa lịch sử nghe,
+-- còn bản ghi doanh thu phải tồn tại độc lập để đối soát.
+-- listener_user_id, content_lead_user_id, track_id và số tiền là ảnh chụp
+-- phục vụ đối soát, không truy vấn lại từ lịch sử nghe/giấy phép hiện tại.
+-- Giá trị tiền và policy_version là ảnh chụp chính sách tại lúc ghi nhận,
+-- không được tính lại khi chính sách thay đổi trong tương lai.
+-- ============================================================
+CREATE TABLE qualified_streams (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_key CHAR(36) NOT NULL UNIQUE
+        COMMENT 'Chống ghi doanh thu trùng cho cùng phiên',
+    listener_user_id BIGINT NOT NULL,
+    content_lead_user_id BIGINT NOT NULL,
+    track_id VARCHAR(64) NOT NULL,
+    qualified_at DATETIME(3) NOT NULL
+        COMMENT 'Thời điểm đủ điều kiện, UTC',
+    gross_vnd DECIMAL(18,0) NOT NULL DEFAULT 1000
+        COMMENT 'Doanh thu gộp của lượt nghe, VND',
+    content_lead_vnd DECIMAL(18,0) NOT NULL DEFAULT 750
+        COMMENT 'Phần Content Lead, VND',
+    platform_vnd DECIMAL(18,0) NOT NULL DEFAULT 250
+        COMMENT 'Phần nền tảng, VND',
+    policy_version VARCHAR(32) NOT NULL DEFAULT 'V1_60S_75_25'
+        COMMENT 'Phiên bản quy tắc tính tiền tại lúc ghi nhận',
+    status ENUM('APPROVED','PENDING_REVIEW','REJECTED') NOT NULL DEFAULT 'APPROVED'
+        COMMENT 'Trạng thái xét duyệt doanh thu',
+    review_reason VARCHAR(255) NULL,
+    reviewed_by BIGINT NULL,
+    reviewed_at DATETIME(3) NULL,
+
+    CONSTRAINT chk_qualified_stream_split
+        CHECK (gross_vnd = content_lead_vnd + platform_vnd),
+    INDEX idx_stream_lead_time (content_lead_user_id, status, qualified_at),
+    INDEX idx_stream_track_time (track_id, status, qualified_at),
+    INDEX idx_stream_listener_track_time (listener_user_id, track_id, qualified_at)
+);
+
+CREATE TABLE karaoke_rooms (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(40) NOT NULL,
+    host_user_id BIGINT NOT NULL,
+    max_members INT NOT NULL DEFAULT 6,
+    visibility VARCHAR(16) NOT NULL,
+    invite_code_hash VARCHAR(64) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    closed_at DATETIME NULL,
+
+    -- Trạng thái phát chung của phòng
+    current_track_id VARCHAR(64) NULL
+        COMMENT 'Logical reference to MongoDB tracks._id',
+    playback_status VARCHAR(12) NOT NULL DEFAULT 'IDLE',
+    playback_position_ms BIGINT NOT NULL DEFAULT 0,
+    playback_run_id VARCHAR(36) NULL,
+    playback_started_at DATETIME NULL,
+    playback_version BIGINT NOT NULL DEFAULT 0,
+
+    PRIMARY KEY (id),
+
+    KEY idx_karaoke_rooms_public (
+        visibility,
+        closed_at,
+        created_at,
+        id
+    ),
+    KEY idx_karaoke_rooms_playback (
+        playback_status,
+        closed_at
+    ),
+
+    CONSTRAINT fk_karaoke_rooms_host
+        FOREIGN KEY (host_user_id)
+        REFERENCES users (id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT chk_karaoke_rooms_visibility
+        CHECK (visibility IN ('PUBLIC', 'PRIVATE')),
+
+    CONSTRAINT chk_karaoke_rooms_capacity
+        CHECK (max_members BETWEEN 1 AND 6)
+);
+
+
+CREATE TABLE karaoke_room_members (
+    room_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    left_at DATETIME NULL,
+
+    PRIMARY KEY (room_id, user_id),
+
+    KEY idx_karaoke_room_members_user (user_id),
+
+    CONSTRAINT fk_karaoke_room_members_room
+        FOREIGN KEY (room_id)
+        REFERENCES karaoke_rooms (id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_karaoke_room_members_user
+        FOREIGN KEY (user_id)
+        REFERENCES users (id)
+        ON DELETE CASCADE
+);
+
+
+CREATE TABLE karaoke_room_queue (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    room_id BIGINT NOT NULL,
+    requester_user_id BIGINT NOT NULL,
+    track_id VARCHAR(64) NOT NULL
+        COMMENT 'Logical reference to MongoDB tracks._id',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    KEY idx_karaoke_room_queue_fifo (
+        room_id,
+        created_at,
+        id
+    ),
+    KEY idx_karaoke_room_queue_requester (
+        requester_user_id
+    ),
+
+    KEY idx_karaoke_room_queue_room_requester (
+        room_id,
+        requester_user_id
+    ),
+
+    CONSTRAINT fk_karaoke_room_queue_room
+        FOREIGN KEY (room_id)
+        REFERENCES karaoke_rooms (id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_karaoke_room_queue_requester
+        FOREIGN KEY (requester_user_id)
+        REFERENCES users (id)
+        ON DELETE CASCADE
+);
+
+
 INSERT INTO users (
     id, full_name, phone, email, username, password, avatar_url,
     role, artist_spotify_id, status, last_login_at, created_at, updated_at
 ) VALUES
 (1, 'Nguyễn Văn Listener', '0901000001', 'listener@moodify.local', 'listener01',
- '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
+ '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240',
  'USER', NULL, 'ACTIVE', '2026-09-15 08:10:00', '2026-01-01 08:00:00', '2026-09-15 08:10:00'),
 (2, 'Trần Minh Content Lead', '0901000002', 'contentlead@moodify.local', 'contentlead01',
- '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
+ '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=240',
  'CONTENT_LEAD', '4OCl7UfKRXLcYouOYa3Bwc', 'ACTIVE', '2026-09-15 08:00:00', '2026-02-01 08:00:00', '2026-09-15 08:00:00'),
 (3, 'Lê Hoàng Moderator', '0901000003', 'moderator@moodify.local', 'moderator01',
- '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
+ '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
  NULL, 'MODERATOR', NULL, 'ACTIVE', '2026-09-15 07:45:00', '2026-03-01 08:00:00', '2026-09-15 07:45:00'),
 (4, 'Phạm Quốc Admin', '0901000004', 'admin@moodify.local', 'admin01',
- '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
- NULL, 'ADMIN', NULL, 'ACTIVE', '2026-09-15 08:00:00', '2026-01-15 08:00:00', '2026-09-15 08:00:00'),
+ '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
+ NULL, 'ADMIN', NULL, 'INACTIVE', NULL, '2026-01-15 08:00:00', '2026-08-30 09:00:00'),
 (5, 'Hoàng Anh Banned', '0901000005', 'banned@moodify.local', 'banned01',
- '$2a$10$.oU5/HfO7k7j8ceKwXF1F.r0d0IhVmxG0ifw1qWYJLxQ4.Eh59UKS',
+ '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
  NULL, 'USER', NULL, 'BANNED', NULL, '2026-04-01 08:00:00', '2026-09-10 14:00:00');
 
+-- ============================================================
 -- 2. USER_LIBRARY_TRACKS
+-- ============================================================
 INSERT INTO user_library_tracks (id, user_id, track_id, added_at) VALUES
 (1, 1, '6a8230b53cccfc45cd626ced', '2026-09-01 10:00:00'),
 (2, 1, '6a8230b53cccfc45cd626cee', '2026-09-02 11:00:00'),
@@ -732,7 +850,9 @@ INSERT INTO user_library_tracks (id, user_id, track_id, added_at) VALUES
 (4, 2, '6a8230b53cccfc45cd626cf0', '2026-09-04 13:00:00'),
 (5, 5, '6a8230b53cccfc45cd626cf1', '2026-09-05 14:00:00');
 
+-- ============================================================
 -- 3. FAVORITE_SONGS
+-- ============================================================
 INSERT INTO favorite_songs (id, user_id, track_id, created_at) VALUES
 (1, 1, '6a8230b53cccfc45cd626ced', '2026-09-05 08:00:00'),
 (2, 1, '6a8230b53cccfc45cd626cef', '2026-09-06 08:30:00'),
@@ -740,57 +860,31 @@ INSERT INTO favorite_songs (id, user_id, track_id, created_at) VALUES
 (4, 2, '6a8230b53cccfc45cd626cf1', '2026-09-08 09:30:00'),
 (5, 5, '6a8230b53cccfc45cd626cf0', '2026-09-09 10:00:00');
 
+-- ============================================================
 -- 4. FAVORITE_ARTISTS
+-- ============================================================
 INSERT INTO favorite_artists (id, user_id, artist_id, created_at) VALUES
-(1, 1, '4OCl7UfKRXLcYouOYa3Bwc', '2026-09-01 08:00:00'),
+(1, 1, '7b8230b53cccfc45cd626001', '2026-09-01 08:00:00'),
 (2, 1, '7b8230b53cccfc45cd626002', '2026-09-02 08:00:00'),
 (3, 2, '7b8230b53cccfc45cd626003', '2026-09-03 08:00:00'),
 (4, 2, '7b8230b53cccfc45cd626004', '2026-09-04 08:00:00'),
 (5, 5, '7b8230b53cccfc45cd626005', '2026-09-05 08:00:00');
 
--- 5. ARTIST_PROFILES
-INSERT INTO artist_profiles (
-    artist_id, user_id, bio, banner_url, facebook_url, instagram_url, youtube_url, verified
-) VALUES
-('4OCl7UfKRXLcYouOYa3Bwc', 2, 
- 'Sơn Tùng M-TP là ca sĩ, nhạc sĩ, kiêm nhà sản xuất âm nhạc hàng đầu Việt Nam với loạt hit tỷ view đình đám.',
- 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200',
- 'https://facebook.com/sontungmtp', 'https://instagram.com/sontungmtp', 'https://youtube.com/@sontungmtp', TRUE),
-('7b8230b53cccfc45cd626002', NULL, 
- 'Hoaprox - Nhà sản xuất âm nhạc điện tử (EDM) tài năng với những bản hit lan tỏa khắp châu Á.',
- 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200',
- 'https://facebook.com/hoaproximusic', 'https://instagram.com/hoaprox', NULL, TRUE);
-
--- 6. ARTIST_REVIEWS
-INSERT INTO artist_reviews (
-    id, user_id, artist_id, rating, comment, status, artist_reply, artist_replied_at, created_at
-) VALUES
-(1, 1, '4OCl7UfKRXLcYouOYa3Bwc', 5, 'Giai điệu và cách xử lý giọng hát cực kỳ hiện đại, nghe cuốn hút vô cùng!', 'VISIBLE', 'Cảm ơn bạn đã luôn ủng hộ âm nhạc của mình nhé!', '2026-09-12 10:00:00', '2026-09-11 15:30:00'),
-(2, 3, '4OCl7UfKRXLcYouOYa3Bwc', 5, 'Chất lượng âm thanh phòng thu đỉnh cao, rất xứng đáng được đề xuất.', 'VISIBLE', NULL, NULL, '2026-09-12 14:20:00');
-
--- 7. ALBUMS
-INSERT INTO albums (id, user_id, title, description, cover_url, release_date, is_public, status, created_at) VALUES
-(1, 2, 'Tình Về Nơi Đâu', 'Album tuyển tập những bản Pop ballad nhẹ nhàng sâu lắng', 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500', '2026-01-01', TRUE, 'ACTIVE', '2026-01-01 09:00:00'),
-(2, 2, 'V-Pop Acoustic Sessions', 'Những giai điệu Acoustic mộc mạc và chân thành', 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500', '2026-02-15', TRUE, 'ACTIVE', '2026-02-15 09:00:00'),
-(3, 1, 'Chill Vibe Cuối Tuần', 'Album do thính giả tự biên tập và chia sẻ với cộng đồng', 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500', '2026-03-01', TRUE, 'ACTIVE', '2026-03-01 09:00:00');
-
--- 7.1 ALBUM_TRACKS
-INSERT INTO album_tracks (album_id, track_id, track_order) VALUES
-(1, '6a8230b53cccfc45cd626ced', 1),
-(1, '6a8230b53cccfc45cd626cee', 2),
-(2, '6a8230b53cccfc45cd626cef', 1),
-(3, '6a8230b53cccfc45cd626cf0', 1),
-(3, '6a8230b53cccfc45cd626cf1', 2);
-
--- 8. FAVORITE_ALBUMS
+-- ============================================================
+-- 5. FAVORITE_ALBUMS
+-- ============================================================
 INSERT INTO favorite_albums (id, user_id, album_id, created_at) VALUES
-(1, 1, '1', '2026-09-01 09:00:00'),
-(2, 1, '2', '2026-09-02 09:00:00'),
-(3, 2, '1', '2026-09-03 09:00:00'),
-(4, 2, '3', '2026-09-04 09:00:00'),
-(5, 5, '2', '2026-09-05 09:00:00');
+(1, 1, '8c8230b53cccfc45cd626001', '2026-09-01 09:00:00'),
+(2, 1, '8c8230b53cccfc45cd626002', '2026-09-02 09:00:00'),
+(3, 2, '8c8230b53cccfc45cd626003', '2026-09-03 09:00:00'),
+(4, 2, '8c8230b53cccfc45cd626004', '2026-09-04 09:00:00'),
+(5, 5, '8c8230b53cccfc45cd626005', '2026-09-05 09:00:00');
 
--- 9. LISTENING_HISTORY
+-- ============================================================
+-- 6. LISTENING_HISTORY
+-- Bao phủ toàn bộ source: HOME, SEARCH, PLAYLIST, ALBUM, ARTIST,
+-- LIBRARY, FAVORITES, EMOTION, OTHER và đủ device_type.
+-- ============================================================
 INSERT INTO listening_history (
     id, user_id, track_id, started_at, ended_at,
     listened_duration_ms, last_position_ms, source, source_id, device_type
@@ -798,14 +892,17 @@ INSERT INTO listening_history (
 (1, 1, '6a8230b53cccfc45cd626ced', '2026-09-10 08:00:00', '2026-09-10 08:05:38', 338390, 338390, 'HOME', NULL, 'WEB'),
 (2, 1, '6a8230b53cccfc45cd626cee', '2026-09-10 09:00:00', '2026-09-10 09:01:30', 90000, 90000, 'SEARCH', NULL, 'ANDROID'),
 (3, 2, '6a8230b53cccfc45cd626cef', '2026-09-11 10:00:00', NULL, 60000, 60000, 'PLAYLIST', '9d8230b53cccfc45cd626001', 'IOS'),
-(4, 1, '6a8230b53cccfc45cd626cf0', '2026-09-12 20:00:00', '2026-09-12 20:03:40', 220000, 220000, 'ALBUM', '1', 'WEB'),
-(5, 2, '6a8230b53cccfc45cd626cf1', '2026-09-13 21:00:00', '2026-09-13 21:02:00', 120000, 120000, 'ARTIST', '4OCl7UfKRXLcYouOYa3Bwc', 'OTHER'),
+(4, 1, '6a8230b53cccfc45cd626cf0', '2026-09-12 20:00:00', '2026-09-12 20:03:40', 220000, 220000, 'ALBUM', '8c8230b53cccfc45cd626001', 'WEB'),
+(5, 2, '6a8230b53cccfc45cd626cf1', '2026-09-13 21:00:00', '2026-09-13 21:02:00', 120000, 120000, 'ARTIST', '7b8230b53cccfc45cd626001', 'OTHER'),
 (6, 1, '6a8230b53cccfc45cd626ced', '2026-09-14 07:30:00', '2026-09-14 07:32:30', 150000, 150000, 'LIBRARY', NULL, 'ANDROID'),
 (7, 1, '6a8230b53cccfc45cd626cee', '2026-09-14 08:00:00', '2026-09-14 08:04:00', 240000, 240000, 'FAVORITES', NULL, 'IOS'),
 (8, 1, '6a8230b53cccfc45cd626cf0', '2026-09-14 20:00:00', '2026-09-14 20:03:00', 180000, 180000, 'EMOTION', NULL, 'WEB'),
 (9, 2, '6a8230b53cccfc45cd626cf1', '2026-09-15 06:30:00', '2026-09-15 06:31:00', 60000, 60000, 'OTHER', NULL, 'ANDROID');
 
--- 10. PLAYBACK_EVENTS
+-- ============================================================
+-- 7. PLAYBACK_EVENTS
+-- Bao phủ toàn bộ 7 event_type.
+-- ============================================================
 INSERT INTO playback_events (
     id, listening_history_id, event_type, position_ms, target_position_ms, occurred_at
 ) VALUES
@@ -817,19 +914,26 @@ INSERT INTO playback_events (
 (6, 5, 'SKIP_PREVIOUS', 15000, NULL, '2026-09-13 21:00:15'),
 (7, 1, 'COMPLETE', 338390, NULL, '2026-09-10 08:05:38');
 
--- 11. SEARCH_HISTORY
+-- ============================================================
+-- 8. SEARCH_HISTORY
+-- Bao phủ toàn bộ search_type và các selected_target_type.
+-- ============================================================
 INSERT INTO search_history (
     id, user_id, keyword, search_type, detected_emotion, emotion_confidence,
     selected_target_type, selected_target_id, searched_at
 ) VALUES
-(1, 1, 'Sơn Tùng M-TP', 'ALL', NULL, NULL, 'ARTIST', '4OCl7UfKRXLcYouOYa3Bwc', '2026-09-10 07:30:00'),
+(1, 1, 'Teeme', 'ALL', NULL, NULL, 'ARTIST', '7b8230b53cccfc45cd626001', '2026-09-10 07:30:00'),
 (2, 1, 'TINH VE', 'TRACK', NULL, NULL, 'TRACK', '6a8230b53cccfc45cd626ced', '2026-09-10 08:30:00'),
 (3, 2, 'Hoaprox', 'ARTIST', NULL, NULL, 'ARTIST', '7b8230b53cccfc45cd626002', '2026-09-11 09:00:00'),
-(4, 1, 'TINH VE Album', 'ALBUM', NULL, NULL, 'ALBUM', '1', '2026-09-12 10:00:00'),
+(4, 1, 'TINH VE Album', 'ALBUM', NULL, NULL, 'ALBUM', '8c8230b53cccfc45cd626001', '2026-09-12 10:00:00'),
 (5, 2, 'Nhạc chill học bài', 'PLAYLIST', NULL, NULL, 'PLAYLIST', '9d8230b53cccfc45cd626001', '2026-09-13 20:00:00'),
 (6, 1, 'Hôm nay tôi cảm thấy rất buồn và cô đơn', 'EMOTION', 'SADNESS', 0.9234, 'TRACK', '6a8230b53cccfc45cd626cf0', '2026-09-14 19:50:00');
 
--- 12. SUBSCRIPTION_TIERS
+
+
+-- ============================================================
+-- 8. BẬC QUYỀN LỢI THUÊ BAO (SUBSCRIPTION TIERS)
+-- ============================================================
 INSERT INTO subscription_tiers (
     id, name, description, ad_policy, ad_free_daily_limit, skip_policy, skip_daily_limit,
     offline_allowed, offline_max_tracks, max_devices, synced_lyrics,
@@ -840,7 +944,10 @@ INSERT INTO subscription_tiers (
 ('INDIVIDUAL_FULL', 'Cá Nhân VIP FULL', 'Đặc quyền tối thượng: 100% không quảng cáo 24/7, chuyển bài vô hạn, tải nhạc offline vô hạn.', 'NO_ADS', 0, 'UNLIMITED', 0, TRUE, 9999, 1, TRUE, TRUE, FALSE, 0, '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
 ('FAMILY', 'Gói Gia Đình VIP', 'Trọn bộ đặc quyền FULL chia sẻ cho tối đa 6 tài khoản/thiết bị đồng thời.', 'NO_ADS', 0, 'UNLIMITED', 0, TRUE, 9999, 6, TRUE, TRUE, TRUE, 6, '2026-01-01 00:00:00', '2026-01-01 00:00:00');
 
--- 13. SERVICE_PACKAGES
+-- ============================================================
+-- 9. SERVICE_PACKAGES
+-- Bao phủ: miễn phí/trả phí, nhiều thời hạn, ACTIVE/INACTIVE.
+-- ============================================================
 INSERT INTO service_packages (
     id, name, description, price, duration_days, display_order, status, tier_id, created_at, updated_at
 ) VALUES
@@ -852,7 +959,10 @@ INSERT INTO service_packages (
 (6, 'Gói Gia Đình (30 Ngày)', 'Tối đa 6 tài khoản/thiết bị đồng thời: Trọn bộ đặc quyền FULL chia sẻ cả gia đình.', 79000, 30, 6, 'ACTIVE', 'FAMILY', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
 (7, 'Gói Gia Đình (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng cho cả 6 thành viên gia đình.', 790000, 365, 7, 'ACTIVE', 'FAMILY', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
 
--- 14. SUBSCRIPTIONS
+-- ============================================================
+-- 10. SUBSCRIPTIONS
+-- Bao phủ toàn bộ 5 status.
+-- ============================================================
 INSERT INTO subscriptions (
     id, user_id, service_package_id, start_at, end_at,
     auto_renew, status, created_at, updated_at
@@ -863,7 +973,10 @@ INSERT INTO subscriptions (
 (4, 2, 2, '2026-08-01 00:00:00', '2026-08-31 00:00:00', FALSE, 'CANCELLED', '2026-08-01 00:00:00', '2026-08-15 10:00:00'),
 (5, 5, 2, '2026-09-01 00:00:00', '2026-10-01 00:00:00', FALSE, 'SUSPENDED', '2026-09-01 00:00:00', '2026-09-10 14:00:00');
 
--- 15. PAYMENT_TRANSACTIONS
+-- ============================================================
+-- 11. PAYMENT_TRANSACTIONS
+-- Bao phủ toàn bộ 5 status và nhiều phương thức/provider.
+-- ============================================================
 INSERT INTO payment_transactions (
     id, subscription_id, amount, payment_method, provider,
     provider_transaction_id, status, paid_at, created_at, updated_at
@@ -874,7 +987,11 @@ INSERT INTO payment_transactions (
 (4, 4, 59000, 'BANK_TRANSFER', 'MOMO', 'MOMO-20260801-00004', 'CANCELLED', NULL, '2026-08-01 10:00:00', '2026-08-01 10:05:00'),
 (5, 5, 59000, 'CARD', 'VNPAY', 'VNPAY-20260901-00005', 'REFUNDED', '2026-09-01 00:05:00', '2026-09-01 00:00:00', '2026-09-10 15:00:00');
 
--- 16. USER_DEVICES
+
+-- ============================================================
+-- 12. USER_DEVICES
+-- Bao phủ ANDROID / IOS / OTHER và ACTIVE / REVOKED.
+-- ============================================================
 INSERT INTO user_devices (
     id, user_id, device_uuid, platform, device_name, status, created_at
 ) VALUES
@@ -884,30 +1001,32 @@ INSERT INTO user_devices (
 (4, 2, 'other-artist-device-004', 'OTHER', 'Android Tablet', 'REVOKED', '2026-05-15 08:00:00'),
 (5, 5, 'android-banned-phone-005', 'ANDROID', 'Xiaomi 14', 'ACTIVE', '2026-08-01 08:00:00');
 
--- 17. OFFLINE_DOWNLOADS
-INSERT INTO offline_downloads (
-    id, device_id, track_id, status, local_path,
-    downloaded_at, expires_at, last_verified_at, created_at, updated_at
-) VALUES
-(1, 1, '6a8230b53cccfc45cd626ced', 'QUEUED', NULL, NULL, '2026-10-15 00:00:00', NULL, '2026-09-15 08:00:00', '2026-09-15 08:00:00'),
-(2, 2, '6a8230b53cccfc45cd626cee', 'DOWNLOADING', '/Documents/Moodify/6a8230b53cccfc45cd626cee.m4a', NULL, '2026-10-15 00:00:00', '2026-09-15 08:30:00', '2026-09-15 08:20:00', '2026-09-15 08:30:00'),
-(3, 3, '6a8230b53cccfc45cd626cef', 'DOWNLOADED', '/storage/emulated/0/Moodify/6a8230b53cccfc45cd626cef.mp3', '2026-09-13 10:00:00', '2026-10-13 10:00:00', '2026-09-15 08:00:00', '2026-09-13 09:58:00', '2026-09-15 08:00:00'),
-(4, 5, '6a8230b53cccfc45cd626cf0', 'FAILED', NULL, NULL, NULL, '2026-09-10 10:00:00', '2026-09-10 09:55:00', '2026-09-10 10:00:00'),
-(5, 1, '6a8230b53cccfc45cd626cf1', 'EXPIRED', '/storage/emulated/0/Moodify/6a8230b53cccfc45cd626cf1.mp3', '2026-07-01 10:00:00', '2026-08-01 10:00:00', '2026-08-02 10:00:00', '2026-07-01 09:55:00', '2026-08-02 10:00:00'),
-(6, 4, '6a8230b53cccfc45cd626ced', 'REMOVED', NULL, '2026-07-10 10:00:00', NULL, '2026-07-20 10:00:00', '2026-07-10 09:55:00', '2026-07-20 10:00:00');
+-- ============================================================
+-- 13. OFFLINE_DOWNLOADS
+-- Bao phủ toàn bộ 6 status.
+-- ============================================================
+INSERT INTO offline_downloads (id, device_id, track_id, status, local_path, downloaded_at, expires_at, created_at, updated_at) VALUES
+(1, 1, '11dFghVXANMlKmJXsNCbNl', 'DOWNLOADED', '/storage/offline/11dFghVXANMlKmJXsNCbNl.enc', '2026-09-02 10:00:00', '2026-10-02 10:00:00', '2026-09-02 10:00:00', '2026-09-02 10:00:00'),
+(2, 2, '22eFghVXANMlKmJXsNCbNm', 'DOWNLOADED', '/storage/offline/22eFghVXANMlKmJXsNCbNm.enc', '2026-09-03 11:30:00', '2026-10-03 11:30:00', '2026-09-03 11:30:00', '2026-09-03 11:30:00');
 
--- 18. CONTENT_REVIEW_REQUESTS
+-- ============================================================
+-- 14. CONTENT_REVIEW_REQUESTS
+-- Bao phủ toàn bộ 5 status, TRACK/ALBUM, PUBLISH/UPDATE.
+-- ============================================================
 INSERT INTO content_review_requests (
     id, artist_user_id, content_type, content_id,
     request_type, status, submitted_at, resolved_at
 ) VALUES
 (1, 2, 'TRACK', '6a8230b53cccfc45cd626d10', 'PUBLISH', 'PENDING', '2026-09-15 08:00:00', NULL),
 (2, 2, 'TRACK', '6a8230b53cccfc45cd626d11', 'UPDATE', 'IN_REVIEW', '2026-09-14 08:00:00', NULL),
-(3, 2, 'ALBUM', '1', 'PUBLISH', 'APPROVED', '2026-09-10 08:00:00', '2026-09-11 10:00:00'),
+(3, 2, 'ALBUM', '8c8230b53cccfc45cd626010', 'PUBLISH', 'APPROVED', '2026-09-10 08:00:00', '2026-09-11 10:00:00'),
 (4, 2, 'TRACK', '6a8230b53cccfc45cd626d12', 'PUBLISH', 'REJECTED', '2026-09-09 08:00:00', '2026-09-10 15:00:00'),
-(5, 2, 'ALBUM', '2', 'UPDATE', 'CANCELLED', '2026-09-08 08:00:00', '2026-09-08 12:00:00');
+(5, 2, 'ALBUM', '8c8230b53cccfc45cd626011', 'UPDATE', 'CANCELLED', '2026-09-08 08:00:00', '2026-09-08 12:00:00');
 
--- 19. CONTENT_REVIEW_ACTIONS
+-- ============================================================
+-- 15. CONTENT_REVIEW_ACTIONS
+-- Bao phủ START_REVIEW / APPROVE / REJECT / RETURN_FOR_EDIT.
+-- ============================================================
 INSERT INTO content_review_actions (
     id, review_request_id, moderator_user_id, action, reason, created_at
 ) VALUES
@@ -917,7 +1036,10 @@ INSERT INTO content_review_actions (
 (4, 4, 3, 'RETURN_FOR_EDIT', 'Ảnh bìa chưa đáp ứng quy định.', '2026-09-09 12:00:00'),
 (5, 4, 3, 'REJECT', 'Nội dung chỉnh sửa vẫn chưa đáp ứng yêu cầu.', '2026-09-10 15:00:00');
 
--- 20. DISTRIBUTORS
+-- ============================================================
+-- 16. DISTRIBUTORS
+-- Bao phủ ACTIVE / INACTIVE, nhiều quốc gia, contact NULL/non-NULL.
+-- ============================================================
 INSERT INTO distributors (
     id, company_name, country, contact_name, contact_email,
     contact_phone, status, created_at, updated_at
@@ -928,7 +1050,12 @@ INSERT INTO distributors (
 (4, 'Vietnam Music Distribution', 'Vietnam', NULL, 'contact4@distributor.local', NULL, 'ACTIVE', '2025-04-01 08:00:00', '2026-09-01 08:00:00'),
 (5, 'Global Sound Distribution', 'United States', 'Phạm Quang Huy', NULL, '02830000005', 'ACTIVE', '2025-05-01 08:00:00', '2026-09-01 08:00:00');
 
--- 21. DISTRIBUTION_CONTRACTS
+-- ============================================================
+-- 17. DISTRIBUTION_CONTRACTS
+-- Bao phủ DRAFT / ACTIVE / EXPIRED / TERMINATED,
+-- revenue_share NULL/non-NULL, document_url NULL/non-NULL.
+-- revenue_share ở đây dùng theo đơn vị phần trăm (ví dụ 70 = 70%).
+-- ============================================================
 INSERT INTO distribution_contracts (
     id, distributor_id, contract_code, title, signed_date,
     effective_from, effective_to, revenue_share, status,
@@ -940,7 +1067,12 @@ INSERT INTO distribution_contracts (
 (4, 4, 'DIST-2026-004', 'Hợp đồng chấm dứt trước hạn', '2026-01-10', '2026-02-01', '2026-08-01', 60.0, 'TERMINATED', 'https://example.com/contracts/DIST-2026-004.pdf', '2026-01-10 08:00:00', '2026-08-01 08:00:00'),
 (5, 5, 'DIST-2026-005', 'Hợp đồng Global Sound', '2026-06-01', '2026-06-01', NULL, 75.0, 'ACTIVE', 'https://example.com/contracts/DIST-2026-005.pdf', '2026-06-01 08:00:00', '2026-06-01 08:00:00');
 
--- 22. SONG_LICENSES
+-- ============================================================
+-- 18. SONG_LICENSES
+-- Bao phủ ACTIVE / EXPIRED / REVOKED / PENDING,
+-- distributor + contract, distributor không contract,
+-- copyright_owner độc lập, document URL NULL/non-NULL.
+-- ============================================================
 INSERT INTO song_licenses (
     id, track_id, distributor_id, distribution_contract_id,
     license_type, copyright_owner, issue_date, expiry_date,
@@ -952,24 +1084,19 @@ INSERT INTO song_licenses (
 (4, '6a8230b53cccfc45cd626cf0', 2, NULL, 'STREAMING_PENDING', NULL, NULL, NULL, 'PENDING', NULL, '2026-09-10 08:00:00', '2026-09-10 08:00:00'),
 (5, '6a8230b53cccfc45cd626cf1', NULL, NULL, 'DIRECT_LICENSE', 'Independent Artist', '2026-06-01', NULL, 'ACTIVE', NULL, '2026-06-01 08:00:00', '2026-06-01 08:00:00');
 
--- 23. NOTIFICATIONS
-INSERT INTO notifications (id, user_id, title, message, type, link_url, created_at) VALUES
-(1, 1, 'Chào mừng đến với Moodify!', 'Khám phá hàng triệu bài hát chất lượng cao theo từng tâm trạng của bạn.', 'SYSTEM', '/dashboard', '2026-09-01 08:00:00'),
-(2, 1, 'Nâng cấp VIP thành công', 'Bạn đã kích hoạt thành công gói Cá Nhân VIP FULL.', 'BILLING', '/dashboard/premium', '2026-09-01 00:02:00'),
-(3, 2, 'Yêu cầu kiểm duyệt được phê duyệt', 'Album Tình Về Nơi Đâu của bạn đã được phê duyệt phát hành.', 'MODERATION', '/dashboard/content-lead/catalog', '2026-09-11 10:00:00');
 
-
--- ============================================================
--- SCRIPT STORED PROCEDURES & EVENT SCHEDULER
--- ============================================================
+USE moodify;
+-- Script Khởi Tạo Toàn Bộ (Event Scheduler + Stored Procedure + Event Hàng Ngày)--
+-- 1. Bật tính năng Event Scheduler của MySQL Server
 SET GLOBAL event_scheduler = ON;
 
--- 1. Quét giấy phép bài hát hết hạn
+-- 2. Tạo Stored Procedure quét và cập nhật hợp đồng hết hạn
 DELIMITER $$
 DROP PROCEDURE IF EXISTS sp_expire_outdated_song_licenses $$
 
 CREATE PROCEDURE sp_expire_outdated_song_licenses()
 BEGIN
+    -- Cập nhật tất cả các hợp đồng đang ACTIVE nhưng expiry_date đã qua ngày hiện tại
     UPDATE song_licenses
     SET status = 'EXPIRED'
     WHERE status = 'ACTIVE'
@@ -978,20 +1105,47 @@ BEGIN
       
     SELECT ROW_COUNT() AS expired_licenses_count;
 END $$
-DELIMITER ;
 
+DELIMITER ;
+-- 3. Tạo Event Scheduler tự động chạy mỗi ngày lúc 00:01:00
 DROP EVENT IF EXISTS evt_daily_song_license_expiry;
+
 CREATE EVENT evt_daily_song_license_expiry
 ON SCHEDULE EVERY 1 DAY
 STARTS (TIMESTAMP(CURRENT_DATE) + INTERVAL 1 DAY + INTERVAL 1 MINUTE)
 ON COMPLETION PRESERVE
 ENABLE
-COMMENT 'Moodify: Quét và cập nhật trạng thái EXPIRED cho giấy phép bản quyền hết hạn'
+COMMENT 'Moodify: Tu dong quet va cap nhat trang thai EXPIRED cho hop dong ban quyen het han'
 DO CALL sp_expire_outdated_song_licenses();
 
--- 2. Quét thuê bao sắp hết hạn để gửi thông báo gia hạn giảm 20%
+--  Lệnh Kiểm Tra Trạng Thái Sau Khi Dán --
+-- 1. Kiểm tra Event Scheduler đã BẬT chưa (kết quả Value phải là ON)
+SHOW VARIABLES LIKE 'event_scheduler';
+-- 2. Xem Event đã được lập lịch trong cơ sở dữ liệu chưa (Status: ENABLED)
+SHOW EVENTS FROM moodify;
+-- 3. Chạy thử Stored Procedure thủ công ngay lập tức để test
+CALL sp_expire_outdated_song_licenses();
+
+
+-- Giả sử bạn muốn test với track_id cụ thể (đổi track_id thành ID bài hát của bạn):
+UPDATE song_licenses 
+SET expiry_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+WHERE track_id = 'YOUR_TRACK_ID_HERE';
+-- Chạy procedure để kích hoạt cập nhật ngay lập tức:
+CALL sp_expire_outdated_song_licenses();
+-- Kiểm tra lại trạng thái bài hát đó trong DB (status sẽ đổi sang EXPIRED):
+SELECT id, track_id, status, expiry_date 
+FROM song_licenses 
+WHERE track_id = 'YOUR_TRACK_ID_HERE';
+
+
+
+
+USE moodify;
+
 DELIMITER $$
-DROP PROCEDURE IF EXISTS sp_create_subscription_expiry_notifications $$
+
+DROP PROCEDURE IF EXISTS sp_create_subscription_expiry_notifications$$
 
 CREATE PROCEDURE sp_create_subscription_expiry_notifications()
 BEGIN
@@ -1001,45 +1155,118 @@ BEGIN
     SELECT
         s.user_id,
         CONCAT('Gói ', p.name, ' sắp hết hạn'),
-        CONCAT('Gói ', p.name, ' của bạn sẽ hết hạn ngày ', DATE_FORMAT(s.end_at, '%d/%m/%Y'), '. Gia hạn ngay hôm nay để nhận ưu đãi giảm 20%!'),
+        CONCAT(
+            'Gói ', p.name, ' của bạn sẽ hết hạn ngày ',
+            DATE_FORMAT(s.end_at, '%d/%m/%Y'),
+            '. Gia hạn cùng nhóm quyền lợi, kể cả chọn thời hạn khác, được giảm 20% trên giá hiện tại của biến thể đó.'
+        ),
         'BILLING',
         '/dashboard/premium',
         NOW(),
-        CONCAT('subscription-expiry:', s.user_id, ':', DATE_FORMAT(s.end_at, '%Y%m%d'), ':7')
+        CONCAT(
+            'subscription-expiry:',
+            s.user_id, ':',
+            DATE_FORMAT(s.end_at, '%Y%m%d'), ':7'
+        )
     FROM subscriptions s
     JOIN service_packages p ON p.id = s.service_package_id
     JOIN users u ON u.id = s.user_id AND u.status = 'ACTIVE'
     WHERE s.status = 'ACTIVE'
       AND s.start_at <= NOW()
       AND s.end_at > NOW()
-      AND DATE(s.end_at) = CURRENT_DATE + INTERVAL 7 DAY;
+      AND DATE(s.end_at) = CURRENT_DATE + INTERVAL 7 DAY
+      AND NOT EXISTS (
+          SELECT 1
+          FROM subscriptions later_sub
+          WHERE later_sub.user_id = s.user_id
+            AND later_sub.status = 'ACTIVE'
+            AND later_sub.end_at > NOW()
+            AND (
+                later_sub.end_at > s.end_at
+                OR (
+                    later_sub.end_at = s.end_at
+                    AND later_sub.id > s.id
+                )
+            )
+      )
+      AND EXISTS (
+          SELECT 1
+          FROM payment_transactions paid_tx
+          JOIN subscriptions paid_sub
+              ON paid_sub.id = paid_tx.subscription_id
+          JOIN service_packages paid_package
+              ON paid_package.id = paid_sub.service_package_id
+          WHERE paid_sub.user_id = s.user_id
+            AND paid_package.tier_id = p.tier_id
+            AND paid_tx.status = 'SUCCESS'
+            AND COALESCE(paid_tx.provider, '')
+                NOT IN ('SANDBOX', 'DEV_SANDBOX')
+      );
 
     -- Nhắc trước 1 ngày
     INSERT IGNORE INTO notifications
         (user_id, title, message, type, link_url, created_at, dedupe_key)
     SELECT
         s.user_id,
-        CONCAT('Gói ', p.name, ' sắp hết hạn vào ngày mai'),
-        CONCAT('Gói ', p.name, ' của bạn sẽ hết hạn vào ngày ', DATE_FORMAT(s.end_at, '%d/%m/%Y'), '. Gia hạn để không bị gián đoạn trải nghiệm âm nhạc!'),
+        CONCAT('Gói ', p.name, ' sắp hết hạn'),
+        CONCAT(
+            'Gói ', p.name, ' của bạn sẽ hết hạn ngày ',
+            DATE_FORMAT(s.end_at, '%d/%m/%Y'),
+            '. Gia hạn cùng nhóm quyền lợi, kể cả chọn thời hạn khác, được giảm 20% trên giá hiện tại của biến thể đó.'
+        ),
         'BILLING',
         '/dashboard/premium',
         NOW(),
-        CONCAT('subscription-expiry:', s.user_id, ':', DATE_FORMAT(s.end_at, '%Y%m%d'), ':1')
+        CONCAT(
+            'subscription-expiry:',
+            s.user_id, ':',
+            DATE_FORMAT(s.end_at, '%Y%m%d'), ':1'
+        )
     FROM subscriptions s
     JOIN service_packages p ON p.id = s.service_package_id
     JOIN users u ON u.id = s.user_id AND u.status = 'ACTIVE'
     WHERE s.status = 'ACTIVE'
       AND s.start_at <= NOW()
       AND s.end_at > NOW()
-      AND DATE(s.end_at) = CURRENT_DATE + INTERVAL 1 DAY;
-END $$
-DELIMITER ;
+      AND DATE(s.end_at) = CURRENT_DATE + INTERVAL 1 DAY
+      AND NOT EXISTS (
+          SELECT 1
+          FROM subscriptions later_sub
+          WHERE later_sub.user_id = s.user_id
+            AND later_sub.status = 'ACTIVE'
+            AND later_sub.end_at > NOW()
+            AND (
+                later_sub.end_at > s.end_at
+                OR (
+                    later_sub.end_at = s.end_at
+                    AND later_sub.id > s.id
+                )
+            )
+      )
+      AND EXISTS (
+          SELECT 1
+          FROM payment_transactions paid_tx
+          JOIN subscriptions paid_sub
+              ON paid_sub.id = paid_tx.subscription_id
+          JOIN service_packages paid_package
+              ON paid_package.id = paid_sub.service_package_id
+          WHERE paid_sub.user_id = s.user_id
+            AND paid_package.tier_id = p.tier_id
+            AND paid_tx.status = 'SUCCESS'
+            AND COALESCE(paid_tx.provider, '')
+                NOT IN ('SANDBOX', 'DEV_SANDBOX')
+      );
+END$$
 
+DELIMITER ;
+    
+SET time_zone = '+07:00';
+SET GLOBAL event_scheduler = ON;
 DROP EVENT IF EXISTS evt_daily_subscription_expiry_reminders;
 CREATE EVENT evt_daily_subscription_expiry_reminders
-ON SCHEDULE EVERY 1 DAY
-STARTS (TIMESTAMP(CURRENT_DATE) + INTERVAL 1 DAY + INTERVAL 9 HOUR)
-ON COMPLETION PRESERVE
-ENABLE
-COMMENT 'Moodify: Tự động gửi thông báo nhắc thuê bao sắp hết hạn (trước 7 ngày và 1 ngày)'
-DO CALL sp_create_subscription_expiry_notifications();
+    ON SCHEDULE EVERY 1 DAY
+    STARTS (TIMESTAMP(CURRENT_DATE) + INTERVAL 1 DAY + INTERVAL 9 HOUR)
+    ON COMPLETION PRESERVE
+    ENABLE
+    COMMENT 'Moodify: nhắc hết hạn gói trước 7 ngày và 1 ngày'
+    DO CALL sp_create_subscription_expiry_notifications();

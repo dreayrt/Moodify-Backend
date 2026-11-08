@@ -17,6 +17,7 @@ import java.util.Map;
  *
  * Các endpoint:
  *   POST /api/subscriptions/checkout   → Tạo đơn thanh toán PENDING + sinh mã QR VietQR
+ *   GET  /api/subscriptions/checkout/{orderCode} → Mở lại đơn PENDING còn hạn (resume QR)
  *   POST /hooks/sepay-payment          → Webhook nhận callback từ SePay khi tiền vào tài khoản
  *   GET  /api/subscriptions/payment-status/{orderCode} → Frontend polling trạng thái thanh toán
  */
@@ -55,6 +56,29 @@ public class SepayPaymentApi {
         Long packageId = Long.valueOf(pkgIdObj.toString());
 
         Map<String, Object> result = subscriptionService.createPendingPayment(authentication.getName(), packageId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Mở lại đơn thanh toán PENDING còn hiệu lực (người dùng lỡ thoát màn QR
+     * giữa chừng). Trả về đúng payload như POST /checkout với status hiện tại:
+     * PENDING (hiển thị lại QR + đếm ngược phần thời gian còn lại), SUCCESS
+     * (đã trả tiền lúc vắng mặt), hoặc {success=false, message} khi đơn đã
+     * hủy/hết hạn. Endpoint yêu cầu JWT (anyRequest().authenticated()) và chỉ
+     * chủ đơn mới mở được.
+     *
+     * @param orderCode Mã đơn hàng (ví dụ: MD1001)
+     */
+    @GetMapping("/api/subscriptions/checkout/{orderCode}")
+    public ResponseEntity<Map<String, Object>> resumeCheckout(
+        Authentication authentication,
+        @PathVariable String orderCode
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Map<String, Object> result = subscriptionService.resumePendingPayment(authentication.getName(), orderCode);
         return ResponseEntity.ok(result);
     }
 

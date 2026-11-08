@@ -1,0 +1,385 @@
+{
+  "generated_at_utc": "2026-10-27T14:29:05.846380+00:00",
+  "scope": "local application; SQL READ ONLY; no search text, emotion output or raw identities exported",
+  "sql_table_names": [
+    "album_tracks",
+    "albums",
+    "content_review_actions",
+    "content_review_requests",
+    "distribution_contracts",
+    "distributors",
+    "favorite_albums",
+    "favorite_artists",
+    "favorite_songs",
+    "listening_history",
+    "notification_broadcasts",
+    "notifications",
+    "offline_downloads",
+    "payment_transactions",
+    "platform_traffic_events",
+    "playback_events",
+    "qualified_streams",
+    "revenue_playback_sessions",
+    "search_history",
+    "service_packages",
+    "song_licenses",
+    "subscription_tiers",
+    "subscriptions",
+    "system_settings",
+    "user_devices",
+    "user_library_tracks",
+    "users"
+  ],
+  "mongo_collection_names": [
+    "activity_logs",
+    "albums",
+    "artists",
+    "cookie_pool",
+    "fingerprint_profiles",
+    "genres",
+    "notification_broadcasts",
+    "notifications",
+    "playlists",
+    "proxies",
+    "recommendation_events",
+    "recommendation_state",
+    "spotify_apps",
+    "system_locks",
+    "system_logs",
+    "system_settings",
+    "team_configs",
+    "tracks",
+    "users"
+  ],
+  "tables": {
+    "favorite_songs": {
+      "rows": 5,
+      "columns": [
+        "id",
+        "user_id",
+        "track_id",
+        "created_at"
+      ]
+    },
+    "favorite_artists": {
+      "rows": 5,
+      "columns": [
+        "id",
+        "user_id",
+        "artist_id",
+        "created_at"
+      ]
+    },
+    "favorite_albums": {
+      "rows": 5,
+      "columns": [
+        "id",
+        "user_id",
+        "album_id",
+        "created_at"
+      ]
+    },
+    "user_library_tracks": {
+      "rows": 6,
+      "columns": [
+        "id",
+        "user_id",
+        "track_id",
+        "added_at"
+      ]
+    },
+    "search_history": {
+      "rows": 13,
+      "columns": [
+        "id",
+        "user_id",
+        "keyword",
+        "search_type",
+        "detected_emotion",
+        "emotion_confidence",
+        "selected_target_type",
+        "selected_target_id",
+        "searched_at"
+      ]
+    },
+    "platform_traffic_events": {
+      "rows": 134,
+      "columns": [
+        "id",
+        "target_type",
+        "target_id",
+        "platform",
+        "referrer_type",
+        "user_id",
+        "session_id",
+        "visited_at"
+      ]
+    },
+    "offline_downloads": {
+      "rows": 6,
+      "columns": [
+        "id",
+        "device_id",
+        "track_id",
+        "status",
+        "local_path",
+        "downloaded_at",
+        "expires_at",
+        "last_verified_at",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "albums": {
+      "rows": 0,
+      "columns": [
+        "id",
+        "cover_url",
+        "created_at",
+        "description",
+        "is_public",
+        "release_date",
+        "status",
+        "title",
+        "updated_at",
+        "user_id"
+      ]
+    },
+    "album_tracks": {
+      "rows": 0,
+      "columns": [
+        "id",
+        "added_at",
+        "track_id",
+        "track_order",
+        "album_id"
+      ]
+    },
+    "listening_history": {
+      "rows": 124,
+      "columns": [
+        "id",
+        "user_id",
+        "track_id",
+        "started_at",
+        "ended_at",
+        "listened_duration_ms",
+        "last_position_ms",
+        "source",
+        "source_id",
+        "device_type"
+      ]
+    },
+    "playback_events": {
+      "rows": 23,
+      "columns": [
+        "id",
+        "listening_history_id",
+        "event_type",
+        "position_ms",
+        "target_position_ms",
+        "occurred_at"
+      ]
+    }
+  },
+  "preference_sources": {
+    "favorite_songs": {
+      "all_rows": 5,
+      "by_role": {
+        "USER": 3,
+        "CONTENT_LEAD": 2
+      },
+      "user_rows": 3,
+      "active_user_rows": 2,
+      "resolved_rows_all_roles": 1,
+      "resolved_rows_active_users": 1,
+      "distinct_active_users": 1,
+      "first_at": "2026-09-05 08:00:00",
+      "last_at": "2026-09-09 10:00:00",
+      "live_write_path": "not assessed by SQL; see source-code inventory in the document"
+    },
+    "favorite_artists": {
+      "all_rows": 5,
+      "by_role": {
+        "USER": 3,
+        "CONTENT_LEAD": 2
+      },
+      "user_rows": 3,
+      "active_user_rows": 2,
+      "resolved_rows_all_roles": 0,
+      "resolved_rows_active_users": 0,
+      "distinct_active_users": 1,
+      "first_at": "2026-09-01 08:00:00",
+      "last_at": "2026-09-05 08:00:00",
+      "live_write_path": "not assessed by SQL; see source-code inventory in the document"
+    },
+    "favorite_albums": {
+      "all_rows": 5,
+      "by_role": {
+        "USER": 3,
+        "CONTENT_LEAD": 2
+      },
+      "user_rows": 3,
+      "active_user_rows": 2,
+      "resolved_rows_all_roles": 0,
+      "resolved_rows_active_users": 0,
+      "distinct_active_users": 1,
+      "first_at": "2026-09-01 09:00:00",
+      "last_at": "2026-09-05 09:00:00",
+      "live_write_path": "not assessed by SQL; see source-code inventory in the document"
+    },
+    "user_library_tracks": {
+      "all_rows": 6,
+      "by_role": {
+        "USER": 4,
+        "CONTENT_LEAD": 2
+      },
+      "user_rows": 4,
+      "active_user_rows": 3,
+      "resolved_rows_all_roles": 2,
+      "resolved_rows_active_users": 2,
+      "distinct_active_users": 2,
+      "first_at": "2026-09-01 10:00:00",
+      "last_at": "2026-10-03 00:11:50",
+      "live_write_path": "not assessed by SQL; see source-code inventory in the document"
+    }
+  },
+  "favorite_song_library_overlap": {
+    "resolved_favorite_song_user_track_pairs": 1,
+    "resolved_library_user_track_pairs": 2,
+    "intersection_pairs": 1
+  },
+  "favorite_artist_mapping": {
+    "matches_artist_document": 0,
+    "matches_at_least_one_track_artist": 0
+  },
+  "favorite_album_mapping": {
+    "matches_mysql_album": 0,
+    "matches_mongo_album": 0,
+    "namespace_ambiguous_matches": 0,
+    "favorites_with_resolved_track_expansion": 0,
+    "resolved_track_expansion_occurrences": 0
+  },
+  "search": {
+    "selected_rows": 6,
+    "selected_rows_resolved_known_catalog": 1,
+    "selected_rows_active_user": 4,
+    "selected_rows_resolved_active_user": 1,
+    "search_type_counts": {
+      "ALL": 1,
+      "TRACK": 1,
+      "ARTIST": 1,
+      "ALBUM": 1,
+      "PLAYLIST": 1,
+      "EMOTION": 8
+    },
+    "selected_target_type_counts": {
+      "ARTIST": 2,
+      "TRACK": 2,
+      "ALBUM": 1,
+      "PLAYLIST": 1,
+      "NONE": 7
+    },
+    "resolution_by_target_type": {
+      "ARTIST": {
+        "rows": 2,
+        "resolved": 0
+      },
+      "TRACK": {
+        "rows": 2,
+        "resolved": 1
+      },
+      "ALBUM": {
+        "rows": 1,
+        "resolved": 0
+      },
+      "PLAYLIST": {
+        "rows": 1,
+        "resolved": 0
+      }
+    }
+  },
+  "traffic": {
+    "rows": 134,
+    "target_type_counts": {
+      "TRACK": 134
+    },
+    "user_rows": 56,
+    "anonymous_rows": 0,
+    "referrer_counts": {
+      "DIRECT": 52,
+      "TIKTOK": 29,
+      "AI_RECOMMEND": 16,
+      "SEARCH": 30,
+      "FACEBOOK": 7
+    },
+    "with_session_id_rows": 120
+  },
+  "downloads": {
+    "rows": 6,
+    "statuses": {
+      "QUEUED": 1,
+      "DOWNLOADING": 1,
+      "DOWNLOADED": 1,
+      "FAILED": 1,
+      "EXPIRED": 1,
+      "REMOVED": 1
+    },
+    "active_user_downloaded_rows": 0
+  },
+  "catalog_counts": {
+    "tracks": 153,
+    "artists": 183,
+    "albums": 128,
+    "playlists": 25,
+    "users": 1,
+    "genres": 12
+  },
+  "mongo_field_presence": {
+    "artists": {
+      "name": 183,
+      "followers": 183,
+      "created_at": 183,
+      "_id": 183,
+      "spotify_id": 183,
+      "genres": 183,
+      "genres_raw": 183,
+      "image_url": 183,
+      "popularity": 183,
+      "updated_at": 183
+    },
+    "albums": {
+      "name": 128,
+      "artist_spotify_id": 128,
+      "artist_name": 128,
+      "_id": 128,
+      "spotify_id": 128,
+      "created_at": 128,
+      "label": 128,
+      "image_url": 128,
+      "total_tracks": 128,
+      "track_ids": 128,
+      "downloaded_tracks_count": 128,
+      "is_fully_downloaded": 128,
+      "release_date": 128,
+      "updated_at": 128
+    },
+    "users": {
+      "stats": 1,
+      "email": 1,
+      "password_hash": 1,
+      "_id": 1,
+      "username": 1,
+      "is_active": 1,
+      "created_at": 1,
+      "role": 1,
+      "last_login": 1
+    },
+    "genres": {
+      "name": 12,
+      "slug": 12,
+      "_id": 12,
+      "description": 12
+    }
+  }
+}

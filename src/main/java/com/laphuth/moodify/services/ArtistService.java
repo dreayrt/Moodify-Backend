@@ -30,6 +30,7 @@ public class ArtistService {
     private final AlbumRepository mongoAlbumRepository;
     private final AlbumEntityRepository mysqlAlbumRepository;
     private final AlbumTrackRepository albumTrackRepository;
+    private final TrackService trackService;
 
     public ArtistService(
         ArtistRepository artistRepository,
@@ -40,7 +41,8 @@ public class ArtistService {
         TrackRepository trackRepository,
         AlbumRepository mongoAlbumRepository,
         AlbumEntityRepository mysqlAlbumRepository,
-        AlbumTrackRepository albumTrackRepository
+        AlbumTrackRepository albumTrackRepository,
+        TrackService trackService
     ) {
         this.artistRepository = artistRepository;
         this.artistProfileRepository = artistProfileRepository;
@@ -51,6 +53,7 @@ public class ArtistService {
         this.mongoAlbumRepository = mongoAlbumRepository;
         this.mysqlAlbumRepository = mysqlAlbumRepository;
         this.albumTrackRepository = albumTrackRepository;
+        this.trackService = trackService;
     }
 
     public List<Artist> searchArtists(String query) {
@@ -159,15 +162,20 @@ public class ArtistService {
         if (mongoArtist != null && mongoArtist.getSpotifyId() != null) {
             artistTracks.addAll(trackRepository.findByArtistSpotifyId(mongoArtist.getSpotifyId()));
         }
+        Set<String> ineligibleTrackIds = trackService.getIneligibleTrackIds();
+        artistTracks.removeIf(track -> !trackService.isTrackPubliclyAvailable(track, ineligibleTrackIds));
         if (artistTracks.isEmpty()) {
             artistTracks.addAll(trackRepository.findByArtistSpotifyId(artistId));
         }
+        artistTracks.removeIf(track -> !trackService.isTrackPubliclyAvailable(track, ineligibleTrackIds));
         if (artistTracks.isEmpty() && name != null && !name.isBlank()) {
             artistTracks.addAll(trackRepository.findByArtistNameContainingIgnoreCase(name));
         }
+        artistTracks.removeIf(track -> !trackService.isTrackPubliclyAvailable(track, ineligibleTrackIds));
         if (artistTracks.isEmpty() && !searchKey.equals(artistId)) {
             artistTracks.addAll(trackRepository.findByArtistNameContainingIgnoreCase(searchKey));
         }
+        artistTracks.removeIf(track -> !trackService.isTrackPubliclyAvailable(track, ineligibleTrackIds));
 
         // If artist avatar was still default, use track image if available
         if (mongoArtist == null && linkedUser == null && !artistTracks.isEmpty() && artistTracks.get(0).getImageUrl() != null) {
@@ -183,7 +191,8 @@ public class ArtistService {
 
         // Appears On: tracks where featuredArtists contains artist name or id
         final String searchName = name.toLowerCase();
-        List<TrackResponse> appearsOn = trackRepository.findAll(PageRequest.of(0, 100)).getContent().stream()
+        List<TrackResponse> appearsOn = trackRepository.findCatalogPublic(PageRequest.of(0, 100)).getContent().stream()
+                .filter(t -> trackService.isTrackPubliclyAvailable(t, ineligibleTrackIds))
                 .filter(t -> t.getFeaturedArtists() != null && t.getFeaturedArtists().toLowerCase().contains(searchName))
                 .limit(6)
                 .map(TrackResponse::from)

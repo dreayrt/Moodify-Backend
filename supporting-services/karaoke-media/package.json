@@ -1,0 +1,13 @@
+{
+  "name": "moodify-karaoke-media",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "jsonwebtoken": "9.0.2",
+    "mediasoup": "3.32.0",
+    "ws": "8.18.3"
+  }
+}

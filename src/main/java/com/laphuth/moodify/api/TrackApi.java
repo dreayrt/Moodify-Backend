@@ -92,6 +92,11 @@ public class TrackApi {
             ));
         }
         if (genre != null && !genre.isBlank()) {
+            String[] parts = genre.split(",");
+            if (parts.length > 1) {
+                List<String> list = Arrays.stream(parts).map(String::trim).filter(s -> !s.isEmpty()).toList();
+                return ResponseEntity.ok(trackService.getTracksByGenres(list, page, size));
+            }
             return ResponseEntity.ok(trackService.getTracksByGenre(genre.trim(), page, size));
         }
         return ResponseEntity.ok(trackService.getTracks(page, size, query));
@@ -123,7 +128,14 @@ public class TrackApi {
             throw new ResponseStatusException(NOT_FOUND, "Track not found");
         }
 
-        // 1. Luôn ưu tiên phát nhạc trực tiếp từ máy chủ đám mây trực tuyến (Oracle Music Server)
+        // Serve the exact local audio file when it is available on this backend.
+        // A non-empty localPath does not prove the configured cloud host has that file.
+        File audioFile = resolveAudioFile(track);
+        if (audioFile != null) {
+            return serveAudioFile(audioFile, headers);
+        }
+
+        // 2. Otherwise, use the configured cloud audio host.
         if (track != null) {
             String remoteAudioUrl = AudioUrlResolver.resolve(track.getLocalPath());
             if (remoteAudioUrl != null && !remoteAudioUrl.isBlank()) {
@@ -133,12 +145,10 @@ public class TrackApi {
             }
         }
 
-        // 2. Dự phòng trong trường hợp offline/không có mạng
-        File audioFile = resolveAudioFile(track);
-        if (audioFile == null || !audioFile.exists() || audioFile.length() == 0) {
-            throw new ResponseStatusException(NOT_FOUND, "Audio file not available yet for track: " + id);
-        }
+        throw new ResponseStatusException(NOT_FOUND, "Audio file not available yet for track: " + id);
+    }
 
+    private ResponseEntity<?> serveAudioFile(File audioFile, HttpHeaders headers) throws IOException {
         FileSystemResource resource = new FileSystemResource(audioFile);
         long contentLength = resource.contentLength();
         HttpRange range = headers.getRange().isEmpty() ? null : headers.getRange().get(0);
@@ -146,7 +156,7 @@ public class TrackApi {
         if (range != null) {
             long start = range.getRangeStart(contentLength);
             long end = range.getRangeEnd(contentLength);
-            long rangeLength = Math.min(1024 * 1024, end - start + 1); // 1MB chunk
+            long rangeLength = end - start + 1;
             ResourceRegion region = new ResourceRegion(resource, start, rangeLength);
             return ResponseEntity.status(org.springframework.http.HttpStatus.PARTIAL_CONTENT)
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
@@ -154,13 +164,12 @@ public class TrackApi {
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
                 .body(region);
         } else {
-            long rangeLength = Math.min(1024 * 1024, contentLength);
-            ResourceRegion region = new ResourceRegion(resource, 0, rangeLength);
             return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
+                .contentLength(contentLength)
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
-                .body(region);
+                .body(resource);
         }
     }
 

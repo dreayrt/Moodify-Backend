@@ -4,6 +4,7 @@ import com.laphuth.moodify.dto.auth.AuthResponse;
 import com.laphuth.moodify.dto.auth.LoginRequest;
 import com.laphuth.moodify.dto.auth.RegisterRequest;
 import com.laphuth.moodify.dto.auth.UserProfileResponse;
+import com.laphuth.moodify.dto.auth.UpdateProfileRequest;
 import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.entities.enums.UserRole;
 import com.laphuth.moodify.entities.enums.UserStatus;
@@ -52,6 +53,34 @@ class AuthenticationServiceTest {
 
     @Captor
     private ArgumentCaptor<Artist> artistCaptor;
+
+    @Test
+    void profileUpdateChangesOnlyAllowedFieldsAndRejectsAnotherUsersPhone() {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("user");
+        user.setEmail("user@example.test");
+        user.setRole(UserRole.USER);
+        user.setStatus(UserStatus.ACTIVE);
+        when(userRepository.findByEmailOrUsername("user", "user")).thenReturn(java.util.Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+        UserProfileResponse result = authenticationService.updateProfile("user", new UpdateProfileRequest(" Tên mới ", "0900000000"));
+        assertThat(result.fullName()).isEqualTo("Tên mới");
+        assertThat(result.phone()).isEqualTo("0900000000");
+        assertThat(result.email()).isEqualTo("user@example.test");
+    }
+
+    @Test
+    void profileUpdateRejectsAnotherUsersPhone() {
+        User user = new User(); user.setId(1L);
+        User other = new User(); other.setId(2L);
+        when(userRepository.findByEmailOrUsername("user", "user")).thenReturn(java.util.Optional.of(user));
+        when(userRepository.findByPhone("0900000000")).thenReturn(java.util.Optional.of(other));
+        assertThatThrownBy(() -> authenticationService.updateProfile("user", new UpdateProfileRequest("Tên", "0900000000")))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+        verify(userRepository, never()).save(any());
+    }
 
     @Test
     void registerShouldDefaultToUserRole() {

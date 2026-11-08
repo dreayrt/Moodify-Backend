@@ -1,0 +1,542 @@
+{
+  "generated_at_utc": "2026-10-27T15:36:53.608328+00:00",
+  "source_scope": "configured local application databases; not a production audit",
+  "read_only": true,
+  "sql_session": {
+    "isolation_level": "REPEATABLE-READ",
+    "autocommit": 0
+  },
+  "legacy_timezone_assumption": "Asia/Ho_Chi_Minh",
+  "catalog": {
+    "tracks": 153,
+    "strictly_eligible_tracks": 0,
+    "effective_licensed_tracks": 2,
+    "eligibility_waterfall_order": [
+      "published",
+      "public",
+      "approved",
+      "audio_path",
+      "effective_license"
+    ],
+    "eligibility_waterfall_remaining": {
+      "published": 2,
+      "public": 2,
+      "approved": 2,
+      "audio_path": 2,
+      "effective_license": 0
+    },
+    "nonexclusive_failed_checks": {
+      "published": 151,
+      "public": 148,
+      "approved": 47,
+      "audio_path": 0,
+      "effective_license": 151
+    },
+    "state_combinations": [
+      {
+        "status": null,
+        "visibility": null,
+        "moderation": "approved",
+        "count": 103
+      },
+      {
+        "status": null,
+        "visibility": null,
+        "moderation": "rejected",
+        "count": 1
+      },
+      {
+        "status": null,
+        "visibility": null,
+        "moderation": "flagged",
+        "count": 1
+      },
+      {
+        "status": null,
+        "visibility": null,
+        "moderation": null,
+        "count": 42
+      },
+      {
+        "status": "draft",
+        "visibility": "public",
+        "moderation": "pending",
+        "count": 2
+      },
+      {
+        "status": "draft",
+        "visibility": "public",
+        "moderation": "PENDING",
+        "count": 1
+      },
+      {
+        "status": "published",
+        "visibility": "public",
+        "moderation": "approved",
+        "count": 2
+      },
+      {
+        "status": "archived",
+        "visibility": "private",
+        "moderation": "approved",
+        "count": 1
+      }
+    ],
+    "feature_counts": {
+      "energy_present": 105,
+      "energy_valid": 105,
+      "energy_invalid": 0,
+      "valence_present": 105,
+      "valence_valid": 105,
+      "valence_invalid": 0,
+      "danceability_present": 105,
+      "danceability_valid": 105,
+      "danceability_invalid": 0,
+      "acousticness_present": 105,
+      "acousticness_valid": 105,
+      "acousticness_invalid": 0,
+      "bpm_present": 105,
+      "bpm_valid": 105,
+      "bpm_invalid": 0,
+      "all_five_valid": 105,
+      "genres_present": 153,
+      "artist_id_present": 151,
+      "release_date_present": 0
+    },
+    "feature_distributions": {
+      "energy": {
+        "min": 0.35,
+        "p50": 1.0,
+        "p90": 1.0,
+        "max": 1.0
+      },
+      "valence": {
+        "min": 0.39,
+        "p50": 0.5,
+        "p90": 0.75,
+        "max": 0.75
+      },
+      "danceability": {
+        "min": 0.28,
+        "p50": 0.79,
+        "p90": 0.92,
+        "max": 0.98
+      },
+      "acousticness": {
+        "min": 0.1,
+        "p50": 0.1,
+        "p90": 0.41,
+        "max": 0.69
+      },
+      "bpm": {
+        "min": 71.8,
+        "p50": 123.0,
+        "p90": 142.04000000000002,
+        "max": 172.3
+      }
+    },
+    "feature_common_values": {
+      "energy": [
+        {
+          "value": 1.0,
+          "count": 67
+        },
+        {
+          "value": 0.89,
+          "count": 3
+        },
+        {
+          "value": 0.71,
+          "count": 3
+        }
+      ],
+      "valence": [
+        {
+          "value": 0.5,
+          "count": 35
+        },
+        {
+          "value": 0.75,
+          "count": 34
+        },
+        {
+          "value": 0.43,
+          "count": 4
+        }
+      ],
+      "danceability": [
+        {
+          "value": 0.87,
+          "count": 8
+        },
+        {
+          "value": 0.92,
+          "count": 8
+        },
+        {
+          "value": 0.84,
+          "count": 6
+        }
+      ],
+      "acousticness": [
+        {
+          "value": 0.1,
+          "count": 67
+        },
+        {
+          "value": 0.2,
+          "count": 3
+        },
+        {
+          "value": 0.23,
+          "count": 3
+        }
+      ],
+      "bpm": [
+        {
+          "value": 136.0,
+          "count": 12
+        },
+        {
+          "value": 139.7,
+          "count": 10
+        },
+        {
+          "value": 129.2,
+          "count": 10
+        }
+      ]
+    },
+    "unique_complete_audio_vectors": 73,
+    "largest_identical_audio_vector_group": 5,
+    "genre_label_distribution": {
+      "pop": 58,
+      "Rap / Hip-Hop": 58,
+      "rap": 58,
+      "V-Pop": 46,
+      "v-pop": 46,
+      "Indie": 23,
+      "indie": 23,
+      "EDM / Remix": 15,
+      "edm": 15,
+      "Pop": 6,
+      "R&B / Soul": 3,
+      "r&b": 3,
+      "ballad": 2,
+      "Ballad": 2
+    },
+    "license_status_counts": {
+      "ACTIVE": 3,
+      "EXPIRED": 1,
+      "REVOKED": 1,
+      "PENDING": 1
+    },
+    "effective_licensed_track_state_combinations": [
+      {
+        "status": "draft",
+        "visibility": "public",
+        "moderation": "pending",
+        "count": 1
+      },
+      {
+        "status": null,
+        "visibility": null,
+        "moderation": "approved",
+        "count": 1
+      }
+    ],
+    "license_rows_unresolved_to_catalog": 4
+  },
+  "accounts": {
+    "by_role_and_status": [
+      {
+        "role": "USER",
+        "status": "ACTIVE",
+        "n": 2
+      },
+      {
+        "role": "USER",
+        "status": "BANNED",
+        "n": 1
+      },
+      {
+        "role": "CONTENT_LEAD",
+        "status": "ACTIVE",
+        "n": 1
+      },
+      {
+        "role": "MODERATOR",
+        "status": "ACTIVE",
+        "n": 1
+      },
+      {
+        "role": "ADMIN",
+        "status": "ACTIVE",
+        "n": 1
+      }
+    ],
+    "user_role_accounts": 3,
+    "proven_human_production_users": null
+  },
+  "playlists": {
+    "total": 25,
+    "public": 0,
+    "private": 0,
+    "unspecified": 25,
+    "track_references": 0,
+    "resolved_references": 0,
+    "eligible_references": 0,
+    "legacy_tracks_array_elements": 990,
+    "legacy_references_resolvable_for_review": 15
+  },
+  "history": {
+    "all_rows": 124,
+    "by_account_role": {
+      "USER": 51,
+      "CONTENT_LEAD": 30,
+      "MODERATOR": 41,
+      "ADMIN": 2
+    },
+    "user_role_rows": 51,
+    "resolved_track_rows": 43,
+    "eligible_track_rows": 0,
+    "revenue_session_rows": 0,
+    "active_account_rows": 51,
+    "zero_duration_rows": 0,
+    "negative_duration_rows": 0,
+    "under_5s_rows": 2,
+    "engaged_30s_rows": 45,
+    "early_skip_rows": 0,
+    "listened_over_track_duration_rows": 0,
+    "future_timestamp_rows": 0,
+    "distinct_user_role_listeners": 1,
+    "distinct_canonical_tracks": 2,
+    "per_listener_rows": {
+      "min": 51.0,
+      "p50": 51.0,
+      "p90": 51.0,
+      "max": 51.0
+    },
+    "per_user_track_rows": {
+      "min": 15.0,
+      "p50": 21.5,
+      "p90": 26.7,
+      "max": 28.0
+    },
+    "per_track_unique_listeners": {
+      "min": 1.0,
+      "p50": 1.0,
+      "p90": 1.0,
+      "max": 1.0
+    },
+    "normalized_first_at_utc": "2026-07-22T05:16:39+00:00",
+    "normalized_last_at_utc": "2026-10-07T14:13:36+00:00",
+    "distinct_activity_days": 26,
+    "active_users_by_window_days": {
+      "1": 0,
+      "2": 0,
+      "7": 0,
+      "30": 1,
+      "180": 1
+    },
+    "source_counts_user_role": {
+      "HOME": 27,
+      "SEARCH": 13,
+      "ALBUM": 1,
+      "LIBRARY": 1,
+      "FAVORITES": 1,
+      "EMOTION": 7,
+      "OTHER": 1
+    },
+    "largest_source_fraction": 0.5294117647058824,
+    "device_counts_user_role": {
+      "WEB": 28,
+      "ANDROID": 16,
+      "IOS": 7
+    },
+    "playback_event_counts_all_roles": [
+      {
+        "event_type": "PLAY",
+        "n": 7
+      },
+      {
+        "event_type": "PAUSE",
+        "n": 2
+      },
+      {
+        "event_type": "RESUME",
+        "n": 2
+      },
+      {
+        "event_type": "SEEK",
+        "n": 2
+      },
+      {
+        "event_type": "SKIP_NEXT",
+        "n": 1
+      },
+      {
+        "event_type": "SKIP_PREVIOUS",
+        "n": 1
+      },
+      {
+        "event_type": "COMPLETE",
+        "n": 8
+      }
+    ]
+  },
+  "training": {
+    "population": "USER ACTIVE",
+    "extracted_user_history_rows": 51,
+    "user_library_rows": 3,
+    "unresolved_library_rows": 1,
+    "daily_buckets_in_memory": 36,
+    "matrix_users": 2,
+    "matrix_tracks": 3,
+    "positive_user_track_pairs": 3,
+    "matrix_cells": 6,
+    "matrix_density": 0.5,
+    "tracks_shared_by_multiple_users": 0,
+    "trained_item_coverage_of_catalog": 0.0196078431372549,
+    "evaluation_cutoff_utc": "2026-10-20T00:00:00+00:00",
+    "evaluation_train_users": 2,
+    "evaluation_train_tracks": 3,
+    "evaluation_train_positive_pairs": 3,
+    "existing_sanity_gate_passes": false
+  },
+  "trend": {
+    "active_users_recent_24h": 0,
+    "active_users_previous_24h": 0,
+    "tracks_with_at_least_3_engaged_users_recent_24h": 0,
+    "note": "Audit and Java v1.1 merge aliases before distinct listener counting and use USER ACTIVE."
+  },
+  "recommendation_storage": {
+    "state_kind_counts": {
+      "PROFILE": 2
+    },
+    "log_counts": {},
+    "profile_model_counts": {
+      "content-session-v1": 2
+    },
+    "legacy_sql_tables_remaining": [],
+    "legacy_mongo_collections_remaining": []
+  },
+  "existing_sql_indexes": {
+    "listening_history": {
+      "PRIMARY": [
+        "id"
+      ],
+      "idx_listening_user_time": [
+        "user_id",
+        "started_at"
+      ],
+      "idx_listening_track_time": [
+        "track_id",
+        "started_at"
+      ]
+    },
+    "playback_events": {
+      "PRIMARY": [
+        "id"
+      ],
+      "idx_playback_history_time": [
+        "listening_history_id",
+        "occurred_at"
+      ],
+      "idx_playback_type_time": [
+        "event_type",
+        "occurred_at"
+      ]
+    },
+    "revenue_playback_sessions": {
+      "PRIMARY": [
+        "session_key"
+      ],
+      "listening_history_id": [
+        "listening_history_id"
+      ],
+      "idx_revenue_session_active": [
+        "playing",
+        "closed",
+        "last_seen_at"
+      ]
+    },
+    "user_library_tracks": {
+      "PRIMARY": [
+        "id"
+      ],
+      "uk_library_user_track": [
+        "user_id",
+        "track_id"
+      ],
+      "idx_library_track": [
+        "track_id"
+      ],
+      "idx_library_user_added": [
+        "user_id",
+        "added_at"
+      ]
+    }
+  },
+  "mongo_field_presence_counts": {
+    "tracks": {
+      "albums": 147,
+      "spotify_id": 147,
+      "download_error": 105,
+      "album_name": 150,
+      "album_ids": 147,
+      "artists": 147,
+      "genres_raw": 147,
+      "download_method": 105,
+      "claimed_job_id": 96,
+      "created_at": 153,
+      "duration_formatted": 147,
+      "lyrics_plain": 69,
+      "claim_expires_at": 96,
+      "image_url": 153,
+      "local_path": 153,
+      "album_spotify_id": 147,
+      "duration_ms": 147,
+      "visibility": 6,
+      "db_status": 147,
+      "moderation_score": 107,
+      "artist_name": 153,
+      "audio_features": 105,
+      "moderation_status": 111,
+      "primary_artist_name": 147,
+      "release_date": 147,
+      "claimed_at": 96,
+      "has_synced_lyrics": 60,
+      "featured_artists": 1,
+      "moderation_report": 105,
+      "file_size_bytes": 105,
+      "status": 6,
+      "download_status": 149,
+      "lyrics_synced": 61,
+      "_class": 6,
+      "popularity": 147,
+      "spotify_url": 147,
+      "updated_at": 153,
+      "_id": 153,
+      "added_by": 147,
+      "claimed_by": 96,
+      "genres": 153,
+      "name": 153,
+      "lrc_path": 1,
+      "artist_spotify_id": 151,
+      "explicit": 153,
+      "ingest_type": 147,
+      "track_number": 147
+    },
+    "playlists": {
+      "updated_at": 25,
+      "tracks": 25,
+      "name": 25,
+      "_id": 25,
+      "created_by": 25,
+      "source_spotify_id": 25,
+      "total_tracks": 25,
+      "description": 25
+    }
+  }
+}

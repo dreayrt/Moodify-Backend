@@ -3,10 +3,12 @@ package com.laphuth.moodify.api;
 import com.laphuth.moodify.dto.auth.AuthResponse;
 import com.laphuth.moodify.dto.auth.FacebookAuthRequest;
 import com.laphuth.moodify.dto.auth.GoogleAuthRequest;
+import com.laphuth.moodify.dto.auth.GoogleCodeRequest;
 import com.laphuth.moodify.dto.auth.LoginRequest;
 import com.laphuth.moodify.dto.auth.RefreshTokenRequest;
 import com.laphuth.moodify.dto.auth.RegisterRequest;
 import com.laphuth.moodify.dto.auth.UserProfileResponse;
+import com.laphuth.moodify.dto.auth.UpdateProfileRequest;
 import com.laphuth.moodify.services.AuthenticationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -48,6 +50,15 @@ public class AuthenticationApi {
         return ResponseEntity.ok(authenticationService.loginWithGoogle(request));
     }
 
+    // Popup web and native clients both exchange an authorization code here.
+    @PostMapping("/google/code")
+    public ResponseEntity<AuthResponse> loginWithGoogleCode(
+            @Valid @RequestBody GoogleCodeRequest request,
+            @RequestHeader(value = "X-Requested-With", required = false) String requestedWith
+    ) {
+        return ResponseEntity.ok(authenticationService.loginWithGoogleCode(request, requestedWith));
+    }
+
     @PostMapping("/facebook")
     public ResponseEntity<AuthResponse> loginWithFacebook(
             @Valid @RequestBody FacebookAuthRequest request
@@ -68,11 +79,32 @@ public class AuthenticationApi {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<java.util.Map<String, Object>> changePassword(
+            Authentication authentication,
+            @RequestBody(required = false) java.util.Map<String, String> body
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String currentPassword = body != null ? body.get("currentPassword") : null;
+        String newPassword = body != null ? body.get("newPassword") : null;
+        return ResponseEntity.ok(
+                authenticationService.changePassword(authentication.getName(), currentPassword, newPassword)
+        );
+    }
+
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> me(Authentication authentication) {
         return ResponseEntity.ok(
                 authenticationService.getCurrentUserProfile(authentication.getName())
         );
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<UserProfileResponse> updateProfile(
+            Authentication authentication, @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(authenticationService.updateProfile(authentication.getName(), request));
     }
 
     @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

@@ -209,6 +209,7 @@ public class SubscriptionService {
     public Map<String, Object> getCurrentUserSubscription(String principal) {
         User user = findUserByPrincipal(principal);
         Map<String, Object> res = new HashMap<>();
+        LocalDateTime now = LocalDateTime.now();
 
         List<Map<String, Object>> activeSubs = jdbcTemplate.queryForList(
             "SELECT s.id as subscription_id, s.service_package_id, s.start_at, s.end_at, s.status, " +
@@ -216,14 +217,14 @@ public class SubscriptionService {
             "       t.name as tier_name, t.ad_policy, t.ad_free_daily_limit, t.skip_policy, t.skip_daily_limit, " +
             "       t.offline_allowed, t.offline_max_tracks, t.max_devices, " +
             "       t.synced_lyrics, t.vip_badge, t.family_sharing, t.family_members, " +
-            "       DATEDIFF(s.end_at, NOW()) as days_remaining " +
+            "       DATEDIFF(s.end_at, ?) as days_remaining " +
             "FROM subscriptions s " +
             "JOIN service_packages p ON s.service_package_id = p.id " +
             "LEFT JOIN subscription_tiers t ON p.tier_id = t.id " +
-            "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.start_at <= NOW() AND s.end_at > NOW() " +
+            "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.start_at <= ? AND s.end_at > ? " +
             "ORDER BY s.end_at DESC " +
             "LIMIT 1",
-            user.getId()
+            now, user.getId(), now, now
         );
 
         if (!activeSubs.isEmpty()) {
@@ -633,6 +634,15 @@ public class SubscriptionService {
     /** Tạo đơn thanh toán PENDING và sinh mã QR VietQR để người dùng chuyển khoản. */
     @Transactional
     public Map<String, Object> createPendingPayment(String principal, Long packageId) {
+        if (sepayBankAccount == null || sepayBankAccount.isBlank()
+                || sepayBankName == null || sepayBankName.isBlank()
+                || sepayAccountName == null || sepayAccountName.isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Thanh toán SePay chưa được cấu hình đầy đủ trên máy chủ."
+            );
+        }
+
         User user = findUserByPrincipal(principal);
 
         // 1. Lấy thông tin gói dịch vụ
@@ -646,13 +656,13 @@ public class SubscriptionService {
         Map<String, Object> pkg = pkgs.get(0);
         PriceBreakdown price = calculatePackagePrice(user.getId(), String.valueOf(pkg.get("tier_id")), pkg.get("price"));
         int durationDays = ((Number) pkg.get("duration_days")).intValue();
-        PlanApplication preview = previewPaidPackage(user.getId(), pkg, price, LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        PlanApplication preview = previewPaidPackage(user.getId(), pkg, price, now);
 
         // Hủy các đơn PENDING cũ khác của user và ghi lại kết quả vào hộp thư.
         cancelPendingPaymentsForUser(user.getId());
 
         // 2. Tạo subscription trạng thái PENDING
-        LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
             "INSERT INTO subscriptions (user_id, service_package_id, start_at, end_at, auto_renew, status) " +
             "VALUES (?, ?, ?, ?, FALSE, 'PENDING')",
@@ -706,6 +716,11 @@ public class SubscriptionService {
         result.put("actionDescription", preview.actionDescription());
         result.put("startAt", preview.startAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         result.put("expiresAt", preview.endAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        // Hạn chót của cửa sổ QR (15 phút, trùng mốc INTERVAL 15 MINUTE trong
+        // expirePendingPayment/getPaymentStatus) để client đếm ngược đúng;
+        // "expiresAt" phía trên là ngày kết thúc kỳ hạn dịch vụ.
+        result.put("paymentExpiresAt", now.plusMinutes(15)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         result.put("bonusDays", preview.bonusDays());
         result.put("bankAccount", sepayBankAccount);
         result.put("bankName", sepayBankName);
@@ -718,6 +733,137 @@ public class SubscriptionService {
         System.out.println("[SePay Checkout] Tạo đơn thanh toán: " + orderCode +
             " | Gói: " + pkg.get("name") + " | Số tiền: " + amountLong + "đ" +
             " | User: " + user.getUsername());
+
+        return result;
+    }
+
+    /**
+     * Mở lại màn thanh toán cho một đơn PENDING còn hiệu lực (người dùng lỡ thoát
+     * giữa chừng mà cửa sổ QR 15 phút chưa hết). QR được sinh deterministic từ
+     * orderCode + amount nên chỉ cần trả lại đúng payload như lần checkout đầu,
+     * không cần gọi gateway. Khác với createPendingPayment, method này KHÔNG hủy
+     * các đơn PENDING khác của user.
+     *
+     * Kết quả:
+     *  - Đơn còn PENDING/SUCCESS → payload đầy đủ như checkout (success=true).
+     *  - Đơn đã CANCELLED/EXPIRED/FAILED → {success=false, status, message}.
+     */
+    @Transactional
+    public Map<String, Object> resumePendingPayment(String principal, String orderCode) {
+        if (sepayBankAccount == null || sepayBankAccount.isBlank()
+                || sepayBankName == null || sepayBankName.isBlank()
+                || sepayAccountName == null || sepayAccountName.isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Thanh toán SePay chưa được cấu hình đầy đủ trên máy chủ."
+            );
+        }
+
+        User user = findUserByPrincipal(principal);
+
+        // Tách paymentId từ orderCode: "MD1001" → 1001 (như getPaymentStatus).
+        String idStr = orderCode.replaceAll("(?i)^MD", "");
+        Long paymentId;
+        try {
+            paymentId = Long.valueOf(idStr);
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã đơn hàng không hợp lệ: " + orderCode);
+        }
+
+        String resumeSql =
+            "SELECT pt.id, pt.status, pt.amount, pt.created_at, " +
+            "       s.id AS subscription_id, s.user_id, " +
+            "       sp.id AS package_id, sp.name AS package_name, sp.tier_id, sp.price, sp.duration_days " +
+            "FROM payment_transactions pt " +
+            "JOIN subscriptions s ON s.id = pt.subscription_id " +
+            "JOIN service_packages sp ON sp.id = s.service_package_id " +
+            "WHERE pt.id = ?";
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(resumeSql, paymentId);
+        if (rows.isEmpty()
+                || ((Number) rows.get(0).get("user_id")).longValue() != user.getId()) {
+            // 404 thay vì 403 để không lộ sự tồn tại của đơn của người khác.
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đơn hàng " + orderCode);
+        }
+        Map<String, Object> row = rows.get(0);
+        String status = (String) row.get("status");
+
+        // Đơn PENDING quá 15 phút → chốt hết hạn ngay tại đây (như getPaymentStatus).
+        if ("PENDING".equals(status)) {
+            expirePendingPayment(paymentId);
+            rows = jdbcTemplate.queryForList(resumeSql, paymentId);
+            row = rows.get(0);
+            status = (String) row.get("status");
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("orderCode", orderCode);
+
+        if (!"PENDING".equals(status) && !"SUCCESS".equals(status)) {
+            LocalDateTime createdAt = toLocalDateTime(row.get("created_at"));
+            boolean expired = "CANCELLED".equals(status)
+                    && createdAt != null && createdAt.plusMinutes(15).isBefore(LocalDateTime.now());
+            result.put("success", false);
+            result.put("status", expired ? "EXPIRED" : status);
+            result.put("message", expired
+                    ? "Đơn " + orderCode + " đã hết hạn thanh toán. Hãy tạo đơn mới để tiếp tục đăng ký gói."
+                    : "Đơn " + orderCode + " không còn hiệu lực để thanh toán (trạng thái: " + status + ").");
+            return result;
+        }
+
+        long amount = ((Number) row.get("amount")).longValue();
+        // Giá/breakdown chỉ để hiển thị; amount lưu trong DB mới là chuẩn để đối soát.
+        PriceBreakdown price = calculatePackagePrice(user.getId(), String.valueOf(row.get("tier_id")), row.get("price"));
+        boolean breakdownValid = price.payableAmount() == amount;
+        long baseAmount = breakdownValid ? price.baseAmount() : amount;
+        long discountAmount = breakdownValid ? price.discountAmount() : 0;
+        boolean discountApplied = breakdownValid && price.discountApplied();
+
+        PlanApplication preview = previewPaidPackage(user.getId(), row, price, LocalDateTime.now());
+
+        LocalDateTime createdAt = toLocalDateTime(row.get("created_at"));
+        String paymentExpiresAt = (createdAt == null ? LocalDateTime.now() : createdAt)
+                .plusMinutes(15)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+        String qrContent = orderCode;
+        String qrUrl = String.format(
+            "https://qr.sepay.vn/img?acc=%s&bank=%s&amount=%d&des=%s&template=compact",
+            URLEncoder.encode(sepayBankAccount, StandardCharsets.UTF_8),
+            URLEncoder.encode(sepayBankName, StandardCharsets.UTF_8),
+            amount,
+            URLEncoder.encode(qrContent, StandardCharsets.UTF_8)
+        );
+
+        result.put("success", true);
+        result.put("paymentId", paymentId);
+        result.put("subscriptionId", ((Number) row.get("subscription_id")).longValue());
+        result.put("packageId", ((Number) row.get("package_id")).longValue());
+        result.put("packageName", row.get("package_name"));
+        result.put("baseAmount", baseAmount);
+        result.put("discountAmount", discountAmount);
+        result.put("discountPercent", discountApplied ? 20 : 0);
+        result.put("discountApplied", discountApplied);
+        result.put("amount", amount);
+        result.put("action", preview.action());
+        result.put("actionLabel", preview.actionLabel());
+        result.put("actionDescription", preview.actionDescription());
+        result.put("startAt", preview.startAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        result.put("expiresAt", preview.endAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        result.put("bonusDays", preview.bonusDays());
+        result.put("paymentExpiresAt", paymentExpiresAt);
+        result.put("bankAccount", sepayBankAccount);
+        result.put("bankName", sepayBankName);
+        result.put("accountName", sepayAccountName);
+        result.put("transferContent", qrContent);
+        result.put("qrUrl", qrUrl);
+        result.put("status", status);
+        result.put("message", "SUCCESS".equals(status)
+                ? "Đơn " + orderCode + " đã được thanh toán."
+                : "Vui lòng quét mã QR hoặc chuyển khoản với nội dung: " + orderCode);
+
+        System.out.println("[SePay Checkout] Mở lại đơn thanh toán: " + orderCode +
+            " | Trạng thái: " + status + " | User: " + user.getUsername());
 
         return result;
     }
@@ -763,8 +909,8 @@ public class SubscriptionService {
     public List<Map<String, Object>> getPackageQuotes(String principal) {
         User user = findUserByPrincipal(principal);
         Set<String> paidTierIds = findPaidTierIds(user.getId());
-        PlanContext context = getPlanContext(user.getId());
         LocalDateTime now = LocalDateTime.now();
+        PlanContext context = getPlanContext(user.getId(), now);
         List<Map<String, Object>> quotes = new ArrayList<>();
 
         for (Map<String, Object> pkg : getActivePackages()) {
@@ -809,7 +955,7 @@ public class SubscriptionService {
         return tiers;
     }
 
-    private PlanContext getPlanContext(Long userId) {
+    private PlanContext getPlanContext(Long userId, LocalDateTime now) {
         String planSql = "SELECT s.id AS subscription_id, s.service_package_id, s.start_at, s.end_at, " +
                 "p.name AS package_name, p.tier_id, p.price, p.duration_days, " +
                 "(SELECT pt.amount FROM payment_transactions pt " +
@@ -817,18 +963,18 @@ public class SubscriptionService {
                 "AND COALESCE(pt.provider, '') NOT IN ('SANDBOX', 'DEV_SANDBOX') " +
                 "ORDER BY pt.paid_at DESC, pt.id DESC LIMIT 1) AS paid_amount " +
                 "FROM subscriptions s JOIN service_packages p ON p.id = s.service_package_id " +
-                "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.end_at > NOW() ";
+                "WHERE s.user_id = ? AND s.status = 'ACTIVE' AND s.end_at > ? ";
         List<Map<String, Object>> current = jdbcTemplate.queryForList(
-                planSql + "AND s.start_at <= NOW() ORDER BY s.end_at DESC, s.id DESC LIMIT 1", userId);
+                planSql + "AND s.start_at <= ? ORDER BY s.end_at DESC, s.id DESC LIMIT 1", userId, now, now);
         List<Map<String, Object>> scheduled = jdbcTemplate.queryForList(
-                planSql + "AND s.start_at > NOW() ORDER BY s.end_at DESC, s.id DESC LIMIT 1", userId);
+                planSql + "AND s.start_at > ? ORDER BY s.end_at DESC, s.id DESC LIMIT 1", userId, now, now);
         return new PlanContext(current.isEmpty() ? null : current.get(0),
                 scheduled.isEmpty() ? null : scheduled.get(0));
     }
 
     private PlanApplication previewPaidPackage(Long userId, Map<String, Object> targetPackage,
                                                 PriceBreakdown price, LocalDateTime now) {
-        return previewPaidPackage(userId, targetPackage, price, now, getPlanContext(userId));
+        return previewPaidPackage(userId, targetPackage, price, now, getPlanContext(userId, now));
     }
 
     private PlanApplication previewPaidPackage(Long userId, Map<String, Object> targetPackage,
@@ -1007,14 +1153,14 @@ public class SubscriptionService {
 
     private PlanApplication applyPaidPackage(Long userId, Map<String, Object> targetPackage,
                                              PriceBreakdown price, LocalDateTime now) {
-        PlanContext context = getPlanContext(userId);
+        PlanContext context = getPlanContext(userId, now);
         PlanApplication plan = previewPaidPackage(userId, targetPackage, price, now, context);
 
         if ("UPGRADE".equals(plan.action())) {
             jdbcTemplate.update(
                     "UPDATE subscriptions SET status = 'CANCELLED', updated_at = NOW() " +
-                            "WHERE user_id = ? AND status = 'ACTIVE' AND start_at <= NOW() AND end_at > NOW()",
-                    userId);
+                            "WHERE user_id = ? AND status = 'ACTIVE' AND start_at <= ? AND end_at > ?",
+                    userId, now, now);
         }
         return plan;
     }

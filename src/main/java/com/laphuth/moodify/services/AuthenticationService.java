@@ -27,6 +27,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.laphuth.moodify.dto.auth.FacebookAuthRequest;
 import com.laphuth.moodify.dto.auth.GoogleAuthRequest;
+import com.laphuth.moodify.dto.auth.GoogleCodeRequest;
 import java.util.Collections;
 
 import java.io.IOException;
@@ -53,6 +54,9 @@ public class AuthenticationService {
 
     @Value("${google.client-id:}")
     private String googleClientId;
+
+    @Value("${google.client-secret:}")
+    private String googleClientSecret;
 
     @Value("${facebook.app-id:}")
     private String facebookAppId;
@@ -206,6 +210,137 @@ public class AuthenticationService {
         return buildAuthResponse(currentUser);
     }
 
+    /**
+     * Self-service password change for any authenticated role (moderator,
+     * content lead, admin, user). Mirrors the login lookup and BCrypt check.
+     */
+    public java.util.Map<String, Object> changePassword(
+            String principal,
+            String currentPassword,
+            String newPassword
+    ) {
+        User currentUser = userRepository
+            .findByEmailOrUsername(
+                normalizeIdentifier(principal),
+                normalizeIdentifier(principal)
+            )
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "Invalid credentials"
+            ));
+
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng nhập mật khẩu hiện tại.");
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải có ít nhất 6 ký tự.");
+        }
+        if (!passwordEncoder.matches(currentPassword, currentUser.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không đúng.");
+        }
+        if (passwordEncoder.matches(newPassword, currentUser.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải khác mật khẩu hiện tại.");
+        }
+
+        currentUser.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(currentUser);
+
+        return java.util.Map.of(
+            "success", true,
+            "message", "Đổi mật khẩu thành công"
+        );
+    }
+
+    /**
+     * Backward-compatible entry point for native clients using Authorization Code + PKCE.
+     */
+    public AuthResponse loginWithGoogleCode(GoogleCodeRequest request) {
+        return loginWithGoogleCode(request, null);
+    }
+
+    /**
+     * Exchange a Google authorization code from either a web popup or a native PKCE client.
+     */
+    public AuthResponse loginWithGoogleCode(GoogleCodeRequest request, String requestedWith) {
+        String exchangeClientId = request.clientId() != null && !request.clientId().isBlank()
+            ? request.clientId().trim()
+            : googleClientId;
+        boolean isWebClient = googleClientId != null
+            && !googleClientId.isBlank()
+            && googleClientId.equals(exchangeClientId);
+
+        if (isWebClient && (requestedWith == null || !"XmlHttpRequest".equalsIgnoreCase(requestedWith.trim()))) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Google popup request is missing the required CSRF header"
+            );
+        }
+
+        if (!isWebClient && (request.codeVerifier() == null || request.codeVerifier().isBlank())) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "PKCE code verifier is required for native Google clients"
+            );
+        }
+
+        if (isWebClient && (googleClientSecret == null || googleClientSecret.isBlank())) {
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Google Client Secret is not configured on the server"
+            );
+        }
+
+        String accessToken;
+        try {
+            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+            StringBuilder form = new StringBuilder();
+            form.append("code=").append(java.net.URLEncoder.encode(request.code(), java.nio.charset.StandardCharsets.UTF_8));
+            form.append("&client_id=").append(java.net.URLEncoder.encode(exchangeClientId, java.nio.charset.StandardCharsets.UTF_8));
+            if (isWebClient) {
+                form.append("&client_secret=").append(java.net.URLEncoder.encode(googleClientSecret, java.nio.charset.StandardCharsets.UTF_8));
+            }
+            form.append("&redirect_uri=").append(java.net.URLEncoder.encode(request.redirectUri(), java.nio.charset.StandardCharsets.UTF_8));
+            if (request.codeVerifier() != null && !request.codeVerifier().isBlank()) {
+                form.append("&code_verifier=").append(java.net.URLEncoder.encode(request.codeVerifier(), java.nio.charset.StandardCharsets.UTF_8));
+            }
+            form.append("&grant_type=authorization_code");
+
+            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create("https://oauth2.googleapis.com/token"))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(form.toString()))
+                .build();
+
+            java.net.http.HttpResponse<String> resp = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
+                log.warn("Google authorization code exchange failed: {}", resp.body());
+                throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Failed to exchange Google authorization code. Kiểm tra Redirect URI đã đăng ký trên Google Cloud Console."
+                );
+            }
+
+            com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(resp.body());
+            accessToken = root.path("access_token").asText(null);
+            if (accessToken == null || accessToken.isBlank()) {
+                throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Google token response did not contain an access token"
+                );
+            }
+        } catch (ResponseStatusException rse) {
+            throw rse;
+        } catch (Exception e) {
+            throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "Failed to exchange Google authorization code: " + e.getMessage()
+            );
+        }
+
+        // Access token của Google (không phải JWT user-info) -> flow hiện có tự xác minh qua userinfo API
+        return loginWithGoogle(new GoogleAuthRequest(accessToken, request.deviceUuid(), request.deviceName(), request.platform()));
+    }
+
     public AuthResponse loginWithGoogle(GoogleAuthRequest request) {
         if (googleClientId == null || googleClientId.isBlank()) {
             throw new ResponseStatusException(
@@ -354,7 +489,7 @@ public class AuthenticationService {
 
         try {
             java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
-            String graphUrl = "https://graph.facebook.com/v19.0/me?fields=id,name,email,picture.width(500).height(500)&access_token="
+            String graphUrl = "https://graph.facebook.com/v26.0/me?fields=id,name,email,picture.width(500).height(500)&access_token="
                 + java.net.URLEncoder.encode(rawToken, java.nio.charset.StandardCharsets.UTF_8);
 
             java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
@@ -576,6 +711,19 @@ public class AuthenticationService {
                 "User not found"
             ));
         return UserProfileResponse.fromUser(currentUser);
+    }
+
+    public UserProfileResponse updateProfile(String principal, com.laphuth.moodify.dto.auth.UpdateProfileRequest request) {
+        User currentUser = userRepository.findByEmailOrUsername(principal, principal)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        String phone = request.phone() == null ? "" : request.phone().trim();
+        if (!phone.isEmpty()) {
+            userRepository.findByPhone(phone).filter(other -> !other.getId().equals(currentUser.getId()))
+                .ifPresent(other -> { throw new ResponseStatusException(HttpStatus.CONFLICT, "Số điện thoại đã được sử dụng."); });
+        }
+        currentUser.setFullName(request.fullName().trim());
+        currentUser.setPhone(phone.isEmpty() ? null : phone);
+        return UserProfileResponse.fromUser(userRepository.save(currentUser));
     }
 
     public UserProfileResponse updateAvatar(String principal, MultipartFile file) {

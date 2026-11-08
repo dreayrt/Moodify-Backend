@@ -1,0 +1,15 @@
+{
+  "schemaVersion" : 1,
+  "generatedAt" : "2026-11-03T06:35:21.744442800Z",
+  "profileSourcePath" : "E:\\Model-Detect_CamXuc\\DetectEmotions\\music_mapping.py",
+  "profileSourceSha256" : "05942764ee5b585a469c68f2d071f170b8601e12b719827f10006306ba18b968",
+  "batchId" : "",
+  "ignoredDocumentsWithoutValidSpotifyId" : 0,
+  "ignoredDocumentSamples" : [ ],
+  "profileLabels" : [ "enjoyment", "sadness", "anger", "fear", "surprise", "disgust", "other" ],
+  "maxDistance" : null,
+  "minMargin" : null,
+  "minFeatureCoverage" : 1.0,
+  "reviewInstructions" : "Review every track, then fill approvedMoodTags with an array of canonical profile tags. Use [] when no tag is justified.",
+  "tracks" : [ ]
+}

@@ -12,9 +12,9 @@ Theo cấu hình trong [`compose.yaml`](../compose.yaml) và [`.env.example`](..
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Detect Emotions** | `moodify-detect-emotions` | **`8000`** | `8000` | `http://localhost:8000` | `http://localhost:8000/docs` |
 | **OCR Service** | `moodify-ocr-service` | **`8001`** | `8000` | `http://localhost:8001` | `http://localhost:8001/docs` |
-| **MongoDB** | *(auto)* | `27017` | `27017` | `mongodb://localhost:27017` | *N/A* |
-| **MySQL** | *(auto)* | `3306` | `3306` | `localhost:3306` | *N/A* |
-| **Spring Boot Backend** | *(Host App)* | **`8080`** | *N/A* | `http://localhost:8080` | `http://localhost:8080/api/...` |
+| **MongoDB** | *(auto)* | `27018` | `27017` | `mongodb://localhost:27018` | *N/A* |
+| **MySQL** | *(auto)* | `3307` | `3306` | `jdbc:mysql://localhost:3307/moodify` | *N/A* |
+| **Spring Boot Backend** | *(Host App)* | **`8088`** | *N/A* | `http://localhost:8088` | `http://localhost:8088/api/...` |
 
 ---
 
