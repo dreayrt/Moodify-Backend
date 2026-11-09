@@ -148,9 +148,9 @@ public class RecommendationStore {
         return new TrendStats(counts,new double[]{active.get(0).size(),active.get(1).size()});
     }
 
-    /** Only server-measured listening in the current playlist counts toward discovery. */
+    /** Simulated listening is isolated from playback history and enabled only by catalog mode. */
     public Set<String> engagedPlaylists(List<Playlist> playlists, Map<String, Set<String>> playlistTracks,
-                                       Map<String, String> aliases, Instant now) {
+                                       Map<String, String> aliases, Instant now, boolean includeSimulated) {
         if (playlists.isEmpty()) return Set.of();
         Map<String, Playlist> byId = new HashMap<>();
         playlists.forEach(playlist -> byId.put(playlist.getId(), playlist));
@@ -182,6 +182,31 @@ public class RecommendationStore {
                     engaged.add(id);
                 }
             }, parameters.toArray());
+        if (includeSimulated) {
+            Set<Long> syntheticUsers = new HashSet<>(jdbc.queryForList("""
+                SELECT id FROM users WHERE role='USER' AND status='ACTIVE'
+                  AND LEFT(username,9)='rec_seed_' AND email LIKE '%@recommendation-seed.invalid'
+                """, Long.class));
+            Query query = Query.query(Criteria.where("kind").is("SIMULATED_PLAYLIST_BEHAVIOR")
+                .and("provenance").is("SIMULATED").and("event_type").is("LISTEN")
+                .and("schema_version").is(1).and("revenue_eligible").is(false)
+                .and("parent_playlist_type").is("PLAYLIST").and("parent_playlist_id").in(byId.keySet())
+                .and("listened_duration_ms").gte(30000)
+                .and("occurred_at").gte(Date.from(now.minus(Duration.ofDays(30)))).lte(Date.from(now))
+                .and("expires_at").gt(Date.from(now)));
+            for (Document evidence : mongo.find(query, Document.class, RecommendationPersistence.EVENTS)) {
+                if (!(evidence.get("user_id") instanceof Number userId)) continue;
+                long listener = userId.longValue();
+                String id = evidence.getString("parent_playlist_id");
+                Playlist playlist = byId.get(id);
+                String trackId = aliases.get(evidence.getString("entity_id"));
+                if (syntheticUsers.contains(listener) && playlist.getOwnerUserId() != null &&
+                    !playlist.getOwnerUserId().equals(listener) && trackId != null &&
+                    playlistTracks.getOrDefault(id, Set.of()).contains(trackId)) {
+                    engaged.add(id);
+                }
+            }
+        }
         return engaged;
     }
 

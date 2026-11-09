@@ -141,7 +141,7 @@ public class RecommendationService {
             candidate -> candidate.playlist().getId(),
             candidate -> candidate.tracks().stream().map(Track::getId).collect(Collectors.toSet())));
         Set<String> engaged = store.engagedPlaylists(ranked.stream().map(Candidate::playlist).toList(),
-            playlistTracks, context.catalog().aliases(), context.now());
+            playlistTracks, context.catalog().aliases(), context.now(), catalog.demoCatalogEnabled());
         ranked.removeIf(candidate -> !engaged.contains(candidate.playlist().getId()));
         ranked.sort(Comparator.comparingDouble(Candidate::score).reversed().thenComparing(c -> c.playlist().getId()));
         List<Candidate> selected = new ArrayList<>();
