@@ -10,6 +10,7 @@ public class TrackUploadRequest {
     private String visibility = "public";
     private boolean explicit;
     private String lyricsPlain;
+    private String lyricsSynced;
     private String description;
 
     // License Info
@@ -48,6 +49,8 @@ public class TrackUploadRequest {
 
     public String getLyricsPlain() { return lyricsPlain; }
     public void setLyricsPlain(String lyricsPlain) { this.lyricsPlain = lyricsPlain; }
+    public String getLyricsSynced() { return lyricsSynced; }
+    public void setLyricsSynced(String lyricsSynced) { this.lyricsSynced = lyricsSynced; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

@@ -313,6 +313,7 @@ public class ContentLeadCatalogService {
         track.setGenres(List.of(request.getGenre() != null && !request.getGenre().isBlank() ? request.getGenre().trim() : "Pop"));
         track.setExplicit(request.isExplicit());
         track.setLyricsPlain(request.getLyricsPlain() != null && !request.getLyricsPlain().isBlank() ? request.getLyricsPlain().trim() : null);
+        track.setLyricsSynced(emptyToNull(request.getLyricsSynced()));
         track.setDescription(request.getDescription() != null && !request.getDescription().isBlank() ? request.getDescription().trim() : null);
         track.setImageUrl(coverUrl);
         track.setLocalPath(audioUrl);

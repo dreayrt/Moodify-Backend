@@ -4,6 +4,7 @@ import com.laphuth.moodify.config.SecurityConfig;
 import com.laphuth.moodify.dto.contentlead.ContentLeadCatalogResponse;
 import com.laphuth.moodify.dto.contentlead.ContentLeadProfileResponse;
 import com.laphuth.moodify.dto.contentlead.ContentLeadTracksPageResponse;
+import com.laphuth.moodify.dto.contentlead.TrackUploadRequest;
 import com.laphuth.moodify.security.JwtAuthenticationFilter;
 import com.laphuth.moodify.services.ContentLeadAnalyticsService;
 import com.laphuth.moodify.services.ContentLeadCatalogService;
@@ -17,6 +18,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockMultipartFile;
+import org.mockito.ArgumentCaptor;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
@@ -26,8 +29,11 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = ContentLeadCatalogApi.class)
@@ -62,6 +68,23 @@ class ContentLeadCatalogApiTest {
             chain.doFilter(request, response);
             return null;
         }).when(jwtAuthenticationFilter).doFilter(any(), any(), any());
+    }
+
+    @Test
+    void uploadTrackBindsPlainAndSyncedLyricsFromMultipartForm() throws Exception {
+        String plain = "Ôi hóa ra là người say";
+        String synced = "[00:13.800]" + plain;
+        mockMvc.perform(multipart("/api/content-lead/me/tracks")
+                .file(new MockMultipartFile("audioFile", "sample.mp3", "audio/mpeg", new byte[]{1}))
+                .param("lyricsPlain", plain)
+                .param("lyricsSynced", synced)
+                .with(user("contentlead01").roles("CONTENT_LEAD")))
+            .andExpect(status().isCreated());
+
+        ArgumentCaptor<TrackUploadRequest> request = ArgumentCaptor.forClass(TrackUploadRequest.class);
+        verify(contentLeadCatalogService).uploadTrack(eq("contentlead01"), request.capture(), any(), isNull(), isNull());
+        assertThat(request.getValue().getLyricsPlain()).isEqualTo(plain);
+        assertThat(request.getValue().getLyricsSynced()).isEqualTo(synced);
     }
 
     @Test
