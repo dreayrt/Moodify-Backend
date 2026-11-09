@@ -17,16 +17,16 @@ import java.util.Map;
 @RequestMapping("/api/app")
 public class AppVersionApi {
 
-    @Value("${app.update.latest-version:0.1.1}")
+    @Value("${app.update.latest-version:0.1.2}")
     private String latestVersion;
 
-    @Value("${app.update.latest-build-number:2}")
+    @Value("${app.update.latest-build-number:3}")
     private int latestBuildNumber;
 
-    @Value("${app.update.download-url:https://github.com/Kandesfx/moodify-mobile/releases/download/v0.1.1/moodify-release.apk}")
+    @Value("${app.update.download-url:https://github.com/Kandesfx/moodify-mobile/releases/download/v0.1.2/moodify-release.apk}")
     private String downloadUrl;
 
-    @Value("${app.update.release-notes:• Bản cập nhật mới dành cho Moodify Android\n• Tính năng tự động cập nhật & cài đặt trực tiếp\n• Tối ưu hóa hiệu năng & độ ổn định}")
+    @Value("${app.update.release-notes:• Bổ sung và đồng bộ giao diện Playlist hợp gu với bản web\n• Cập nhật câu chào âm nhạc trên màn hình khởi động\n• Nâng cấp trải nghiệm phát nhạc và hiệu năng}")
     private String releaseNotes;
 
     @Value("${app.update.force-update:false}")
