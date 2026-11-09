@@ -5,6 +5,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 class RecommendationRuntimeTest {
+    @Test void pilotLimitsGenerationWithoutExposingAccountIdentifiersInMetrics() {
+        var runtime=new RecommendationRuntime(true,false,false,"11, 27");
+        runtime.requireGeneration(11);
+        assertThat(runtime.generationAllowed(27)).isTrue();
+        assertThat(runtime.generationAllowed(12)).isFalse();
+        assertThatThrownBy(()->runtime.requireGeneration(12)).isInstanceOf(ResponseStatusException.class);
+        assertThat(runtime.snapshot().toString()).doesNotContain("27");
+        runtime.update(false,false,false,1);
+        assertThat(runtime.generationAllowed(11)).isFalse();
+    }
     @Test void controlsAreRevisionCheckedAndCanDisableGenerationWithoutADatabase() {
         var runtime=new RecommendationRuntime(true,true,true);
         String original=runtime.rankingKey();

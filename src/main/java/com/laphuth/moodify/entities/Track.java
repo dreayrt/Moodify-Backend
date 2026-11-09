@@ -21,6 +21,15 @@ public class Track {
     @Field("artist_name")
     private String artistName;
 
+    @Field("artist_ids")
+    private List<String> artistIds;
+    @Field("recommendation_demo")
+    private Map<String,Object> recommendationDemo;
+    public Map<String,Object> getRecommendationDemo() { return recommendationDemo; }
+    public void setRecommendationDemo(Map<String,Object> value) { recommendationDemo = value; }
+    public List<String> getArtistIds() { return artistIds; }
+    public void setArtistIds(List<String> ids) { this.artistIds = ids; }
+
     @Field("artist_spotify_id")
     private String artistSpotifyId;
 

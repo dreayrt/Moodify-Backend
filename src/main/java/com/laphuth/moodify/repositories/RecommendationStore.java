@@ -93,8 +93,7 @@ public class RecommendationStore {
     public Map<String, Double> collaborativeScores(long userId, Instant now) {
         if(!runtime.flags().collaborative()) return Map.of();
         Document profile = mongo.findById("profile:" + userId, Document.class, RecommendationPersistence.STATE);
-        if (profile == null || profile.get("as_of") == null ||
-            instant(profile.get("as_of")).isBefore(now.minus(Duration.ofDays(3)))) return Map.of();
+        if (!validatedProfile(profile,now)) return Map.of();
         Object raw = profile.get("collaborative_scores");
         if (!(raw instanceof Map<?, ?> values)) return Map.of();
         Map<String, Double> result = new HashMap<>();
@@ -107,9 +106,18 @@ public class RecommendationStore {
     public String modelVersion(long userId, Instant now) {
         if(!runtime.flags().collaborative()) return "content-session-v1";
         Document profile = mongo.findById("profile:" + userId, Document.class, RecommendationPersistence.STATE);
-        if (profile == null || profile.get("as_of") == null ||
-            instant(profile.get("as_of")).isBefore(now.minus(Duration.ofDays(3)))) return "content-session-v1";
+        if (!validatedProfile(profile,now)) return "content-session-v1";
         return profile.getString("model_version") == null ? "content-session-v1" : profile.getString("model_version");
+    }
+
+    private static boolean validatedProfile(Document profile, Instant now) {
+        if(profile==null || profile.get("as_of")==null || !"behavior-v1".equals(profile.getString("feature_schema_version")) || !Objects.toString(profile.get("model_version"),"").startsWith("implicit-als-")) return false;
+        Object evaluation=profile.get("training_evaluation");
+        if(!(evaluation instanceof Map<?,?> evidence) || !Boolean.TRUE.equals(evidence.get("accepted"))) return false;
+        Instant trained=instant(profile.get("as_of"));
+        Instant refreshed=profile.get("refreshed_at")==null?trained:instant(profile.get("refreshed_at"));
+        return !trained.isAfter(now) && !trained.isBefore(now.minus(Duration.ofDays(3))) &&
+            !refreshed.isAfter(now.plusSeconds(120)) && !refreshed.isBefore(now.minus(Duration.ofMinutes(45)));
     }
 
     public record TrendStats(Map<String,double[]> tracks,double[] activeListeners) {}
@@ -126,7 +134,7 @@ public class RecommendationStore {
                          ELSE TIMESTAMPADD(MINUTE,?,h.started_at) END signal_at
                   FROM listening_history h JOIN users u ON u.id=h.user_id AND u.role='USER' AND u.status='ACTIVE'
                   LEFT JOIN revenue_playback_sessions r ON r.listening_history_id=h.id
-                  WHERE h.started_at>=?) normalized
+                  WHERE h.started_at>=? AND NOT (LEFT(u.username,9)='rec_seed_' AND u.email LIKE '%@recommendation-seed.invalid')) normalized
             WHERE signal_at>=? AND signal_at<=?
             """,(org.springframework.jdbc.core.RowCallbackHandler)rs->{
                 int period=rs.getInt("period");long user=rs.getLong("user_id");active.get(period).add(user);

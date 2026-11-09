@@ -14,13 +14,23 @@ import static org.junit.jupiter.api.Assertions.*;
 class EmotionServiceTest {
 
     @Test
-    void testPredictEmotionWithRunningContainer() {
+    void testPredictEmotionWithHttpDependency() throws Exception {
+        var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/predict", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] body = "{\"label\":\"Enjoyment\",\"confidence\":0.9,\"music_recommendation\":{\"target_valence\":0.8,\"target_energy\":0.7}}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body); exchange.close();
+        });
+        server.start();
+        try {
         MongoTemplate mongoTemplate = Mockito.mock(MongoTemplate.class);
         UserRepository userRepository = Mockito.mock(UserRepository.class);
         SearchHistoryRepository searchHistoryRepository = Mockito.mock(SearchHistoryRepository.class);
 
         EmotionService emotionService = new EmotionService(
-            "http://localhost:8000",
+            "http://127.0.0.1:" + server.getAddress().getPort(),
             mongoTemplate,
             userRepository,
             searchHistoryRepository
@@ -38,6 +48,7 @@ class EmotionServiceTest {
         System.out.println("Test passed! Emotion: " + response.getLabel() + " (" + response.getEmoji() + ")");
         System.out.println("Target Valence: " + response.getMusicRecommendation().getTargetValence());
         System.out.println("Seed Genres: " + response.getMusicRecommendation().getSeedGenres());
+        } finally { server.stop(0); }
     }
 
     @Test

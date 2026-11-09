@@ -31,6 +31,15 @@ public class RecommendationTokens {
     }
 
     public TokenClaims verify(String token, long userId, String purpose) {
+        return verify(token,userId,purpose,0);
+    }
+
+    /** Expiry grace is restricted to queue renewal, never playback or item attribution. */
+    public TokenClaims verifyQueueForRenewal(String token,long userId) {
+        return verify(token,userId,"QUEUE",86_400);
+    }
+
+    private TokenClaims verify(String token,long userId,String purpose,long graceSeconds) {
         try {
             if (token == null || token.length() > 16_384) throw new IllegalArgumentException();
             String[] parts = token.split("\\.", -1);
@@ -38,9 +47,14 @@ public class RecommendationTokens {
                 throw new IllegalArgumentException();
             }
             TokenClaims claims = json.readValue(Base64.getUrlDecoder().decode(parts[0]), TokenClaims.class);
-            if (claims.userId() != userId || !purpose.equals(claims.purpose()) ||
-                claims.expiresAt() <= Instant.now().getEpochSecond()) throw new IllegalArgumentException();
+            if (claims.userId() != userId || !purpose.equals(claims.purpose())) throw new IllegalArgumentException();
+            if (claims.expiresAt() <= Instant.now().getEpochSecond()-graceSeconds) {
+                var expired = new ResponseStatusException(HttpStatus.FORBIDDEN, "RECOMMENDATION_TOKEN_EXPIRED");
+                expired.getBody().setProperty("code", "RECOMMENDATION_TOKEN_EXPIRED");
+                throw expired;
+            }
             return claims;
+        } catch (ResponseStatusException expired) { throw expired;
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid or expired recommendation context");
         }

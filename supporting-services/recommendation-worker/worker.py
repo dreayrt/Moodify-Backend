@@ -50,7 +50,7 @@ def canonical_tracks(tracks):
     return aliases
 
 
-def effective_licensed_tracks(rows, aliases, local_day):
+def latest_licenses(rows, aliases):
     selected = {}
     for row in rows:
         key = aliases.get(row["track_id"])
@@ -60,7 +60,11 @@ def effective_licensed_tracks(rows, aliases, local_day):
         priority = (row["track_id"] == key, int(row["id"]))
         if old is None or priority > (old["track_id"] == key, int(old["id"])):
             selected[key] = row
-    return {key for key, row in selected.items() if row["status"]=="ACTIVE"
+    return selected
+
+
+def effective_licensed_tracks(rows, aliases, local_day):
+    return {key for key, row in latest_licenses(rows,aliases).items() if row["status"]=="ACTIVE"
             and (row.get("issue_date") is None or row["issue_date"] <= local_day)
             and (row.get("expiry_date") is None or row["expiry_date"] >= local_day)}
 
@@ -194,9 +198,10 @@ def connections(env_path):
     sql = pymysql.connect(host=parsed.hostname, port=parsed.port or 3306,
                           user=os.environ["DATABASE_USERNAME"], password=os.environ["DATABASE_PASSWORD"],
                           database=unquote(parsed.path.lstrip("/")), charset="utf8mb4",
-                          cursorclass=pymysql.cursors.DictCursor, connect_timeout=8,
+                          cursorclass=pymysql.cursors.DictCursor, connect_timeout=8, read_timeout=15, write_timeout=15,
                           init_command="SET time_zone = '+00:00'")
-    client = MongoClient(os.environ["MONGODB_URI"], tz_aware=True, serverSelectionTimeoutMS=8000)
+    client = MongoClient(os.environ["MONGODB_URI"], tz_aware=True, serverSelectionTimeoutMS=8000,
+                         connectTimeoutMS=8000, socketTimeoutMS=15000, timeoutMS=20000)
     mongo = client[os.environ.get("MONGODB_DATABASE", "music_streaming")]
     return sql, mongo, client
 
@@ -252,8 +257,22 @@ def initialize_storage(mongo):
     mongo.recommendation_events.create_index("expires_at", name="rec_log_expiry", expireAfterSeconds=0)
 
 
+def eligible_track_ids(tracks, licenses, now, demo_catalog=False):
+    aliases=canonical_tracks(tracks)
+    licensed = effective_licensed_tracks(licenses, aliases, now.astimezone(ZoneInfo("Asia/Ho_Chi_Minh")).date())
+    simulated={key for key,row in latest_licenses(licenses,aliases).items() if row.get('license_type')=='DEMO_SIMULATED'}
+    def audio_ok(path):
+        if not isinstance(path, str): return False
+        clean = path.strip().replace("\\", "/")
+        return bool(clean) and clean.lower() not in {"null", "undefined"} and ".." not in clean.split("/") and "\0" not in clean
+    return {str(t["_id"]) for t in tracks if str(t["_id"]) in licensed and
+        (demo_catalog or str(t['_id']) not in simulated and not (t.get('recommendation_demo') or {}).get('simulated')) and
+        str(t.get("status", "")).lower() == "published" and str(t.get("visibility", "")).lower() == "public" and
+        str(t.get("moderation_status", "")).lower() == "approved" and audio_ok(t.get("local_path"))}
+
+
 def load_sources(sql, mongo, now):
-    tracks = list(mongo.tracks.find({}, {"spotify_id": 1, "genres": 1, "artist_spotify_id": 1, "audio_features": 1}))
+    tracks = list(mongo.tracks.find({}, {"spotify_id": 1, "genres": 1, "artist_spotify_id": 1, "artist_ids":1,"audio_features": 1, "status":1, "visibility":1, "moderation_status":1, "local_path":1,"recommendation_demo":1}))
     aliases = canonical_tracks(tracks)
     # A batch owns a short read-only snapshot. Session advisory locks survive rollback.
     sql.rollback()
@@ -265,14 +284,24 @@ def load_sources(sql, mongo, now):
                 EXISTS(SELECT 1 FROM revenue_playback_sessions r WHERE r.listening_history_id=h.id) is_revenue,
                 EXISTS(SELECT 1 FROM playback_events p WHERE p.listening_history_id=h.id AND p.event_type='SKIP_NEXT') skipped
                 FROM listening_history h JOIN users u ON u.id=h.user_id
-                WHERE u.role='USER' AND u.status='ACTIVE' AND h.started_at >= %s ORDER BY h.id LIMIT 1000001""",
+                WHERE u.role='USER' AND u.status='ACTIVE'
+                  AND NOT (LEFT(u.username,9)='rec_seed_' AND u.email LIKE '%%@recommendation-seed.invalid')
+                  AND h.started_at >= %s ORDER BY h.id LIMIT 1000001""",
                 ((now - timedelta(days=181)).replace(tzinfo=None),))
             history = cursor.fetchall()
             if len(history) > 1_000_000:
                 raise ValueError("History capacity exceeded; use incremental extraction")
             cursor.execute("""SELECT l.user_id,l.track_id,l.added_at FROM user_library_tracks l
-                              JOIN users u ON u.id=l.user_id WHERE u.role='USER' AND u.status='ACTIVE'""")
+                              JOIN users u ON u.id=l.user_id WHERE u.role='USER' AND u.status='ACTIVE'
+                              AND NOT (LEFT(u.username,9)='rec_seed_' AND u.email LIKE '%@recommendation-seed.invalid')""")
             library = cursor.fetchall()
+            cursor.execute("SELECT id,track_id,status,issue_date,expiry_date,license_type FROM song_licenses")
+            licenses = cursor.fetchall()
+            eligible = eligible_track_ids(tracks, licenses, now,os.environ.get('RECOMMENDATIONS_DEMO_CATALOG_ENABLED','false').lower()=='true')
+            history = [row for row in history if aliases.get(row["track_id"]) in eligible]
+            library = [row for row in library if aliases.get(row["track_id"]) in eligible]
+            tracks = [track for track in tracks if str(track["_id"]) in eligible]
+            aliases = {key:value for key,value in aliases.items() if value in eligible}
     finally:
         sql.rollback()
 
@@ -290,12 +319,32 @@ def normalize_top_scores(row, tracks, limit=500):
     return {tracks[i]: float((row[i]-low)/(high-low)) if high > low else 0.0 for i in indices}
 
 
-def publish_profiles(mongo, daily, now, train, artifact_dir):
+def publish_profiles(mongo, daily, now, train, artifact_dir, before_publish=None):
     if not train:
-        observed = [(user, track) for (user, track, day), value in daily.items()
-                    if (now-timedelta(days=180)).date() <= day < now.date() and (value["engaged"] or value["saves"])]
-        return {"users":len({u for u,_ in observed}),"tracks":len({t for _,t in observed}),
-                "training":{"accepted":False,"reason":"training_not_requested"}}
+        # Refresh real content/session profiles every 15 minutes, including today's listening.
+        # Refreshing a profile must never make an old CF model appear newly trained.
+        weights=defaultdict(lambda:defaultdict(float))
+        for (user,track,day), value in daily.items():
+            if (now-timedelta(days=180)).date() <= day <= now.date():
+                weight=(min(5,value['engaged'])+4*value['saves'])*2**(-max(0,(now.date()-day).days)/45)
+                if weight>0:weights[user][track]+=weight
+        kept=0
+        for user,values in weights.items():
+            if before_publish:before_publish()
+            existing=mongo.recommendation_state.find_one({'_id':'profile:'+str(user),'kind':'PROFILE'}) or {}
+            valid_cf=(existing.get('training_evaluation',{}).get('accepted') is True and
+                str(existing.get('model_version','')).startswith('implicit-als-') and existing.get('as_of') and
+                now-timedelta(days=3)<timestamp(existing['as_of'])<=now)
+            profile=existing if valid_cf else {'_id':'profile:'+str(user),'kind':'PROFILE','user_id':user,
+                'as_of':now,'model_version':'content-session-v1','collaborative_scores':{},
+                'training_evaluation':{'accepted':False,'reason':'training_not_requested'}}
+            kept+=int(bool(valid_cf))
+            profile.update(refreshed_at=now,feature_schema_version=FEATURE_VERSION,
+                content_weights=dict(sorted(values.items(),key=lambda p:(-p[1],p[0]))[:500]),
+                expires_at=timestamp(profile['as_of'])+timedelta(days=3))
+            mongo.recommendation_state.replace_one({'_id':profile['_id']},profile,upsert=True)
+        return {'users':len(weights),'tracks':len({t for values in weights.values() for t in values}),
+            'training':{'accepted':False,'reason':'training_not_requested'},'previous_learned_profiles_kept':kept}
     matrix, users, tracks = interaction_matrix(daily, now)
     evidence = evaluate(daily, now) if train else {"accepted": False, "reason": "training_not_requested"}
     scores = None
@@ -322,8 +371,9 @@ def publish_profiles(mongo, daily, now, train, artifact_dir):
     # Non-training aggregation runs preserve an existing learned projection until its 3-day serving TTL.
     kept_profiles = 0
     for index, user in enumerate(users):
+        if before_publish: before_publish()
         existing = mongo.recommendation_state.find_one({"_id":"profile:"+str(user),"kind":"PROFILE"})
-        if scores is None and existing and existing.get("collaborative_scores") and existing.get("as_of") and timestamp(existing["as_of"]) > now-timedelta(days=3):
+        if not train and scores is None and existing and existing.get("collaborative_scores") and existing.get("as_of") and timestamp(existing["as_of"]) > now-timedelta(days=3):
             kept_profiles += 1
             continue
         normalized_scores = {}
@@ -331,21 +381,21 @@ def publish_profiles(mongo, daily, now, train, artifact_dir):
             normalized_scores = normalize_top_scores(scores[index], tracks)
         mongo.recommendation_state.replace_one({"_id": "profile:"+str(user)},
             {"_id": "profile:"+str(user), "kind":"PROFILE", "user_id": user, "as_of": now, "feature_schema_version": FEATURE_VERSION,
-             "model_version": version, "collaborative_scores": normalized_scores,
+             "model_version": version, "collaborative_scores": normalized_scores, "refreshed_at": now,
              "interaction_count": int(np.count_nonzero(matrix[index])), "training_evaluation": evidence,
              "expires_at":now+timedelta(days=3)}, upsert=True)
     return {"users": len(users), "tracks": len(tracks), "training": evidence, "model_version": version,
             "previous_learned_profiles_kept":kept_profiles}
 
 
-def run_once(sql, mongo, train=False, artifact_dir=None):
+def run_once(sql, mongo, train=False, artifact_dir=None, before_publish=None):
     initialize_storage(mongo)
     now = datetime.now(UTC)
     legacy_zone = os.environ.get("RECOMMENDATIONS_LEGACY_TIMEZONE", "Asia/Ho_Chi_Minh")
     tracks, aliases, history, library = load_sources(sql, mongo, now)
     daily = aggregate_daily(history, library, aliases, now, legacy_zone)
     # Daily confidence stays in memory; runtime trends read existing listening_history.
-    summary = publish_profiles(mongo, daily, now, train, artifact_dir or ROOT / "storage/recommendation-models")
+    summary = publish_profiles(mongo, daily, now, train, artifact_dir or ROOT / "storage/recommendation-models", before_publish)
     summary.update(as_of=now.isoformat(), history_rows=len(history), daily_rows=len(daily))
     return summary
 
@@ -371,16 +421,14 @@ def main():
                 cursor.execute("SELECT status,COUNT(*) count FROM song_licenses GROUP BY status")
                 licenses = cursor.fetchall()
                 local_day = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()
-                cursor.execute("SELECT id,track_id,status,issue_date,expiry_date FROM song_licenses")
+                cursor.execute("SELECT id,track_id,status,issue_date,expiry_date,license_type FROM song_licenses")
                 license_rows = cursor.fetchall()
             from collections import Counter
-            catalog_metadata = list(mongo.tracks.find({}, {"spotify_id":1,"status": 1, "visibility": 1, "moderation_status": 1, "local_path": 1}))
+            catalog_metadata = list(mongo.tracks.find({}, {"spotify_id":1,"status": 1, "visibility": 1, "moderation_status": 1, "local_path": 1,"recommendation_demo":1}))
             licensed_tracks = effective_licensed_tracks(license_rows, canonical_tracks(catalog_metadata), local_day)
             states = Counter((track.get("status"), track.get("visibility"), track.get("moderation_status"))
                              for track in catalog_metadata)
-            eligible_count = sum(str(track["_id"]) in licensed_tracks and bool(track.get("local_path"))
-                and str(track.get("status", "")).lower()=="published" and str(track.get("visibility", "")).lower()=="public"
-                and str(track.get("moderation_status", "")).lower()=="approved" for track in catalog_metadata)
+            eligible_count = len(eligible_track_ids(catalog_metadata,license_rows,datetime.now(UTC)))
             print(json.dumps({"tracks": mongo.tracks.count_documents({}), "public_playlists": mongo.playlists.count_documents({"is_public": True}),
                               "listener_accounts": user_count, "listening_history_rows": history_count,
                               "strictly_eligible_tracks": eligible_count,

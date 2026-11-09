@@ -34,6 +34,9 @@ public class RecommendationApi {
     private final RecommendationPreferenceService preferences;
     private final RecommendationRuntime runtime;
     private final RecommendationOutcomeDispatcher outcomes;
+    private com.laphuth.moodify.services.RecommendationMonitorStatus monitorStatus;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setMonitorStatus(com.laphuth.moodify.services.RecommendationMonitorStatus value) { this.monitorStatus=value; }
 
     public RecommendationApi(RecommendationService recommendations, RecommendationCatalog catalog,
         PersonalizedMixService mixes, RecommendationStore store,RecommendationPreferenceService preferences,
@@ -89,6 +92,22 @@ public class RecommendationApi {
         return recommendations.queue(user(auth), request);
     }
 
+    public record QueueValidation(@jakarta.validation.constraints.NotBlank String trackId,
+        @jakarta.validation.constraints.NotBlank @Size(max=4096) String queueToken) {}
+
+    @PostMapping("/playback/queues/validate")
+    public Map<String, Boolean> validateQueue(Authentication auth, @Valid @RequestBody QueueValidation request) {
+        recommendations.playbackContext(user(auth),request.queueToken(),request.trackId(),null,null,"ANDROID");
+        return Map.of("valid",true);
+    }
+
+    public record QueueRenewal(@jakarta.validation.constraints.NotBlank @Size(max=4096) String queueToken) {}
+
+    @PostMapping("/playback/queues/renew")
+    public RecommendationTypes.Queue renewQueue(Authentication auth,@Valid @RequestBody QueueRenewal request) {
+        return recommendations.renewQueue(user(auth),request.queueToken());
+    }
+
     @PostMapping("/recommendations/events")
     public Map<String, Integer> events(Authentication auth, @Valid @RequestBody EventBatch batch) {
         return Map.of("accepted", recommendations.events(user(auth), batch));
@@ -139,7 +158,8 @@ public class RecommendationApi {
 
     @GetMapping("/admin/recommendations/operations")
     public Map<String,Object> operations(Authentication auth) {
-        user(auth);return Map.of("runtime",runtime.snapshot(),"outcomeQueue",outcomes.status());
+        user(auth);return Map.of("runtime",runtime.snapshot(),"outcomeQueue",outcomes.status(),
+            "monitor",monitorStatus==null?Map.of("available",false):monitorStatus.read());
     }
     @PutMapping("/admin/recommendations/controls")
     public RecommendationRuntime.Flags controls(Authentication auth,@Valid @RequestBody Controls value) {

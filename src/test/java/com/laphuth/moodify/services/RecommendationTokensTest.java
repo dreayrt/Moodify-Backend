@@ -30,4 +30,21 @@ class RecommendationTokensTest {
         assertThatThrownBy(() -> tokens.verify("x"+token,1,"QUEUE")).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> tokens.verify(tokens.issue(claim(1,"QUEUE",0)),1,"QUEUE")).isInstanceOf(ResponseStatusException.class);
     }
+    @Test void recentlyExpiredQueueCanOnlyBeUsedForRenewal() {
+        TokenClaims claims=claim(1,"QUEUE",Instant.now().minusSeconds(120).getEpochSecond());
+        String token=tokens.issue(claims);
+        assertThatThrownBy(()->tokens.verify(token,1,"QUEUE")).isInstanceOf(ResponseStatusException.class);
+        assertThat(tokens.verifyQueueForRenewal(token,1)).isEqualTo(claims);
+    }
+    @Test void renewalDoesNotBypassOwnerPurposeOrSignature() {
+        String token=tokens.issue(claim(1,"QUEUE",Instant.now().minusSeconds(120).getEpochSecond()));
+        assertThatThrownBy(()->tokens.verifyQueueForRenewal(token,2)).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(()->tokens.verifyQueueForRenewal("x"+token,1)).isInstanceOf(ResponseStatusException.class);
+        String item=tokens.issue(claim(1,"ITEM",Instant.now().plusSeconds(60).getEpochSecond()));
+        assertThatThrownBy(()->tokens.verifyQueueForRenewal(item,1)).isInstanceOf(ResponseStatusException.class);
+    }
+    @Test void renewalGraceIsBounded() {
+        String token=tokens.issue(claim(1,"QUEUE",Instant.now().minusSeconds(86460).getEpochSecond()));
+        assertThatThrownBy(()->tokens.verifyQueueForRenewal(token,1)).isInstanceOf(ResponseStatusException.class);
+    }
 }

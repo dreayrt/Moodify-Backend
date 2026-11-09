@@ -12,6 +12,7 @@ import java.util.Optional;
 @Repository
 public interface SongLicenseRepository extends JpaRepository<SongLicense, Long> {
     Optional<SongLicense> findByTrackId(String trackId);
+    Optional<SongLicense> findFirstByTrackIdOrderByIdDesc(String trackId);
     List<SongLicense> findByTrackIdIn(List<String> trackIds);
 
     @Query(value = """

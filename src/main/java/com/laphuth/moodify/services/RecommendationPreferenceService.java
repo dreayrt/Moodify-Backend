@@ -50,7 +50,7 @@ public class RecommendationPreferenceService {
         Set<String> observedTracks=new HashSet<>(),observedArtists=new HashSet<>();
         for(Signal signal:observed) if(!signal.saved()&&signal.at().isAfter(now.minus(Duration.ofHours(2)))) {
             String id=catalog.canonical(signal.trackId());observedTracks.add(id);
-            var track=catalog.resolve(id);if(track!=null&&track.getArtistSpotifyId()!=null)observedArtists.add(track.getArtistSpotifyId());
+            var track=catalog.resolve(id);if(track!=null)observedArtists.addAll(RecommendationArtists.ids(track));
         }
         Map<String,Double> intentTracks=new HashMap<>(),intentArtists=new HashMap<>();
         jdbc.query("""
@@ -109,7 +109,7 @@ public class RecommendationPreferenceService {
     public Set<String> followedArtists(User user) {
         Set<String> result=new TreeSet<>();
         for(String raw:jdbc.query("SELECT artist_id FROM favorite_artists WHERE user_id=? ORDER BY id LIMIT 1000",(rs,n)->rs.getString(1),user.getId())) {
-            try { result.add(identities.artist(raw).id()); } catch(ResponseStatusException invalid){if(!unresolved(invalid))throw invalid;}
+            try { result.addAll(identities.artist(raw).aliases()); } catch(ResponseStatusException invalid){if(!unresolved(invalid))throw invalid;}
         }
         return Set.copyOf(result);
     }

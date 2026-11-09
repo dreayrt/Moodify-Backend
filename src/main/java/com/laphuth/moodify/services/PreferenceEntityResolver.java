@@ -37,7 +37,7 @@ public class PreferenceEntityResolver {
         }
         if(canonical.size()>1) throw conflict();
         if(canonical.isEmpty()) {
-            if(!mongo.exists(Query.query(Criteria.where("artist_spotify_id").is(raw)),"tracks")) throw RecommendationCatalog.notFound();
+            if(!mongo.exists(Query.query(new Criteria().orOperator(Criteria.where("artist_spotify_id").is(raw), Criteria.where("artist_ids").is(raw))),"tracks")) throw RecommendationCatalog.notFound();
             return new ArtistRef(raw,Set.of(raw));
         }
         return new ArtistRef(canonical.iterator().next(),Set.copyOf(aliases));

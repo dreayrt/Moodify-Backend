@@ -1,0 +1,9 @@
+numpy==1.26.4
+PyMySQL==1.2.3
+pymongo==4.17.0
+python-dotenv==1.0.1
+tzdata==2026.1
+dnspython==2.8.0
+cryptography==50.0.1
+cffi==2.0.0
+pycparser==3.0

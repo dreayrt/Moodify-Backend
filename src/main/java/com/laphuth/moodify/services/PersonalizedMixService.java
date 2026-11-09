@@ -42,14 +42,14 @@ public class PersonalizedMixService {
     }
 
     public List<Mix> list(User user) {
-        runtime.requireGeneration();
+        runtime.requireGeneration(user.getId());
         var context = contexts.load(user);
         return Arrays.stream(MixType.values()).filter(type -> type != MixType.TREND_FOR_YOU ||
             context.ranked().stream().anyMatch(r -> "TREND".equals(r.source()))).map(type -> ensure(context, type, false)).toList();
     }
 
     public Mix ensure(RecommendationContextService.Context context, MixType type, boolean force) {
-        runtime.requireGeneration();
+        runtime.requireGeneration(context.user().getId());
         if(!context.runtimeKey().equals(runtime.rankingKey()))throw new ResponseStatusException(HttpStatus.CONFLICT,"Recommendation controls changed; retry");
         store.requireReady();
         long userId = context.user().getId();
@@ -129,7 +129,7 @@ public class PersonalizedMixService {
     public Mix read(User user, String id, String versionId) {
         store.requireReady();
         Document stable = owned(user.getId(), id);
-        if (versionId == null && runtime.flags().enabled()) {
+        if (versionId == null && runtime.generationAllowed(user.getId())) {
             return ensure(contexts.load(user), MixType.valueOf(stable.getString("mix_type")), false);
         }
         return response(stable, versionDocument(user.getId(), id,
@@ -137,7 +137,7 @@ public class PersonalizedMixService {
     }
 
     public Mix refresh(User user, String id) {
-        runtime.requireGeneration();
+        runtime.requireGeneration(user.getId());
         Document stable = owned(user.getId(), id);
         return ensure(contexts.load(user), MixType.valueOf(stable.getString("mix_type")), true);
     }
@@ -203,7 +203,7 @@ public class PersonalizedMixService {
         Map<String, Set<String>> blocked = store.blocked(((Number) stable.get("user_id")).longValue());
         List<TrackResponse> tracks = trackIds(version).stream().map(snapshot::resolve).filter(Objects::nonNull)
             .filter(track -> !blocked.getOrDefault("TRACK", Set.of()).contains(track.getId()) &&
-                (track.getArtistSpotifyId() == null || !blocked.getOrDefault("ARTIST", Set.of()).contains(track.getArtistSpotifyId())))
+                !RecommendationArtists.blocked(track, blocked.getOrDefault("ARTIST", Set.of())))
             .map(TrackResponse::fromSummary).toList();
         return new Mix(stable.getString("_id"), MixType.valueOf(stable.getString("mix_type")),
             stable.getString("name"), stable.getString("description"), tracks.isEmpty() ? null : tracks.getFirst().imageUrl(),
@@ -247,7 +247,7 @@ public class PersonalizedMixService {
             List<Document> due = mongo.find(Query.query(Criteria.where("kind").is("MIX").and("refresh_due_at").lte(new Date())).limit(100), Document.class, MIXES);
             for (Document mix : due) {
                 Object userId = mix.get("user_id");
-                if (userId instanceof Number number) users.findById(number.longValue()).filter(u->u.getStatus()==com.laphuth.moodify.entities.enums.UserStatus.ACTIVE).ifPresent(user -> {
+                if (userId instanceof Number number && runtime.generationAllowed(number.longValue())) users.findById(number.longValue()).filter(u->u.getStatus()==com.laphuth.moodify.entities.enums.UserStatus.ACTIVE).ifPresent(user -> {
                     try { ensure(contexts.load(user), MixType.valueOf(mix.getString("mix_type")), false); }
                     catch (RuntimeException failure) { org.slf4j.LoggerFactory.getLogger(getClass()).warn("Mix refresh failed for {}: {}", mix.getString("_id"), failure.getClass().getSimpleName()); }
                 });

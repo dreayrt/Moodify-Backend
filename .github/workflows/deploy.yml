@@ -29,6 +29,14 @@ jobs:
       - name: Compile and Package with Maven
         run: ./mvnw -B clean package -DskipTests
 
+      - name: Verify recommendation classes are included
+        run: |
+          set -eu
+          jar tf target/moodify-0.0.1-SNAPSHOT.jar > target/jar-entries.txt
+          for entry in api/RecommendationMonitorApi services/RecommendationCatalog services/RecommendationMonitorStatus; do
+            grep -Fx "BOOT-INF/classes/com/laphuth/moodify/${entry}.class" target/jar-entries.txt
+          done
+
       - name: Copy JAR & Dockerfile to Google Cloud VM
         uses: appleboy/scp-action@v1.0.0
         with:
@@ -36,7 +44,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          source: "target/moodify-0.0.1-SNAPSHOT.jar,Dockerfile.prod,scripts/configure-karaoke-room-websocket-nginx.py,supporting-services/karaoke-media/Dockerfile,supporting-services/karaoke-media/package.json,supporting-services/karaoke-media/package-lock.json,supporting-services/karaoke-media/server.js,supporting-services/karaoke-media/compose.production.yaml"
+          source: "target/moodify-0.0.1-SNAPSHOT.jar,Dockerfile.prod,scripts/configure-karaoke-room-websocket-nginx.py,scripts/recommendation.production.compose.yaml,supporting-services/karaoke-media/Dockerfile,supporting-services/karaoke-media/package.json,supporting-services/karaoke-media/package-lock.json,supporting-services/karaoke-media/server.js,supporting-services/karaoke-media/compose.production.yaml"
           target: "/opt/moodify/backend"
           strip_components: 1
 
@@ -86,8 +94,20 @@ jobs:
               echo "❌ KARAOKE_SCORING_KEY must match AI_API_KEY in karaoke-score-production."
               exit 1
             fi
-            docker compose build moodify-backend
-            docker compose up -d --no-deps moodify-backend
+            recommendation_env=/opt/moodify/backend/recommendation.env
+            recommendation_key=$(awk -F= '$1 == "RECOMMENDATIONS_MONITOR_SECRET" {print substr($0,index($0,"=")+1); exit}' "$recommendation_env")
+            if [ "${#recommendation_key}" -lt 32 ]; then
+              echo "Missing or invalid RECOMMENDATIONS_MONITOR_SECRET in recommendation.env"
+              exit 1
+            fi
+            if ! grep -Eq '^RECOMMENDATIONS_DEMO_CATALOG_ENABLED=(true|false)$' "$recommendation_env"; then
+              echo "Set RECOMMENDATIONS_DEMO_CATALOG_ENABLED explicitly in recommendation.env"
+              exit 1
+            fi
+            docker volume create moodify-recommendation-monitor-state >/dev/null
+            compose=(docker compose -f docker-compose.yml -f /opt/moodify/backend/recommendation.production.compose.yaml)
+            "${compose[@]}" build moodify-backend
+            "${compose[@]}" up -d --no-deps moodify-backend
             echo "🩺 Verifying Backend container status & Health..."
             docker ps --filter "name=moodify-backend" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
             backend_healthy=false
@@ -105,6 +125,10 @@ jobs:
               docker logs --tail 50 moodify-backend
               exit 1
             fi
+            echo "Verifying recommendation readiness..."
+            printf 'X-Recommendation-Monitor-Key: %s\n' "$recommendation_key" \
+              | curl -fsS --max-time 15 -H @- http://127.0.0.1:8080/api/internal/recommendations/monitor \
+              | python3 -c 'import json,sys; d=json.load(sys.stdin)["readiness"]; print("Eligible recommendation tracks:",d["eligibleTracks"],"Standard:",d["standardEligibleTracks"],"Demo mode:",d["demoCatalog"])'
             echo "🎤 Deploying mediasoup voice service..."
             docker compose --env-file /opt/moodify/backend/backend.env -f /opt/moodify/backend/karaoke-media/compose.production.yaml up -d --build
             media_healthy=false

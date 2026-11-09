@@ -20,6 +20,7 @@ public class GlobalExceptionHandler {
         String reason = ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString();
         body.put("message", reason);
         body.put("error", reason);
+        if (ex.getBody().getProperties() != null && ex.getBody().getProperties().containsKey("code")) body.put("code", ex.getBody().getProperties().get("code"));
         return ResponseEntity.status(ex.getStatusCode()).body(body);
     }
 }

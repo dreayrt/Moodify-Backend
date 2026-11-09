@@ -16,7 +16,11 @@ public class RecommendationOperationsFilter extends OncePerRequestFilter {
         throws ServletException, IOException {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         String operation = path.equals("/api/analytics/listening-session") ? "playback" :
-            path.equals("/api/playback/queues") ? "queue" :
+            path.equals("/api/playback/queues/renew") ? "queue.refresh" :
+            path.equals("/api/playback/queues/validate") ? "queue.validate" :
+            path.startsWith("/api/playback/queues") ? "queue" :
+            path.equals("/api/emotions/recommend") ? "emotion" :
+            path.equals("/api/recommendations/home") ? "recommendation.home" :
             path.startsWith("/api/me/personalized-playlists") ? "mix" :
             path.equals("/api/recommendations/events") ? "events" :
             path.startsWith("/api/recommendations/") ? "recommendation" : null;

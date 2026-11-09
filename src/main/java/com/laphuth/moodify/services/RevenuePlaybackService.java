@@ -124,6 +124,13 @@ public class RevenuePlaybackService {
         long continuous = ((Number) session.get("continuous_ms")).longValue();
         long totalPlayed = ((Number) session.get("listened_duration_ms")).longValue();
         boolean playing = isTrue(session.get("playing"));
+        // Duplicate native/browser callbacks must not append PAUSE/RESUME/SEEK again
+        // or move last_seen_at and accidentally account for an idle network gap.
+        if ((event.equals("PAUSE")&&!playing) ||
+            ((event.equals("PLAY")||event.equals("RESUME"))&&playing&&position==previousPosition) ||
+            (event.equals("SEEK")&&position==previousPosition&&targetPositionMs==position)) {
+            return Map.of("success",true,"historyId",historyId,"qualified",hasQualified(rawSessionKey),"duplicate",true);
+        }
         boolean progressEvent = java.util.Set.of("HEARTBEAT", "PAUSE", "COMPLETE", "SKIP_NEXT", "SKIP_PREVIOUS", "TRACK_CHANGED", "PLAYBACK_STOPPED").contains(event);
         if (playing && progressEvent && elapsed > 0) {
             long advanced = advanceContinuousMs(continuous, elapsed, deltaPosition);
@@ -187,7 +194,10 @@ public class RevenuePlaybackService {
     private void qualify(Long userId, Track track, String key, LocalDateTime now) {
         if (!"published".equalsIgnoreCase(track.getStatus()) || !"approved".equalsIgnoreCase(track.getModerationStatus())) return;
         if (track.getDurationMs() != null && track.getDurationMs() < QUALIFY_MS) return;
-        SongLicense license = licenses.findByTrackId(track.getId()).orElse(null);
+        SongLicense license = licenses.findFirstByTrackIdOrderByIdDesc(track.getId()).orElse(null);
+        if (RecommendationCatalog.demoContent(track,license)) return;
+        Long synthetic=jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE id=? AND LEFT(username,9)='rec_seed_' AND email LIKE '%@recommendation-seed.invalid'",Long.class,userId);
+        if(synthetic!=null&&synthetic>0)return;
         LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
         if (license == null || license.getStatus() != LicenseStatus.ACTIVE ||
             (license.getIssueDate() != null && license.getIssueDate().isAfter(today)) ||

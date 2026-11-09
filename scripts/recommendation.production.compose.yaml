@@ -1,0 +1,11 @@
+services:
+  moodify-backend:
+    env_file:
+      - /opt/moodify/backend/recommendation.env
+    volumes:
+      - recommendation-monitor-state:/var/run/recommendation-monitor:ro
+
+volumes:
+  recommendation-monitor-state:
+    name: moodify-recommendation-monitor-state
+    external: true

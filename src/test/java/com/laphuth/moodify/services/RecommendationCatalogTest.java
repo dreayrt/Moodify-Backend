@@ -39,12 +39,12 @@ class RecommendationCatalogTest {
         assertThat(RecommendationCatalog.eligible(track,license(),today,true)).isFalse();
     }
 
-    @Test void explicitlyConfiguredPublishedImportCanUsePublicPlaybackPolicyWithoutFakeApproval() {
+    @Test void importBatchNeverBypassesApprovalOrLicense() {
         Track imported=track();
         imported.setCatalogMigrationBatch("moodify-catalog-20261103-v1");
         imported.setModerationStatus(null);
         var configured=java.util.Set.of("moodify-catalog-20261103-v1");
-        assertThat(RecommendationCatalog.eligible(imported,null,today,true,configured)).isTrue();
+        assertThat(RecommendationCatalog.eligible(imported,null,today,true,configured)).isFalse();
         assertThat(RecommendationCatalog.eligible(imported,null,today,true,java.util.Set.of())).isFalse();
         imported.setModerationStatus("rejected");
         assertThat(RecommendationCatalog.eligible(imported,null,today,true,configured)).isFalse();
@@ -67,9 +67,8 @@ class RecommendationCatalogTest {
         when(tracks.findBySpotifyIdIn(anyList())).thenReturn(List.of(imported));
         when(licenses.findByTrackIdIn(anyList())).thenReturn(List.of());
         var catalog=new RecommendationCatalog(tracks,licenses,mock(PlaylistRepository.class),mock(UserRepository.class),true);
-        org.springframework.test.util.ReflectionTestUtils.setField(catalog,"publicImportBatches","import-a");
-        assertThat(catalog.snapshot().tracks()).containsKey("id");
-        assertThat(catalog.playableTrack("id")).isSameAs(imported);
+        assertThat(catalog.snapshot().tracks()).doesNotContainKey("id");
+        assertThatThrownBy(() -> catalog.playableTrack("id")).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
     }
 
     @Test void ambiguousExternalAliasesAreNeverGuessed() {

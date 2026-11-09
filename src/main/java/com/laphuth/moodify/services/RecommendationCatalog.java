@@ -20,18 +20,24 @@ public class RecommendationCatalog {
     private final PlaylistRepository playlists;
     private final UserRepository users;
     private final boolean requireLicense;
+    private final boolean demoCatalogEnabled;
+    private RecommendationArtistIdentities artistIdentities;
 
-    // Explicitly configured public import batches may share the public playback policy.
-    // This does not create a license or a moderation approval for their tracks.
-    @Value("${recommendations.public-import-batches:}")
-    private String publicImportBatches = "";
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setArtistIdentities(RecommendationArtistIdentities value) { this.artistIdentities=value; }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public RecommendationCatalog(TrackRepository tracks, SongLicenseRepository licenses,
         PlaylistRepository playlists, UserRepository users,
-        @Value("${recommendations.require-active-license:true}") boolean requireLicense) {
+        @Value("${recommendations.require-active-license:true}") boolean requireLicense,
+        @Value("${recommendations.demo-catalog-enabled:false}") boolean demoCatalogEnabled) {
         this.tracks = tracks; this.licenses = licenses; this.playlists = playlists;
-        this.users = users; this.requireLicense = requireLicense;
+        this.users = users; this.requireLicense = true;
+        this.demoCatalogEnabled = demoCatalogEnabled;
     }
+    public RecommendationCatalog(TrackRepository tracks, SongLicenseRepository licenses, PlaylistRepository playlists,
+        UserRepository users, boolean requireLicense) { this(tracks,licenses,playlists,users,requireLicense,false); }
+    public boolean demoCatalogEnabled() { return demoCatalogEnabled; }
 
     public User user(String principal) {
         if (principal == null || principal.isBlank() || "anonymousUser".equals(principal)) {
@@ -52,6 +58,7 @@ public class RecommendationCatalog {
             if (track.getId() == null) continue;
             if (isEligible(track, byTrack.get(track.getId()), today)) eligible.put(track.getId(), track);
         }
+        if(artistIdentities!=null)artistIdentities.expand(eligible.values());
         return new Snapshot(eligible, aliases);
     }
 
@@ -68,6 +75,7 @@ public class RecommendationCatalog {
         }
         SongLicense license=licensesByCanonicalId(identityScope).get(track.getId());
         if(!isEligible(track,license,LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")))) throw notFound();
+        if(artistIdentities!=null)artistIdentities.expand(List.of(track));
         return track;
     }
 
@@ -108,21 +116,23 @@ public class RecommendationCatalog {
         var licenseMap = licensesByCanonicalId(all);
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         Map<String, Integer> issues = new LinkedHashMap<>();
-        for (String code : List.of("NOT_PUBLISHED","NOT_PUBLIC","NOT_APPROVED","NO_AUDIO","NO_LICENSE","LICENSE_NOT_EFFECTIVE")) issues.put(code,0);
-        int eligible = 0;
+        for (String code : List.of("NOT_PUBLISHED","NOT_PUBLIC","NOT_APPROVED","NO_AUDIO","NO_LICENSE","LICENSE_NOT_EFFECTIVE","MISSING_MOOD_FEATURES")) issues.put(code,0);
+        int eligible = 0, standardEligible = 0;
         for (Track track : all) {
             SongLicense license = licenseMap.get(track.getId());
             if (isEligible(track, license, today)) eligible++;
+            if (eligible(track,license,today,true)) standardEligible++;
             if (!"published".equalsIgnoreCase(track.getStatus())) issues.merge("NOT_PUBLISHED",1,Integer::sum);
             if (!"public".equalsIgnoreCase(track.getVisibility())) issues.merge("NOT_PUBLIC",1,Integer::sum);
             if (!"approved".equalsIgnoreCase(track.getModerationStatus())) issues.merge("NOT_APPROVED",1,Integer::sum);
-            if (track.getLocalPath() == null || track.getLocalPath().isBlank()) issues.merge("NO_AUDIO",1,Integer::sum);
+            if (!PublicTrackPolicy.hasAudioPath(track.getLocalPath())) issues.merge("NO_AUDIO",1,Integer::sum);
+            if (!MoodTrackScorer.hasRequiredFeatures(track)) issues.merge("MISSING_MOOD_FEATURES",1,Integer::sum);
             if (license == null) issues.merge("NO_LICENSE",1,Integer::sum);
             else if (license.getStatus() != LicenseStatus.ACTIVE ||
                 (license.getIssueDate() != null && license.getIssueDate().isAfter(today)) ||
                 (license.getExpiryDate() != null && license.getExpiryDate().isBefore(today))) issues.merge("LICENSE_NOT_EFFECTIVE",1,Integer::sum);
         }
-        return new RecommendationTypes.Readiness(all.size(),eligible,publicPlaylists().size(),requireLicense,issues);
+        return new RecommendationTypes.Readiness(all.size(),eligible,publicPlaylists().size(),requireLicense,issues,demoCatalogEnabled,standardEligible);
     }
 
     public Map<String,Object> review(int offset,int limit) {
@@ -139,7 +149,7 @@ public class RecommendationCatalog {
             if(!"published".equalsIgnoreCase(track.getStatus()))reasons.add("VERIFY_PUBLICATION");
             if(!"public".equalsIgnoreCase(track.getVisibility()))reasons.add("VERIFY_VISIBILITY");
             if(!"approved".equalsIgnoreCase(track.getModerationStatus()))reasons.add("VERIFY_MODERATION");
-            if(track.getLocalPath()==null||track.getLocalPath().isBlank())reasons.add("VERIFY_AUDIO");
+            if(!PublicTrackPolicy.hasAudioPath(track.getLocalPath()))reasons.add("VERIFY_AUDIO");
             if(license==null)reasons.add("VERIFY_LICENSE");
             else if(license.getStatus()!=LicenseStatus.ACTIVE ||
                 (license.getIssueDate()!=null&&license.getIssueDate().isAfter(today)) ||
@@ -152,35 +162,31 @@ public class RecommendationCatalog {
     }
 
     public static boolean eligible(Track track, SongLicense license, LocalDate date, boolean requireLicense) {
+        return !demoContent(track,license) && basicEligibility(track,license,date);
+    }
+    public static boolean demoContent(Track track, SongLicense license) {
+        return license != null && "DEMO_SIMULATED".equalsIgnoreCase(license.getLicenseType()) ||
+            track != null && track.getRecommendationDemo() != null && Boolean.TRUE.equals(track.getRecommendationDemo().get("simulated"));
+    }
+    private static boolean basicEligibility(Track track, SongLicense license, LocalDate date) {
         if (track == null || track.getId() == null || !"published".equalsIgnoreCase(track.getStatus()) ||
             !"approved".equalsIgnoreCase(track.getModerationStatus()) ||
             !"public".equalsIgnoreCase(track.getVisibility()) ||
-            track.getLocalPath() == null || track.getLocalPath().isBlank()) return false;
-        if (license == null) return !requireLicense;
+            !PublicTrackPolicy.hasAudioPath(track.getLocalPath())) return false;
+        if (license == null) return false;
         return license.getStatus() == LicenseStatus.ACTIVE &&
             (license.getIssueDate() == null || !license.getIssueDate().isAfter(date)) &&
             (license.getExpiryDate() == null || !license.getExpiryDate().isBefore(date));
     }
 
     private boolean isEligible(Track track, SongLicense license, LocalDate date) {
-        Set<String> configured = Arrays.stream(Objects.requireNonNullElse(publicImportBatches, "").split(","))
-            .map(String::trim).filter(s -> !s.isEmpty()).collect(java.util.stream.Collectors.toSet());
-        return eligible(track, license, date, requireLicense, configured);
+        return basicEligibility(track,license,date) && (!demoContent(track,license) || demoCatalogEnabled);
     }
 
-    static boolean eligible(Track track, SongLicense license, LocalDate date, boolean requireLicense,
-                            Set<String> publicImportBatches) {
-        if (eligible(track, license, date, requireLicense)) return true;
-        if (track == null || track.getId() == null || track.getCatalogMigrationBatch() == null ||
-            !publicImportBatches.contains(track.getCatalogMigrationBatch()) ||
-            !"published".equalsIgnoreCase(track.getStatus()) || !"public".equalsIgnoreCase(track.getVisibility()) ||
-            track.getLocalPath() == null || track.getLocalPath().isBlank()) return false;
-        String moderation = track.getModerationStatus();
-        if (moderation != null && !moderation.isBlank() && !"approved".equalsIgnoreCase(moderation)) return false;
-        // An explicit license always wins: never resurrect revoked or expired content.
-        return license == null || (license.getStatus() == LicenseStatus.ACTIVE &&
-            (license.getIssueDate() == null || !license.getIssueDate().isAfter(date)) &&
-            (license.getExpiryDate() == null || !license.getExpiryDate().isBefore(date)));
+    /** Kept for source compatibility; import batches never override rights. */
+    static boolean eligible(Track track, SongLicense license, LocalDate date, boolean ignored,
+                            Set<String> ignoredBatches) {
+        return eligible(track, license, date, true);
     }
 
     public List<Playlist> publicPlaylists() {

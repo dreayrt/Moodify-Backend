@@ -17,6 +17,13 @@ import java.util.regex.Pattern;
 
 /** Scores catalog tracks against the numeric and tag profile returned by the emotion model. */
 public final class MoodTrackScorer {
+    /** Rights and feature readiness are independent; partial vectors cannot claim a mood match. */
+    public static boolean hasRequiredFeatures(Track track) {
+        Track.AudioFeatures audio = track == null ? null : track.getAudioFeatures();
+        return audio != null && unitValue(audio.getValence()) != null && unitValue(audio.getEnergy()) != null &&
+            unitValue(audio.getDanceability()) != null && unitValue(audio.getAcousticness()) != null &&
+            positiveValue(audio.getBpm()) != null && audio.getBpm() <= 300;
+    }
 
     private static final double VALENCE_WEIGHT = 0.26;
     private static final double ENERGY_WEIGHT = 0.26;

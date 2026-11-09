@@ -23,7 +23,14 @@ public final class RecommendationTypes {
     public record Section(String id, String title, String description, List<Item> items) {}
     public record Home(String requestId, Instant generatedAt, Instant expiresAt,
                        String modelVersion, String policyVersion, boolean coldStart,
-                       List<Section> sections) {}
+                       List<Section> sections, String availabilityStatus, int eligibleCount) {
+        @com.fasterxml.jackson.annotation.JsonProperty("demoCatalog")
+        public boolean demoCatalog() { return policyVersion != null && policyVersion.endsWith("-demo"); }
+        public Home(String requestId, Instant generatedAt, Instant expiresAt, String modelVersion,
+                    String policyVersion, boolean coldStart, List<Section> sections) {
+            this(requestId, generatedAt, expiresAt, modelVersion, policyVersion, coldStart, sections, "READY", -1);
+        }
+    }
     public record Event(@NotNull java.util.UUID eventId, @NotNull EventType eventType,
                         @NotBlank @Size(max=4096) String attributionToken,
                         @NotNull Instant occurredAt) {}
@@ -74,5 +81,9 @@ public final class RecommendationTypes {
     public record RankedTrack(com.laphuth.moodify.entities.Track track, double score,
                               String source, String reasonCode, String reason) {}
     public record Readiness(int catalogTracks, int eligibleTracks, int publicPlaylists,
-                            boolean requireActiveLicense, Map<String, Integer> issues) {}
+                            boolean requireActiveLicense, Map<String, Integer> issues, boolean demoCatalog, int standardEligibleTracks) {
+        public Readiness(int catalogTracks,int eligibleTracks,int publicPlaylists,boolean requireActiveLicense,Map<String,Integer> issues) {
+            this(catalogTracks,eligibleTracks,publicPlaylists,requireActiveLicense,issues,false,eligibleTracks);
+        }
+    }
 }

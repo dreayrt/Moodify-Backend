@@ -16,8 +16,12 @@ import org.springframework.web.bind.annotation.*;
 public class EmotionApi {
 
     private final EmotionService emotionService;
+    private final com.laphuth.moodify.services.RecommendationRuntime runtime;
+    private final com.laphuth.moodify.services.RecommendationCatalog catalog;
 
-    public EmotionApi(EmotionService emotionService) {
+    public EmotionApi(EmotionService emotionService, com.laphuth.moodify.services.RecommendationCatalog catalog, com.laphuth.moodify.services.RecommendationRuntime runtime) {
+        this.runtime = runtime;
+        this.catalog = catalog;
         this.emotionService = emotionService;
     }
 
@@ -40,12 +44,15 @@ public class EmotionApi {
      */
     @PostMapping("/recommend")
     public ResponseEntity<MoodRecommendationResponse> recommendTracks(
+        Authentication authentication,
         @Valid @RequestBody EmotionPredictRequest request
     ) {
+        var user = catalog.user(authentication == null ? null : authentication.getName());
+        runtime.requireGeneration(user.getId());
         MoodRecommendationResponse response = emotionService.recommendTracksByMood(
             request.getText(),
             request.getStrategy(),
-            request.getLimit()
+            request.getLimit(), user
         );
         return ResponseEntity.ok(response);
     }

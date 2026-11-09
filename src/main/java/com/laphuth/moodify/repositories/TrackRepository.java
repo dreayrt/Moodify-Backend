@@ -18,19 +18,19 @@ public interface TrackRepository extends MongoRepository<Track, String> {
     Page<Track> findByArtistSpotifyId(String artistSpotifyId, Pageable pageable);
     List<Track> findByArtistSpotifyId(String artistSpotifyId);
 
-    @Query("{ 'status': { '$not': { '$regex': '^(archived|disabled|draft)$', '$options': 'i' } }, 'visibility': { '$not': { '$regex': '^(private|unlisted)$', '$options': 'i' } }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
+    @Query("{ 'status': { '$regex': '^published$', '$options': 'i' }, 'visibility': { '$regex': '^public$', '$options': 'i' }, 'local_path': { '$type': 'string', '$regex': '[A-Za-z0-9]' }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
     Page<Track> findCatalogPublic(Pageable pageable);
 
-    @Query("{ '$or': [ { 'name': { '$regex': ?0, '$options': 'i' } }, { 'artist_name': { '$regex': ?0, '$options': 'i' } }, { 'album_name': { '$regex': ?0, '$options': 'i' } } ], 'status': { '$not': { '$regex': '^(archived|disabled|draft)$', '$options': 'i' } }, 'visibility': { '$not': { '$regex': '^(private|unlisted)$', '$options': 'i' } }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
+    @Query("{ '$or': [ { 'name': { '$regex': ?0, '$options': 'i' } }, { 'artist_name': { '$regex': ?0, '$options': 'i' } }, { 'album_name': { '$regex': ?0, '$options': 'i' } } ], 'status': { '$regex': '^published$', '$options': 'i' }, 'visibility': { '$regex': '^public$', '$options': 'i' }, 'local_path': { '$type': 'string', '$regex': '[A-Za-z0-9]' }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
     Page<Track> searchCatalogPublic(String literalRegex, Pageable pageable);
 
-    @Query("{ 'artist_spotify_id': ?0, 'status': { '$not': { '$regex': '^(archived|disabled|draft)$', '$options': 'i' } }, 'visibility': { '$not': { '$regex': '^(private|unlisted)$', '$options': 'i' } }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
+    @Query("{ 'artist_spotify_id': ?0, 'status': { '$regex': '^published$', '$options': 'i' }, 'visibility': { '$regex': '^public$', '$options': 'i' }, 'local_path': { '$type': 'string', '$regex': '[A-Za-z0-9]' }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
     Page<Track> findPublicByArtistSpotifyId(String artistSpotifyId, Pageable pageable);
 
-    @Query("{ 'genres': ?0, 'status': { '$not': { '$regex': '^(archived|disabled|draft)$', '$options': 'i' } }, 'visibility': { '$not': { '$regex': '^(private|unlisted)$', '$options': 'i' } }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
+    @Query("{ 'genres': ?0, 'status': { '$regex': '^published$', '$options': 'i' }, 'visibility': { '$regex': '^public$', '$options': 'i' }, 'local_path': { '$type': 'string', '$regex': '[A-Za-z0-9]' }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
     Page<Track> findByGenresContaining(String genre, Pageable pageable);
 
-    @Query("{ 'genres': { '$in': ?0 }, 'status': { '$not': { '$regex': '^(archived|disabled|draft)$', '$options': 'i' } }, 'visibility': { '$not': { '$regex': '^(private|unlisted)$', '$options': 'i' } }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
+    @Query("{ 'genres': { '$in': ?0 }, 'status': { '$regex': '^published$', '$options': 'i' }, 'visibility': { '$regex': '^public$', '$options': 'i' }, 'local_path': { '$type': 'string', '$regex': '[A-Za-z0-9]' }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
     Page<Track> findByGenresIn(List<String> genres, Pageable pageable);
     
     Optional<Track> findBySpotifyId(String spotifyId);

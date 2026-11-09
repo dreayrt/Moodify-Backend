@@ -32,7 +32,8 @@ public record TrackResponse(
     Double moodMatchDistance,
     Double moodFeatureCoverage,
     List<String> moodMatchedTags,
-    Map<String, MoodTrackScorer.FeatureDistance> moodFeatureDistances
+    Map<String, MoodTrackScorer.FeatureDistance> moodFeatureDistances,
+    List<String> artistIds
 ) {
     public static TrackResponse from(Track track) {
         return from(track, true);
@@ -47,7 +48,7 @@ public record TrackResponse(
 
         String resolvedArtistId = track.getArtistSpotifyId();
         if (resolvedArtistId == null || resolvedArtistId.isBlank()) {
-            resolvedArtistId = track.getArtistName();
+            resolvedArtistId = null;
         }
         return new TrackResponse(
             track.getId(),
@@ -73,7 +74,8 @@ public record TrackResponse(
             null,
             null,
             null,
-            null
+            null,
+            List.copyOf(com.laphuth.moodify.services.RecommendationArtists.ids(track))
         );
     }
 
@@ -103,7 +105,8 @@ public record TrackResponse(
             score.distance(),
             score.featureCoverage(),
             score.matchedTags(),
-            score.featureDistances()
+            score.featureDistances(),
+            response.artistIds()
         );
     }
 }

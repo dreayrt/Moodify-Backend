@@ -41,7 +41,7 @@ public class RecommendationService {
 
     public Home home(User user) { return home(user,null); }
     public Home home(User user,String genre) {
-        runtime.requireGeneration();
+        runtime.requireGeneration(user.getId());
         var original=contexts.load(user);
         var context = contexts.scoped(original,genre);
         String requestId = UUID.randomUUID().toString();
@@ -74,14 +74,14 @@ public class RecommendationService {
     }
 
     public Home playlists(User user) {
-        runtime.requireGeneration();
+        runtime.requireGeneration(user.getId());
         var context = contexts.load(user);
         String requestId = UUID.randomUUID().toString(); Instant expires = context.now().plusSeconds(1800);
         return persist(context, requestId, expires, List.of(new Section("playlists_for_you", "Playlist hợp gu", "", playlistItems(context, requestId, expires, 30))));
     }
 
     public Home continuation(User user, String playlistId, String seedTrackId) {
-        runtime.requireGeneration();
+        runtime.requireGeneration(user.getId());
         var context = contexts.load(user);
         List<Track> seeds;
         if (playlistId != null) seeds = context.catalog().playlistTracks(catalog.accessiblePlaylist(playlistId, user));
@@ -102,10 +102,13 @@ public class RecommendationService {
     }
 
     private Home persist(RecommendationContextService.Context context, String requestId, Instant expires, List<Section> sections) {
-        Home home = new Home(requestId, context.now(), expires, context.profile().modelVersion(), "hybrid-slate-v1.2",
-            !context.profile().personalized(), sections);
+        Home home = new Home(requestId, context.now(), expires, context.profile().modelVersion(), "strict-rights-v1.3" + (catalog.demoCatalogEnabled() ? "-demo" : ""),
+            !context.profile().personalized(), sections,
+            context.catalog().tracks().isEmpty() ? "NO_ELIGIBLE_CATALOG" : "READY", context.catalog().tracks().size());
         store.saveDecision(context.user().getId(), home);
+        runtime.count("recommendation.generated");
         if(sections.stream().allMatch(s->s.items().isEmpty()))runtime.count("recommendation.empty");
+        if(home.coldStart())runtime.count("recommendation.cold_start");
         return home;
     }
 
@@ -166,6 +169,19 @@ public class RecommendationService {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Recommendation does not match requested content");
             }
         }
+        return buildQueue(user,request,item);
+    }
+
+    public RecommendationTypes.Queue renewQueue(User user,String token) {
+        store.requireReady();
+        TokenClaims claims=tokens.verifyQueueForRenewal(token,user.getId());
+        if(claims.itemId()!=null&&!store.itemBelongsToUser(claims,user.getId()))throw RecommendationCatalog.notFound();
+        // Rebuild through current catalog/owner/block/version checks. The expired token
+        // authorizes only this bounded refresh, never the playback validation endpoint.
+        return buildQueue(user,new QueueRequest(claims.entityType(),claims.entityId(),claims.versionId(),null),claims);
+    }
+
+    private RecommendationTypes.Queue buildQueue(User user,QueueRequest request,TokenClaims item) {
         var snapshot = catalog.snapshot();
         List<Track> tracks; String version = request.versionId();
         switch(request.entityType()) {
@@ -187,8 +203,9 @@ public class RecommendationService {
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported queue content");
         }
         Map<String, Set<String>> blocked = store.blocked(user.getId());
+        if(blocked.getOrDefault(request.entityType().name(),Set.of()).contains(request.entityId()))throw RecommendationCatalog.notFound();
         tracks = tracks.stream().filter(t -> !blocked.getOrDefault("TRACK", Set.of()).contains(t.getId()) &&
-            (t.getArtistSpotifyId() == null || !blocked.getOrDefault("ARTIST", Set.of()).contains(t.getArtistSpotifyId()))).toList();
+            !RecommendationArtists.blocked(t, blocked.getOrDefault("ARTIST", Set.of()))).toList();
         String queueId = UUID.randomUUID().toString(); Instant expires = Instant.now().plus(Duration.ofHours(12));
         List<QueueTrack> queue = new ArrayList<>();
         for (int position = 0; position < tracks.size(); position++) {
@@ -261,12 +278,12 @@ public class RecommendationService {
             }
             Map<String,Set<String>> blocked=store.blocked(user.getId());
             if(blocked.getOrDefault("TRACK",Set.of()).contains(track.getId()) ||
-                (track.getArtistSpotifyId()!=null&&blocked.getOrDefault("ARTIST",Set.of()).contains(track.getArtistSpotifyId())) ||
+                RecommendationArtists.blocked(track,blocked.getOrDefault("ARTIST",Set.of())) ||
                 blocked.getOrDefault(claims.entityType().name(),Set.of()).contains(claims.entityId()))
                 throw RecommendationCatalog.notFound();
             if (claims.entityType() == EntityType.PLAYLIST) catalog.accessiblePlaylist(claims.entityId(), user);
             if (claims.entityType() == EntityType.PERSONALIZED_PLAYLIST) mixes.owned(user.getId(), claims.entityId());
-            source = claims.entityType() == EntityType.TRACK ? "HOME" : "PLAYLIST";
+            source = claims.entityType() == EntityType.TRACK ? ("EMOTION".equals(requestedSource) ? "EMOTION" : "HOME") : "PLAYLIST";
             sourceId = claims.entityType() == EntityType.TRACK ? null : claims.entityId();
         }
         String device = Set.of("WEB","ANDROID","IOS","OTHER").contains(Objects.toString(deviceType,"")) ? deviceType : "WEB";

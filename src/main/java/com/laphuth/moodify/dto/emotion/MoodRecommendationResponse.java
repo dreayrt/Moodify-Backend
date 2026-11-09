@@ -54,6 +54,11 @@ public class MoodRecommendationResponse {
         this.catalogDiagnostics = catalogDiagnostics;
     }
 
+    public String getReasonCode() {
+        return "NO_CANDIDATES".equals(matchStatus) ? "NO_ELIGIBLE_CATALOG" :
+            "NO_FEATURES".equals(matchStatus) ? "MISSING_AUDIO_FEATURES" : null;
+    }
+
     public EmotionPredictResponse getEmotion() {
         return emotion;
     }

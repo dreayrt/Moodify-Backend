@@ -40,6 +40,8 @@ public class EmotionService {
     private static final String RANKING_VERSION = "audio-profile-v4-mood-tags";
     private static final int LIMITED_RESULT_COUNT = 3;
 
+    private final RecommendationCatalog catalog;
+    private final com.laphuth.moodify.repositories.RecommendationStore store;
     private final RestClient restClient;
     private final MongoTemplate mongoTemplate;
     private final UserRepository userRepository;
@@ -53,10 +55,17 @@ public class EmotionService {
         @Value("${mood.recommendations.max-distance:0.35}") double maxMatchDistance,
         MongoTemplate mongoTemplate,
         UserRepository userRepository,
-        SearchHistoryRepository searchHistoryRepository
+        SearchHistoryRepository searchHistoryRepository,
+        RecommendationCatalog catalog,
+        com.laphuth.moodify.repositories.RecommendationStore store
     ) {
         String effectiveUrl = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl.trim() : "http://localhost:8000";
-        this.restClient = RestClient.builder().baseUrl(effectiveUrl).build();
+        this.catalog = catalog;
+        this.store = store;
+        var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(java.time.Duration.ofSeconds(1));
+        factory.setReadTimeout(java.time.Duration.ofSeconds(8));
+        this.restClient = RestClient.builder().requestFactory(factory).baseUrl(effectiveUrl).build();
         this.mongoTemplate = mongoTemplate;
         this.userRepository = userRepository;
         this.searchHistoryRepository = searchHistoryRepository;
@@ -66,6 +75,11 @@ public class EmotionService {
             : 0.35;
     }
 
+    public EmotionService(String baseUrl, double cutoff, MongoTemplate mongo, UserRepository users,
+                          SearchHistoryRepository history, RecommendationCatalog catalog) {
+        this(baseUrl,cutoff,mongo,users,history,catalog,null);
+    }
+
     /** Compatibility constructor for existing callers and tests that use the default cutoff. */
     public EmotionService(
         String baseUrl,
@@ -73,7 +87,7 @@ public class EmotionService {
         UserRepository userRepository,
         SearchHistoryRepository searchHistoryRepository
     ) {
-        this(baseUrl, 0.35, mongoTemplate, userRepository, searchHistoryRepository);
+        this(baseUrl, 0.35, mongoTemplate, userRepository, searchHistoryRepository, null);
     }
 
     public EmotionPredictResponse predictEmotion(String text, String strategy) {
@@ -109,11 +123,14 @@ public class EmotionService {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Emotion service could not process the request");
         } catch (Exception e) {
             log.warn("Emotion service is unavailable ({})", e.getClass().getSimpleName());
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Emotion service is unavailable");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Emotion service is unavailable", e);
         }
     }
 
     public MoodRecommendationResponse recommendTracksByMood(String text, String strategy, Integer limit) {
+        return recommendTracksByMood(text,strategy,limit,null);
+    }
+    public MoodRecommendationResponse recommendTracksByMood(String text, String strategy, Integer limit, User user) {
         EmotionPredictResponse emotionResponse = predictEmotion(text, strategy);
         MusicRecommendationInfo profile = emotionResponse.getMusicRecommendation();
         if (profile == null) {
@@ -126,7 +143,7 @@ public class EmotionService {
         }
 
         int safeLimit = (limit != null && limit > 0) ? Math.min(limit, 50) : 20;
-        RecommendationSelection selection = findMatchingTracks(profile, emotionResponse.getLabel(), safeLimit);
+        RecommendationSelection selection = findMatchingTracks(profile, emotionResponse.getLabel(), safeLimit, user == null || store == null ? Map.of() : store.blocked(user.getId()));
 
         return new MoodRecommendationResponse(
             emotionResponse,
@@ -141,13 +158,10 @@ public class EmotionService {
     }
 
     private RecommendationSelection findMatchingTracks(MusicRecommendationInfo profile, String emotionLabel, int limit) {
-        Query query = new Query();
-        query.addCriteria(Criteria.where("moderationStatus").nin("rejected", "REJECTED"));
-        query.addCriteria(Criteria.where("visibility").nin("private", "unlisted"));
-        query.addCriteria(Criteria.where("status").nin("archived", "disabled", "draft"));
-        // Uploaded/imported tracks can be playable with a Mongo ID and no Spotify ID.
-        query.addCriteria(Criteria.where("localPath").type(2).ne(""));
-
+        return findMatchingTracks(profile,emotionLabel,limit,Map.of());
+    }
+    private RecommendationSelection findMatchingTracks(MusicRecommendationInfo profile, String emotionLabel, int limit,
+        Map<String,java.util.Set<String>> blocked) {
         record ScoredTrack(Track track, MoodTrackScorer.Score score) {}
         Comparator<ScoredTrack> rankOrder = Comparator
             .comparingDouble((ScoredTrack item) -> item.score().distance())
@@ -160,13 +174,16 @@ public class EmotionService {
         int matchedCount = 0;
         int tracksWithAudioFeatures = 0;
         int tracksWithCompleteAudioFeatures = 0;
+        int scorableTracks = 0;
         int tracksWithGenreTags = 0;
         int tracksWithMoodTags = 0;
         double totalFeatureCoverage = 0.0;
-        try (Stream<Track> candidates = mongoTemplate.stream(query, Track.class)) {
+        try (Stream<Track> candidates = catalog == null ? Stream.empty() : catalog.snapshot().tracks().values().stream()) {
             var iterator = candidates.iterator();
             while (iterator.hasNext()) {
                 Track candidate = iterator.next();
+                if (!PublicTrackPolicy.isPublishedAudioTrack(candidate) || blocked.getOrDefault("TRACK",java.util.Set.of()).contains(candidate.getId()) ||
+                    RecommendationArtists.blocked(candidate,blocked.getOrDefault("ARTIST",java.util.Set.of()))) continue;
                 candidateCount++;
                 ScoredTrack item = new ScoredTrack(candidate, moodTrackScorer.score(candidate, profile, emotionLabel));
                 double featureCoverage = item.score().featureCoverage();
@@ -175,6 +192,8 @@ public class EmotionService {
                 if (featureCoverage >= 1.0) tracksWithCompleteAudioFeatures++;
                 if (hasTags(candidate.getGenres()) || hasTags(candidate.getGenresRaw())) tracksWithGenreTags++;
                 if (hasTags(candidate.getMoodTags())) tracksWithMoodTags++;
+                if (featureCoverage == 0.0 || !MoodTrackScorer.hasRequiredFeatures(candidate)) continue;
+                scorableTracks++;
                 addTopCandidate(closestCandidates, item, LIMITED_RESULT_COUNT, rankOrder);
                 if (item.score().distance() <= maxMatchDistance) {
                     matchedCount++;
@@ -195,6 +214,9 @@ public class EmotionService {
             return new RecommendationSelection(List.of(), 0, 0, "NO_CANDIDATES", catalogDiagnostics);
         }
 
+        if (scorableTracks == 0) {
+            return new RecommendationSelection(List.of(), 0, candidateCount, "NO_FEATURES", catalogDiagnostics);
+        }
         List<TrackResponse> recommendations;
         String status;
         if (matchedCount > 0) {

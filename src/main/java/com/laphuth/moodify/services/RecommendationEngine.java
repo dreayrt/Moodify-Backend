@@ -38,7 +38,7 @@ public class RecommendationEngine {
         for (Track track : catalog.tracks().values()) {
             if(!profile.requestedGenres().isEmpty()&&Collections.disjoint(genres(track.getGenres()),profile.requestedGenres()))continue;
             if (blocked.getOrDefault("TRACK", Set.of()).contains(track.getId()) ||
-                (track.getArtistSpotifyId() != null && blocked.getOrDefault("ARTIST", Set.of()).contains(track.getArtistSpotifyId()))) continue;
+                RecommendationArtists.blocked(track, blocked.getOrDefault("ARTIST", Set.of()))) continue;
             double affinity = affinity(track, positive, profile.weights());
             double session = recent.isEmpty() ? affinity : recent.stream().mapToDouble(t -> similarity(track, t)).average().orElse(0);
             double[] counts = rawTrend.get(track.getId());
@@ -48,11 +48,11 @@ public class RecommendationEngine {
             double popularity = Math.min(1.0, Math.log1p(counts[0]) / Math.log(51));
             double cf = Math.clamp(profile.collaborativeScores().getOrDefault(track.getId(), 0.0), 0, 1);
             double campaign = campaignFit(EntityType.TRACK, track.getId(), track.getGenres(), campaigns);
-            boolean followed=track.getArtistSpotifyId()!=null&&profile.preferences().followedArtists().contains(track.getArtistSpotifyId());
+            boolean followed=!Collections.disjoint(RecommendationArtists.ids(track),profile.preferences().followedArtists());
             double artistPrior=followed?.12:0;
             double albumPrior=.08*Math.clamp(profile.preferences().albumTrackPriors().getOrDefault(track.getId(),0.0),0,1);
             double intent=.04*Math.max(profile.preferences().intentTracks().getOrDefault(track.getId(),0.0),
-                track.getArtistSpotifyId()==null?0:profile.preferences().intentArtists().getOrDefault(track.getArtistSpotifyId(),0.0));
+                RecommendationArtists.ids(track).stream().mapToDouble(id -> profile.preferences().intentArtists().getOrDefault(id,0.0)).max().orElse(0));
             double score = positive.isEmpty()
                 ? 0.45 * popularity + 0.25 * featureCoverage(track) + 0.2 * trend + 0.1 * campaign
                 : 0.52 * affinity + 0.18 * cf + 0.15 * session + 0.08 * trend + 0.07 * campaign;
@@ -91,7 +91,7 @@ public class RecommendationEngine {
         Set<String> intersection = new HashSet<>(a); intersection.retainAll(b);
         Set<String> union = new HashSet<>(a); union.addAll(b);
         double genre = union.isEmpty() ? 0 : intersection.size() / (double) union.size();
-        double artist = left.getArtistSpotifyId() != null && left.getArtistSpotifyId().equals(right.getArtistSpotifyId()) ? 1 : 0;
+        double artist = !Collections.disjoint(RecommendationArtists.ids(left), RecommendationArtists.ids(right)) ? 1 : 0;
         double audio = audioSimilarity(left.getAudioFeatures(), right.getAudioFeatures());
         return 0.35 * genre + 0.25 * artist + 0.4 * audio;
     }
@@ -144,10 +144,11 @@ public class RecommendationEngine {
     private void append(List<RankedTrack> selected, Set<String> ids, Map<String, Integer> artists,
                         List<RankedTrack> candidates, int targetSize, int maxPerArtist) {
         for (RankedTrack candidate : candidates) {
-            String artist = Objects.toString(candidate.track().getArtistSpotifyId(), candidate.track().getArtistName());
+            Set<String> keys = RecommendationArtists.ids(candidate.track());
+            if (keys.isEmpty()) keys = Set.of("unresolved:" + candidate.track().getId());
             if (selected.size() >= targetSize) break;
-            if (ids.contains(candidate.track().getId()) || artists.getOrDefault(artist, 0) >= maxPerArtist) continue;
-            ids.add(candidate.track().getId()); artists.merge(artist, 1, Integer::sum); selected.add(candidate);
+            if (ids.contains(candidate.track().getId()) || keys.stream().anyMatch(key -> artists.getOrDefault(key,0) >= maxPerArtist)) continue;
+            ids.add(candidate.track().getId()); keys.forEach(key -> artists.merge(key, 1, Integer::sum)); selected.add(candidate);
         }
     }
 
