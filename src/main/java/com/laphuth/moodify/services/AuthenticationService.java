@@ -25,7 +25,6 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
-import com.laphuth.moodify.dto.auth.FacebookAuthRequest;
 import com.laphuth.moodify.dto.auth.GoogleAuthRequest;
 import com.laphuth.moodify.dto.auth.GoogleCodeRequest;
 import java.util.Collections;
@@ -57,12 +56,6 @@ public class AuthenticationService {
 
     @Value("${google.client-secret:}")
     private String googleClientSecret;
-
-    @Value("${facebook.app-id:}")
-    private String facebookAppId;
-
-    @Value("${facebook.app-secret:}")
-    private String facebookAppSecret;
 
     public AuthenticationService(
         UserRepository userRepository,
@@ -437,149 +430,6 @@ public class AuthenticationService {
             currentUser.setUsername(candidateUsername);
 
             currentUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
-            currentUser.setAvatarUrl(pictureUrl);
-            currentUser.setRole(UserRole.USER);
-            currentUser.setStatus(UserStatus.ACTIVE);
-            currentUser.setLastLoginAt(LocalDateTime.now());
-            currentUser = userRepository.save(currentUser);
-        } else {
-            if (currentUser.getStatus() != UserStatus.ACTIVE) {
-                throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Your account is not active"
-                );
-            }
-
-            if ((currentUser.getAvatarUrl() == null || currentUser.getAvatarUrl().isBlank()) && pictureUrl != null) {
-                if (pictureUrl.length() > 500) {
-                    pictureUrl = pictureUrl.substring(0, 500);
-                }
-                currentUser.setAvatarUrl(pictureUrl);
-            }
-            currentUser.setLastLoginAt(LocalDateTime.now());
-            currentUser = userRepository.save(currentUser);
-        }
-
-        if (userDeviceService != null && request.deviceUuid() != null && !request.deviceUuid().isBlank()) {
-            userDeviceService.registerDeviceOnLogin(
-                currentUser.getId(),
-                currentUser.getUsername(),
-                request.deviceUuid(),
-                request.deviceName(),
-                request.platform()
-            );
-        }
-
-        return buildAuthResponse(currentUser);
-    }
-
-    public AuthResponse loginWithFacebook(FacebookAuthRequest request) {
-        String rawToken = request.accessToken() != null ? request.accessToken().trim() : "";
-        if (rawToken.isBlank()) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Facebook access token cannot be blank"
-            );
-        }
-
-        String fbId = null;
-        String email = null;
-        String name = null;
-        String pictureUrl = null;
-
-        try {
-            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
-            String graphUrl = "https://graph.facebook.com/v26.0/me?fields=id,name,email,picture.width(500).height(500)&access_token="
-                + java.net.URLEncoder.encode(rawToken, java.nio.charset.StandardCharsets.UTF_8);
-
-            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
-                .uri(java.net.URI.create(graphUrl))
-                .GET()
-                .build();
-
-            java.net.http.HttpResponse<String> resp = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
-
-            if (resp.statusCode() == 200) {
-                com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(resp.body());
-                if (root.has("id")) {
-                    fbId = root.get("id").asText();
-                }
-                if (root.has("email")) {
-                    email = root.get("email").asText();
-                }
-                if (root.has("name")) {
-                    name = root.get("name").asText();
-                }
-                if (root.has("picture") && root.get("picture").has("data") && root.get("picture").get("data").has("url")) {
-                    pictureUrl = root.get("picture").get("data").get("url").asText();
-                }
-            } else {
-                log.warn("Facebook Graph API error response: {}", resp.body());
-                throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Invalid or expired Facebook access token"
-                );
-            }
-        } catch (ResponseStatusException rse) {
-            throw rse;
-        } catch (Exception e) {
-            throw new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED,
-                "Failed to verify Facebook token: " + e.getMessage()
-            );
-        }
-
-        if (fbId == null || fbId.isBlank()) {
-            throw new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED,
-                "Unable to retrieve Facebook user information"
-            );
-        }
-
-        // Nếu tài khoản Facebook đăng ký bằng SĐT hoặc không có email, sinh email fallback
-        if (email == null || email.isBlank()) {
-            email = "fb_" + fbId + "@facebook.moodify.com";
-        }
-
-        email = normalizeEmail(email);
-
-        User currentUser = userRepository.findByEmail(email).orElse(null);
-
-        if (currentUser == null) {
-            currentUser = new User();
-            currentUser.setEmail(email);
-
-            String finalName = (name != null && !name.isBlank()) ? name.trim() : email.split("@")[0];
-            if (finalName.length() > 100) {
-                finalName = finalName.substring(0, 100);
-            }
-            currentUser.setFullname(finalName);
-
-            String baseUsername;
-            if (email.endsWith("@facebook.moodify.com")) {
-                baseUsername = normalizeUsername("fb_" + fbId);
-            } else {
-                baseUsername = normalizeUsername(email.split("@")[0].replaceAll("[^a-zA-Z0-9_.]", ""));
-            }
-            if (baseUsername.isBlank()) {
-                baseUsername = "fb_user";
-            }
-            if (baseUsername.length() > 40) {
-                baseUsername = baseUsername.substring(0, 40);
-            }
-            String candidateUsername = baseUsername;
-            int counter = 1;
-            while (userRepository.existsByUsername(candidateUsername)) {
-                candidateUsername = baseUsername + counter;
-                counter++;
-            }
-            currentUser.setUsername(candidateUsername);
-
-            currentUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
-
-            if (pictureUrl != null && pictureUrl.length() > 500) {
-                pictureUrl = pictureUrl.substring(0, 500);
-            }
             currentUser.setAvatarUrl(pictureUrl);
             currentUser.setRole(UserRole.USER);
             currentUser.setStatus(UserStatus.ACTIVE);

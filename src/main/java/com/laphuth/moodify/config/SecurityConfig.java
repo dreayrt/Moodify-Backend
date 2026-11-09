@@ -62,7 +62,6 @@ public class SecurityConfig {
                     "/api/auth/logout",
                     "/api/auth/google",
                     "/api/auth/google/code",
-                    "/api/auth/facebook",
                     "/hooks/sepay-payment"
                 ).permitAll()
                 // SePay: Cho phép frontend polling trạng thái thanh toán mà không cần JWT

@@ -1,7 +1,6 @@
 package com.laphuth.moodify.api;
 
 import com.laphuth.moodify.dto.auth.AuthResponse;
-import com.laphuth.moodify.dto.auth.FacebookAuthRequest;
 import com.laphuth.moodify.dto.auth.GoogleAuthRequest;
 import com.laphuth.moodify.dto.auth.GoogleCodeRequest;
 import com.laphuth.moodify.dto.auth.LoginRequest;
@@ -57,13 +56,6 @@ public class AuthenticationApi {
             @RequestHeader(value = "X-Requested-With", required = false) String requestedWith
     ) {
         return ResponseEntity.ok(authenticationService.loginWithGoogleCode(request, requestedWith));
-    }
-
-    @PostMapping("/facebook")
-    public ResponseEntity<AuthResponse> loginWithFacebook(
-            @Valid @RequestBody FacebookAuthRequest request
-    ) {
-        return ResponseEntity.ok(authenticationService.loginWithFacebook(request));
     }
 
     @PostMapping("/refresh")
