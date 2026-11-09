@@ -40,22 +40,44 @@ public class FirebaseConfig {
             return;
         }
 
-        try {
-            Resource resource = resourceLoader.getResource(serviceAccountPath);
-            if (!resource.exists()) {
-                log.info("Chưa tìm thấy file cấu hình Firebase [{}] trong Backend. Thông báo đẩy FCM sẽ tạm dừng cho đến khi bạn thêm file này.", serviceAccountPath);
-                return;
-            }
+        String[] candidatePaths = {
+            serviceAccountPath,
+            "file:/app/firebase-service-account.json",
+            "file:firebase-service-account.json",
+            "file:/opt/moodify/backend/firebase-service-account.json",
+            "classpath:firebase-service-account.json"
+        };
 
-            try (InputStream is = resource.getInputStream()) {
-                FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(GoogleCredentials.fromStream(is))
-                        .build();
-                FirebaseApp.initializeApp(options);
-                log.info("Đã khởi tạo Firebase Admin SDK thành công từ [{}]!", serviceAccountPath);
+        for (String pathStr : candidatePaths) {
+            if (pathStr == null || pathStr.isBlank()) continue;
+            try {
+                Resource resource = resourceLoader.getResource(pathStr);
+                if (resource != null && resource.exists()) {
+                    try (InputStream is = resource.getInputStream()) {
+                        FirebaseOptions options = FirebaseOptions.builder()
+                                .setCredentials(GoogleCredentials.fromStream(is))
+                                .build();
+                        FirebaseApp.initializeApp(options);
+                        log.info("Đã khởi tạo Firebase Admin SDK thành công từ [{}]!", pathStr);
+                        return;
+                    }
+                }
+            } catch (Exception ex) {
+                log.debug("Thử cấu hình Firebase từ [{}] không khả dụng: {}", pathStr, ex.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("Không thể khởi tạo Firebase Admin SDK: {}", e.getMessage());
         }
+
+        try {
+            FirebaseOptions options = FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.getApplicationDefault())
+                    .build();
+            FirebaseApp.initializeApp(options);
+            log.info("Đã khởi tạo Firebase Admin SDK thành công từ Google Application Default Credentials (ADC)!");
+            return;
+        } catch (Exception adcEx) {
+            log.debug("ADC không khả dụng: {}", adcEx.getMessage());
+        }
+
+        log.info("Chưa tìm thấy file cấu hình Firebase [{}] trong Backend. Thông báo đẩy FCM sẽ tạm dừng cho đến khi bạn thêm file này.", serviceAccountPath);
     }
 }
