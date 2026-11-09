@@ -54,6 +54,8 @@ public class SecurityConfig {
                 .requestMatchers("/ws/karaoke", "/api/ws/karaoke").permitAll()
                 // Node mediasoup authenticates to these internal callbacks with a dedicated service key.
                 .requestMatchers("/api/internal/karaoke/media-sessions/**").permitAll()
+                // Dedicated read-only monitor key is checked inside this exact endpoint.
+                .requestMatchers(HttpMethod.GET,"/api/internal/recommendations/monitor").permitAll()
                 .requestMatchers(
                     HttpMethod.POST,
                     "/api/auth/login",
@@ -77,6 +79,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/content-lead/**", "/api/artists/me/**", "/api/artist/me/**")
                     .hasRole(UserRole.CONTENT_LEAD.name())
                 .requestMatchers("/api/moderator/**").hasRole(UserRole.MODERATOR.name())
+                .requestMatchers(HttpMethod.GET, "/api/app/version").permitAll()
                 // Allow MongoDB API access for GET and HEAD (streaming, browsing) and packages
                 .requestMatchers(HttpMethod.GET, "/api/tracks/**", "/api/artists", "/api/artists/**", "/api/artist", "/api/artist/**", "/api/albums/**", "/api/genres/**", "/api/playlists/**", "/api/playlists", "/api/packages/**", "/api/packages").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/api/tracks/**", "/api/artists", "/api/artists/**", "/api/artist", "/api/artist/**", "/api/albums/**", "/api/genres/**", "/api/playlists/**", "/api/playlists").permitAll()
@@ -86,7 +89,7 @@ public class SecurityConfig {
                 // User notification inbox
                 .requestMatchers("/api/notifications/**").authenticated()
                 // Emotion Detection & Music Recommendation
-                .requestMatchers(HttpMethod.POST, "/api/emotions/predict", "/api/emotions/recommend").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/emotions/predict").permitAll()
                 .requestMatchers("/api/emotions/history").authenticated()
                 // Analytics
                 .requestMatchers(HttpMethod.POST, "/api/analytics/listening-session").authenticated()
