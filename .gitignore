@@ -42,6 +42,7 @@ HELP.md
 !.env.example
 *.key
 *.pem
+!supporting-services/recommendation-worker/.env.smoke.example
 *.id_rsa
 
 # Runtime storage & uploads
@@ -117,3 +118,5 @@ supporting-services/recommendation-worker/.venv/
 venv/
 *.pyc
 *.pyo
+*firebase*.json
+*service-account*.json

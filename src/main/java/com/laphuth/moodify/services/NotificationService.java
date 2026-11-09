@@ -161,6 +161,9 @@ public class NotificationService {
                         "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 safeTitle, safeMessage, normalizedType, historyRole, recipientIds.size(), createdBy, createdAt);
 
+        // Bắn thông báo ngầm qua Firebase Cloud Messaging (FCM) tới toàn bộ thiết bị (kể cả khi tắt hẳn app)
+        sendFcmBroadcast(safeTitle, safeMessage, normalizedType, (linkUrl != null && !linkUrl.isBlank()) ? linkUrl.trim() : null);
+
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("recipients", recipientIds.size());
@@ -263,4 +266,33 @@ public class NotificationService {
                 Integer.class, notificationId, userId);
         return count != null && count > 0;
     }
+
+    private void sendFcmBroadcast(String title, String body, String type, String linkUrl) {
+        if (com.google.firebase.FirebaseApp.getApps().isEmpty()) {
+            return;
+        }
+        try {
+            com.google.firebase.messaging.Notification fcmNotif = com.google.firebase.messaging.Notification.builder()
+                    .setTitle(title)
+                    .setBody(body)
+                    .build();
+
+            com.google.firebase.messaging.Message.Builder builder = com.google.firebase.messaging.Message.builder()
+                    .setTopic("all_users")
+                    .setNotification(fcmNotif)
+                    .putData("title", title)
+                    .putData("message", body)
+                    .putData("type", type);
+
+            if (linkUrl != null && !linkUrl.isBlank()) {
+                builder.putData("linkUrl", linkUrl);
+            }
+
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().sendAsync(builder.build());
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(NotificationService.class)
+                    .warn("Lỗi gửi thông báo FCM từ Backend: {}", e.getMessage());
+        }
+    }
+
 }
