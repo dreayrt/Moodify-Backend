@@ -166,7 +166,7 @@ public class RecommendationStore {
             JOIN revenue_playback_sessions r ON r.listening_history_id=h.id
             JOIN users u ON u.id=h.user_id AND u.role='USER' AND u.status='ACTIVE'
             WHERE h.listened_duration_ms>=30000 AND h.started_at>=? AND h.started_at<=?
-              AND h.source IN ('PLAYLIST','RECOMMENDATION')
+              AND h.source IN ('PLAYLIST','LIBRARY','RECOMMENDATION')
               AND NOT (LEFT(u.username,9)='rec_seed_' AND u.email LIKE '%@recommendation-seed.invalid')
               AND h.source_id IN (
             """ + placeholders + ")", (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
