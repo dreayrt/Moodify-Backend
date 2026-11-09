@@ -166,7 +166,7 @@ public class OcrService {
         }
         String lower = raw.toLowerCase(Locale.ROOT).trim();
 
-        if (lower.contains("moodify")) {
+        if (lower.contains("moodify direct distribution")) {
             response.setDistributorId(1L);
             response.setDistributorName("Moodify Direct Distribution (Nội bộ)");
             return;
