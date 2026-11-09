@@ -18,6 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class RecommendationService {
+    private static final int MIN_PLAYLIST_TRACKS = 5;
+    private static final double MIN_PLAYLIST_AVAILABILITY = 0.8;
     private final RecommendationCatalog catalog;
     private final RecommendationContextService contexts;
     private final RecommendationStore store;
@@ -126,13 +128,21 @@ public class RecommendationService {
             if (context.blocked().getOrDefault("PLAYLIST", Set.of()).contains(playlist.getId())) continue;
             List<Track> available = context.catalog().playlistTracks(playlist).stream()
                 .filter(t -> trackScores.containsKey(t.getId())).toList();
-            if (available.isEmpty()) continue;
+            int uniqueTracks = (int) playlist.getTrackSpotifyIds().stream()
+                .map(context.catalog()::canonical).distinct().count();
+            double availability = available.size() / (double)Math.max(1, uniqueTracks);
+            if (available.size() < MIN_PLAYLIST_TRACKS || availability < MIN_PLAYLIST_AVAILABILITY) continue;
             double score = available.stream().mapToDouble(t -> trackScores.getOrDefault(t.getId(), 0.0)).average().orElse(0);
             score += 0.1 * engine.campaignFit(EntityType.PLAYLIST, playlist.getId(),
                 available.stream().flatMap(t -> t.getGenres() == null ? java.util.stream.Stream.empty() : t.getGenres().stream()).distinct().toList(), context.campaigns());
-            double availability = available.size() / (double)Math.max(1, playlist.getTrackSpotifyIds().size());
             ranked.add(new Candidate(playlist, available, score * availability));
         }
+        Map<String, Set<String>> playlistTracks = ranked.stream().collect(Collectors.toMap(
+            candidate -> candidate.playlist().getId(),
+            candidate -> candidate.tracks().stream().map(Track::getId).collect(Collectors.toSet())));
+        Set<String> engaged = store.engagedPlaylists(ranked.stream().map(Candidate::playlist).toList(),
+            playlistTracks, context.catalog().aliases(), context.now());
+        ranked.removeIf(candidate -> !engaged.contains(candidate.playlist().getId()));
         ranked.sort(Comparator.comparingDouble(Candidate::score).reversed().thenComparing(c -> c.playlist().getId()));
         List<Candidate> selected = new ArrayList<>();
         for (Candidate candidate : ranked) {

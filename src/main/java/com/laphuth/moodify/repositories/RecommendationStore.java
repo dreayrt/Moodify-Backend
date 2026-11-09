@@ -1,6 +1,7 @@
 package com.laphuth.moodify.repositories;
 
 import com.laphuth.moodify.services.RecommendationRuntime;
+import com.laphuth.moodify.entities.Playlist;
 
 import static com.laphuth.moodify.dto.recommendation.RecommendationTypes.*;
 import java.sql.Timestamp;
@@ -145,6 +146,43 @@ public class RecommendationStore {
         Map<String,double[]> counts=new HashMap<>();
         listeners.forEach((track,sets)->counts.put(track,new double[]{sets.get(0).size(),sets.get(1).size()}));
         return new TrendStats(counts,new double[]{active.get(0).size(),active.get(1).size()});
+    }
+
+    /** Only server-measured listening in the current playlist counts toward discovery. */
+    public Set<String> engagedPlaylists(List<Playlist> playlists, Map<String, Set<String>> playlistTracks,
+                                       Map<String, String> aliases, Instant now) {
+        if (playlists.isEmpty()) return Set.of();
+        Map<String, Playlist> byId = new HashMap<>();
+        playlists.forEach(playlist -> byId.put(playlist.getId(), playlist));
+        List<Object> parameters = new ArrayList<>();
+        parameters.add(utc(now.minus(Duration.ofDays(30))));
+        parameters.add(utc(now));
+        parameters.addAll(byId.keySet());
+        Set<String> engaged = new HashSet<>();
+        String placeholders = String.join(",", Collections.nCopies(byId.size(), "?"));
+        jdbc.query("""
+            SELECT DISTINCT h.source_id, h.track_id, h.user_id, u.username, u.email
+            FROM listening_history h
+            JOIN revenue_playback_sessions r ON r.listening_history_id=h.id
+            JOIN users u ON u.id=h.user_id AND u.role='USER' AND u.status='ACTIVE'
+            WHERE h.listened_duration_ms>=30000 AND h.started_at>=? AND h.started_at<=?
+              AND h.source IN ('PLAYLIST','RECOMMENDATION')
+              AND NOT (LEFT(u.username,9)='rec_seed_' AND u.email LIKE '%@recommendation-seed.invalid')
+              AND h.source_id IN (
+            """ + placeholders + ")", (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
+                String id = rs.getString("source_id");
+                Playlist playlist = byId.get(id);
+                long listener = rs.getLong("user_id");
+                boolean owner = playlist.getOwnerUserId() != null
+                    ? playlist.getOwnerUserId().equals(listener)
+                    : Objects.equals(playlist.getUsername(), rs.getString("username")) ||
+                      Objects.equals(playlist.getUsername(), rs.getString("email"));
+                String trackId = aliases.get(rs.getString("track_id"));
+                if (!owner && trackId != null && playlistTracks.getOrDefault(id, Set.of()).contains(trackId)) {
+                    engaged.add(id);
+                }
+            }, parameters.toArray());
+        return engaged;
     }
 
     public List<Campaign> campaigns(Instant now, boolean all) {
