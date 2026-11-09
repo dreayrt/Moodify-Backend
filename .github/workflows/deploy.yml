@@ -111,7 +111,7 @@ jobs:
             echo "🩺 Verifying Backend container status & Health..."
             docker ps --filter "name=moodify-backend" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
             backend_healthy=false
-            for i in $(seq 1 30); do
+            for i in $(seq 1 45); do
               if curl -s -f http://127.0.0.1:8080/api/packages > /dev/null; then
                 echo "✅ Moodify Backend is healthy and responding!"
                 backend_healthy=true
@@ -132,7 +132,7 @@ jobs:
             echo "🎤 Deploying mediasoup voice service..."
             docker compose --env-file /opt/moodify/backend/backend.env -f /opt/moodify/backend/karaoke-media/compose.production.yaml up -d --build
             media_healthy=false
-            for i in $(seq 1 30); do
+            for i in $(seq 1 45); do
               if curl --connect-timeout 2 --max-time 5 -s -f http://127.0.0.1:3001/health/ready > /dev/null; then
                 echo "✅ Karaoke media service is healthy and responding!"
                 media_healthy=true
