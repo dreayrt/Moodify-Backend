@@ -11,8 +11,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 class RecommendationOutcomeTransactionTest {
     final RecommendationOutcomeDispatcher dispatcher=mock(RecommendationOutcomeDispatcher.class);
-    final RevenuePlaybackService service=new RevenuePlaybackService(mock(JdbcTemplate.class),mock(TrackRepository.class),
-        mock(SongLicenseRepository.class),dispatcher);
+    final ListeningPlaybackService service=new ListeningPlaybackService(mock(JdbcTemplate.class),mock(TrackRepository.class),
+        dispatcher);
     @Test void rolledBackSessionNeverEnqueuesAnOutcome() {
         TransactionSynchronizationManager.initSynchronization();
         try {

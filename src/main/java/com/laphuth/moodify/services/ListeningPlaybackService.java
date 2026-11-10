@@ -2,10 +2,7 @@ package com.laphuth.moodify.services;
 
 import com.laphuth.moodify.dto.recommendation.RecommendationTypes;
 
-import com.laphuth.moodify.entities.SongLicense;
 import com.laphuth.moodify.entities.Track;
-import com.laphuth.moodify.entities.enums.LicenseStatus;
-import com.laphuth.moodify.repositories.SongLicenseRepository;
 import com.laphuth.moodify.repositories.TrackRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,25 +14,21 @@ import org.springframework.web.server.ResponseStatusException;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 
 @Service
-public class RevenuePlaybackService {
-    private static final long QUALIFY_MS = 60_000;
+public class ListeningPlaybackService {
     private final JdbcTemplate jdbc;
     private final TrackRepository tracks;
-    private final SongLicenseRepository licenses;
     private final RecommendationOutcomeDispatcher recommendationOutcomes;
 
-    public RevenuePlaybackService(JdbcTemplate jdbc, TrackRepository tracks, SongLicenseRepository licenses,
+    public ListeningPlaybackService(JdbcTemplate jdbc, TrackRepository tracks,
         RecommendationOutcomeDispatcher recommendationOutcomes) {
         this.jdbc = jdbc;
         this.tracks = tracks;
-        this.licenses = licenses;
         this.recommendationOutcomes = recommendationOutcomes;
     }
 
@@ -66,6 +59,8 @@ public class RevenuePlaybackService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Playback position exceeds track duration");
         }
         LocalDateTime now = LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC);
+        // Retain the legacy table name: recommendation queries also use these sessions
+        // to identify UTC history and engaged playlists. No financial ledger is involved.
         var rows = jdbc.queryForList("""
             SELECT s.session_key, s.listening_history_id, s.last_seen_at, s.continuous_ms,
                    s.playing, s.closed, h.user_id, h.track_id,
@@ -111,7 +106,7 @@ public class RevenuePlaybackService {
         }
         long historyId = ((Number) session.get("listening_history_id")).longValue();
         if (isTrue(session.get("closed"))) {
-            return Map.of("success", true, "historyId", historyId, "qualified", hasQualified(rawSessionKey));
+            return Map.of("success", true, "historyId", historyId, "qualified", false);
         }
         // MySQL Connector/J returns java.time.LocalDateTime for DATETIME columns, not Timestamp.
         Object lastSeenValue = session.get("last_seen_at");
@@ -129,7 +124,7 @@ public class RevenuePlaybackService {
         if ((event.equals("PAUSE")&&!playing) ||
             ((event.equals("PLAY")||event.equals("RESUME"))&&playing&&position==previousPosition) ||
             (event.equals("SEEK")&&position==previousPosition&&targetPositionMs==position)) {
-            return Map.of("success",true,"historyId",historyId,"qualified",hasQualified(rawSessionKey),"duplicate",true);
+            return Map.of("success",true,"historyId",historyId,"qualified",false,"duplicate",true);
         }
         boolean progressEvent = java.util.Set.of("HEARTBEAT", "PAUSE", "COMPLETE", "SKIP_NEXT", "SKIP_PREVIOUS", "TRACK_CHANGED", "PLAYBACK_STOPPED").contains(event);
         if (playing && progressEvent && elapsed > 0) {
@@ -138,13 +133,10 @@ public class RevenuePlaybackService {
             continuous = advanced;
         }
         boolean closed = java.util.Set.of("COMPLETE", "SKIP_NEXT", "SKIP_PREVIOUS", "TRACK_CHANGED", "PLAYBACK_STOPPED").contains(event);
-        if (continuous >= QUALIFY_MS && !hasQualified(rawSessionKey)) {
-            qualify(userId, track, rawSessionKey, now);
-        }
         if (event.equals("PAUSE") || event.equals("SEEK") || closed) continuous = 0;
         // SEEK resets the continuous counter but the listener is still playing — keep the
         // playing flag (only PAUSE/closed events may clear it), otherwise heartbeats after a
-        // seek stop accumulating and the stream can never qualify.
+        // seek stop contributing to listening history.
         boolean nextPlaying = event.equals("PLAY") || event.equals("RESUME") || event.equals("SEEK")
             || (event.equals("HEARTBEAT") && playing);
         jdbc.update("UPDATE revenue_playback_sessions SET last_seen_at=?,continuous_ms=?,playing=?,closed=? WHERE session_key=?",
@@ -159,13 +151,15 @@ public class RevenuePlaybackService {
             jdbc.update("INSERT INTO playback_events (listening_history_id,event_type,position_ms,target_position_ms,occurred_at) VALUES (?,?,?,?,?)",
                 historyId, storedEvent, position, Math.max(0, targetPositionMs), now);
         }
-        return Map.of("success", true, "historyId", historyId, "qualified", hasQualified(rawSessionKey));
+        // Deprecated compatibility field for existing web/mobile clients. Listening
+        // sessions no longer qualify for any payment, including previously paid ones.
+        return Map.of("success", true, "historyId", historyId, "qualified", false);
     }
 
     private void recordRecommendationAfterCommit(long userId, String eventId,
         RecommendationTypes.TokenClaims claims,
         Instant at, String sessionKey, long historyId) {
-        // MySQL is the authoritative listening/financial store. Recommendation analytics are best effort
+        // MySQL is the authoritative listening store. Recommendation analytics are best effort
         // after commit: no distributed transaction or new SQL outbox is required.
         Runnable write = () -> recommendationOutcomes.submit(userId,eventId,claims,at,sessionKey,historyId);
         if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -174,11 +168,6 @@ public class RevenuePlaybackService {
                     @Override public void afterCommit() { write.run(); }
                 });
         } else write.run();
-    }
-
-    private boolean hasQualified(String key) {
-        Long count = jdbc.queryForObject("SELECT COUNT(*) FROM qualified_streams WHERE session_key=?", Long.class, key);
-        return count != null && count > 0;
     }
 
     private static boolean isTrue(Object value) {
@@ -191,34 +180,4 @@ public class RevenuePlaybackService {
         return previous + elapsed;
     }
 
-    private void qualify(Long userId, Track track, String key, LocalDateTime now) {
-        if (!"published".equalsIgnoreCase(track.getStatus()) || !"approved".equalsIgnoreCase(track.getModerationStatus())) return;
-        if (track.getDurationMs() != null && track.getDurationMs() < QUALIFY_MS) return;
-        SongLicense license = licenses.findFirstByTrackIdOrderByIdDesc(track.getId()).orElse(null);
-        if (RecommendationCatalog.demoContent(track,license)) return;
-        Long synthetic=jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE id=? AND LEFT(username,9)='rec_seed_' AND email LIKE '%@recommendation-seed.invalid'",Long.class,userId);
-        if(synthetic!=null&&synthetic>0)return;
-        LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
-        if (license == null || license.getStatus() != LicenseStatus.ACTIVE ||
-            (license.getIssueDate() != null && license.getIssueDate().isAfter(today)) ||
-            (license.getExpiryDate() != null && license.getExpiryDate().isBefore(today))) return;
-        Long leadId = jdbc.query("SELECT id FROM users WHERE role='CONTENT_LEAD' AND artist_spotify_id=? LIMIT 1",
-            (rs, index) -> rs.getLong(1), track.getArtistSpotifyId()).stream().findFirst().orElse(null);
-        if (leadId == null || leadId.equals(userId)) return;
-        String role = jdbc.queryForObject("SELECT role FROM users WHERE id=?", String.class, userId);
-        if (!"USER".equals(role)) return;
-        Long overlapping = jdbc.queryForObject("""
-            SELECT COUNT(*)
-            FROM revenue_playback_sessions s
-            JOIN listening_history h ON h.id = s.listening_history_id
-            WHERE h.user_id=? AND h.track_id=? AND s.session_key<>?
-              AND s.playing=TRUE AND s.closed=FALSE AND s.last_seen_at>=?
-            """, Long.class, userId, track.getId(), key, now.minusSeconds(20));
-        Long rapidRepeat = jdbc.queryForObject("SELECT COUNT(*) FROM qualified_streams WHERE listener_user_id=? AND track_id=? AND qualified_at>=?",
-            Long.class, userId, track.getId(), now.minusMinutes(10));
-        boolean review = (overlapping != null && overlapping > 0) || (rapidRepeat != null && rapidRepeat >= 3);
-        jdbc.update("INSERT INTO qualified_streams (session_key,listener_user_id,content_lead_user_id,track_id,qualified_at,gross_vnd,content_lead_vnd,platform_vnd,policy_version,status,review_reason) VALUES (?,?,?,?,?,1000,750,250,'V1_60S_75_25',?,?)",
-            key, userId, leadId, track.getId(), now, review ? "PENDING_REVIEW" : "APPROVED",
-            review ? "Overlapping playback or rapid repeated streams" : null);
-    }
 }

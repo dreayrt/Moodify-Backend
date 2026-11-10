@@ -8,7 +8,7 @@ import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.repositories.TrackRepository;
 import com.laphuth.moodify.repositories.UserRepository;
 import com.laphuth.moodify.services.PlatformTrafficService;
-import com.laphuth.moodify.services.RevenuePlaybackService;
+import com.laphuth.moodify.services.ListeningPlaybackService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,7 +23,7 @@ public class TrafficAnalyticsApi {
     private final PlatformTrafficService platformTrafficService;
     private final UserRepository userRepository;
     private final TrackRepository trackRepository;
-    private final RevenuePlaybackService revenuePlaybackService;
+    private final ListeningPlaybackService listeningPlaybackService;
     private final com.laphuth.moodify.services.UserDeviceService userDeviceService;
     private final RecommendationService recommendations;
 
@@ -31,14 +31,14 @@ public class TrafficAnalyticsApi {
         PlatformTrafficService platformTrafficService,
         UserRepository userRepository,
         TrackRepository trackRepository,
-        RevenuePlaybackService revenuePlaybackService,
+        ListeningPlaybackService listeningPlaybackService,
         com.laphuth.moodify.services.UserDeviceService userDeviceService,
         RecommendationService recommendations
     ) {
         this.platformTrafficService = platformTrafficService;
         this.userRepository = userRepository;
         this.trackRepository = trackRepository;
-        this.revenuePlaybackService = revenuePlaybackService;
+        this.listeningPlaybackService = listeningPlaybackService;
         this.userDeviceService = userDeviceService;
         this.recommendations = recommendations;
     }
@@ -97,7 +97,7 @@ public class TrafficAnalyticsApi {
 
         String sessionKey = (String) body.get("sessionKey");
         if (sessionKey != null && !sessionKey.isBlank()) {
-            // Revenue path: qualified-stream pipeline keyed by playback session.
+            // Session-based listening history and recommendation telemetry; no stream payments.
             Long positionMs = body.get("positionMs") != null ? ((Number) body.get("positionMs")).longValue() : 0L;
             Long targetPositionMs = body.get("targetPositionMs") != null ? ((Number) body.get("targetPositionMs")).longValue() : positionMs;
             User actor = userRepository.findById(userId).orElseThrow();
@@ -106,13 +106,13 @@ public class TrafficAnalyticsApi {
                 body.get("source") instanceof String value ? value : null,
                 body.get("sourceId") instanceof String value ? value : null,
                 body.get("deviceType") instanceof String value ? value : null);
-            Map<String, Object> result = revenuePlaybackService.record(
+            Map<String, Object> result = listeningPlaybackService.record(
                 userId, trackId, sessionKey, eventType, positionMs, targetPositionMs,
                 context.source(), context.sourceId(), context.deviceType(), context.claims());
             return ResponseEntity.ok(result);
         }
 
-        // Analytics fallback for clients that report listening duration without a revenue session key.
+        // Analytics fallback for clients that report listening duration without a session key.
         Long historyId = body.get("historyId") != null ? ((Number) body.get("historyId")).longValue() : null;
         Long durationMs = body.get("durationMs") != null ? ((Number) body.get("durationMs")).longValue() : 0L;
         Long positionMs = body.get("positionMs") != null ? ((Number) body.get("positionMs")).longValue() : durationMs;
