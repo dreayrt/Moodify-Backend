@@ -15,6 +15,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.text.Normalizer;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -164,7 +165,20 @@ public class OcrService {
         if (raw == null || raw.isBlank()) {
             return;
         }
-        String lower = raw.toLowerCase(Locale.ROOT).trim();
+        response.setDistributorName(raw.trim());
+        String lower = Normalizer.normalize(raw, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "").replace('đ', 'd').replace('Đ', 'D')
+            .toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").trim();
+
+        // Direct licensing is a detected value with no distributor foreign key,
+        // not a failed lookup. Never invent an ID for the platform receiving rights.
+        if (lower.matches(".*\\b(?:khong qua (?:trung gian|(?:don vi |nha )?phan phoi)|"
+                + "khong (?:su dung|co) (?:nha |don vi )?phan phoi|tu phat hanh|"
+                + "cap quyen truc tiep|self[- ](?:released|distributed)|no (?:intermediary|distributor))\\b.*")
+                || lower.equals("none") || lower.equals("n/a") || lower.equals("0")) {
+            response.setDirectLicensing(true);
+            return;
+        }
 
         if (lower.contains("moodify direct distribution")) {
             response.setDistributorId(1L);
@@ -189,7 +203,7 @@ public class OcrService {
 
         try {
             long parsedId = Long.parseLong(lower);
-            response.setDistributorId(parsedId);
+            if (parsedId > 0) response.setDistributorId(parsedId);
         } catch (NumberFormatException ignored) {}
     }
 

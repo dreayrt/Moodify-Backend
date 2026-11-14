@@ -19,6 +19,9 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+# Required to measure uploaded audio without depending on Essentia availability.
+RUN apk add --no-cache ffmpeg
+
 # Create unprivileged user for security
 RUN addgroup -S moodify && adduser -S moodify -G moodify
 USER moodify

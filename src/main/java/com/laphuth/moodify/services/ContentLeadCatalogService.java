@@ -60,6 +60,7 @@ public class ContentLeadCatalogService {
     private final TrackSyncService trackSyncService;
     private final JdbcTemplate jdbcTemplate;
     private final AudioAnalysisService audioAnalysisService;
+    private final AudioMetadataService audioMetadataService;
     private final OcrService ocrService;
 
     public ContentLeadCatalogService(
@@ -75,7 +76,8 @@ public class ContentLeadCatalogService {
         JdbcTemplate jdbcTemplate,
         @org.springframework.beans.factory.annotation.Autowired(required = false)
         AudioAnalysisService audioAnalysisService,
-        OcrService ocrService
+        OcrService ocrService,
+        AudioMetadataService audioMetadataService
     ) {
         this.userRepository = userRepository;
         this.artistRepository = artistRepository;
@@ -87,6 +89,7 @@ public class ContentLeadCatalogService {
         this.jdbcTemplate = jdbcTemplate;
         this.audioAnalysisService = audioAnalysisService;
         this.ocrService = ocrService;
+        this.audioMetadataService = audioMetadataService;
     }
 
     public ContentLeadCatalogResponse getCurrentCatalog(
@@ -254,7 +257,7 @@ public class ContentLeadCatalogService {
         if (request.getDistributorId() != null && request.getDistributorId() > 0 && !hasContractReference) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã hợp đồng trong tài liệu là bắt buộc khi chọn đơn vị phân phối.");
         }
-        if (request.getDistributorId() == null && hasContractReference) {
+        if (request.getDistributorId() == null && request.getDistributionContractId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hợp đồng cần có đơn vị phân phối tương ứng.");
         }
         Long validDistributorId = resolveValidDistributorId(request.getDistributorId());
@@ -295,6 +298,10 @@ public class ContentLeadCatalogService {
             .orElse(null);
         String mainArtistName = artist != null ? artist.getName() : currentUser.getFullname();
 
+        // Duration is required playback metadata, even if optional analysis is down.
+        // Validate before persisting files or catalog/license/review records.
+        int durationMs = audioMetadataService.durationMs(audioFile);
+
         // 1. Save audio file
         String audioUrl = saveUploadedFile(audioFile, "uploads/audio");
         String coverUrl = coverFile != null && !coverFile.isEmpty() ? saveUploadedFile(coverFile, "uploads/covers") : null;
@@ -317,6 +324,9 @@ public class ContentLeadCatalogService {
         track.setDescription(request.getDescription() != null && !request.getDescription().isBlank() ? request.getDescription().trim() : null);
         track.setImageUrl(coverUrl);
         track.setLocalPath(audioUrl);
+        track.setDurationMs(durationMs);
+        int totalSeconds = durationMs / 1000;
+        track.setDurationFormatted("%d:%02d".formatted(totalSeconds / 60, totalSeconds % 60));
         track.setStatus(normalizeTrackStatus(request.getStatus()));
         track.setVisibility(normalizeTrackVisibility(request.getVisibility()));
         track.setCreatedAt(Instant.now());
@@ -343,7 +353,7 @@ public class ContentLeadCatalogService {
         license.setDistributorId(validDistributorId);
         license.setDistributionContractId(validDistributorId != null ? validContractId : null);
         license.setDistributionContractCode(
-            validDistributorId != null && !contractCode.isBlank() ? contractCode : null
+            !contractCode.isBlank() ? contractCode : null
         );
         String owner = request.getCopyrightOwner() != null && !request.getCopyrightOwner().isBlank()
             ? request.getCopyrightOwner().trim()

@@ -52,6 +52,7 @@ class ContentLeadCatalogContractResolutionTest {
             null,
             jdbcTemplate,
             null,
+            null,
             null
         );
     }

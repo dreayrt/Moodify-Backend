@@ -2,6 +2,8 @@ package com.laphuth.moodify.services;
 
 import com.laphuth.moodify.dto.contentlead.ContentLeadCatalogResponse;
 import com.laphuth.moodify.dto.contentlead.TrackUpdateRequest;
+import com.laphuth.moodify.dto.contentlead.TrackUploadRequest;
+import com.laphuth.moodify.dto.ocr.OcrExtractResponse;
 import com.laphuth.moodify.entities.ContentReviewRequest;
 import com.laphuth.moodify.entities.Artist;
 import com.laphuth.moodify.entities.Track;
@@ -22,10 +24,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -55,8 +61,62 @@ class ContentLeadCatalogServiceTest {
     @Mock
     private ContentReviewRequestRepository contentReviewRequestRepository;
 
+    @Mock
+    private AudioMetadataService audioMetadataService;
+
+    @Mock
+    private OcrService ocrService;
+
     @InjectMocks
     private ContentLeadCatalogService contentLeadCatalogService;
+
+    @Test
+    void uploadPersistsMeasuredDurationForSearchAndStudioWithoutEssentia() throws Exception {
+        when(userRepository.findByEmailOrUsername("contentlead01", "contentlead01"))
+            .thenReturn(Optional.of(contentLeadUser("artist-1")));
+        when(artistRepository.findBySpotifyId("artist-1")).thenReturn(Optional.of(artist("artist-1")));
+        when(ocrService.extractLicenseDocument(any())).thenReturn(new OcrExtractResponse(true, "OK"));
+        when(audioMetadataService.durationMs(any())).thenReturn(302347);
+        Path[] storedAudio = new Path[1];
+        Path[] storedLicense = new Path[1];
+        when(trackRepository.save(any())).thenAnswer(invocation -> {
+            Track saved = invocation.getArgument(0);
+            saved.setId("uploaded-track");
+            storedAudio[0] = Path.of(saved.getLocalPath().substring(1));
+            return saved;
+        });
+        when(songLicenseRepository.save(any())).thenAnswer(invocation -> {
+            com.laphuth.moodify.entities.SongLicense license = invocation.getArgument(0);
+            storedLicense[0] = Path.of(license.getDocumentSonglicensesUrl().substring(1));
+            return license;
+        });
+        TrackUploadRequest request = new TrackUploadRequest();
+        request.setTitle("Uploaded song");
+        request.setCopyrightOwner("Test owner");
+        request.setDistributionContractCode("TEST-LNAB-20261110-0003");
+        request.setIssueDate(LocalDate.of(2020, 1, 1).toString());
+        request.setPerpetual(true);
+        try {
+            var response = contentLeadCatalogService.uploadTrack("contentlead01", request,
+                new MockMultipartFile("audioFile", "song.mp3", "audio/mpeg", new byte[]{1}), null,
+                new MockMultipartFile("licenseDocFile", "license.pdf", "application/pdf", new byte[]{1}));
+            assertThat(response.duration()).isEqualTo("5:02");
+            var captor = org.mockito.ArgumentCaptor.forClass(Track.class);
+            verify(trackRepository).save(captor.capture());
+            Track saved = captor.getValue();
+            assertThat(saved.getDurationMs()).isEqualTo(302347);
+            assertThat(com.laphuth.moodify.dto.track.TrackResponse.from(saved).durationMs()).isEqualTo(302347);
+            assertThat(saved.getAudioFeatures()).isNull();
+            var licenseCaptor = org.mockito.ArgumentCaptor.forClass(com.laphuth.moodify.entities.SongLicense.class);
+            verify(songLicenseRepository).save(licenseCaptor.capture());
+            assertThat(licenseCaptor.getValue().getDistributionContractCode()).isEqualTo("TEST-LNAB-20261110-0003");
+            assertThat(licenseCaptor.getValue().getDistributorId()).isNull();
+            assertThat(licenseCaptor.getValue().getDistributionContractId()).isNull();
+        } finally {
+            if (storedAudio[0] != null) Files.deleteIfExists(storedAudio[0]);
+            if (storedLicense[0] != null) Files.deleteIfExists(storedLicense[0]);
+        }
+    }
 
     @Test
     void getCurrentCatalogShouldReturnTracksForContentLead() {

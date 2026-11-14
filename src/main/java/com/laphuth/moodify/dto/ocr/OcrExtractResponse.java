@@ -8,6 +8,7 @@ public class OcrExtractResponse {
     private String copyrightOwner;
     private Long distributorId;
     private String distributorName;
+    private boolean directLicensing;
     private String contractId;
     private String issueDate;
     private String expiryDate;
@@ -64,6 +65,9 @@ public class OcrExtractResponse {
     public void setDistributorName(String distributorName) {
         this.distributorName = distributorName;
     }
+
+    public boolean isDirectLicensing() { return directLicensing; }
+    public void setDirectLicensing(boolean directLicensing) { this.directLicensing = directLicensing; }
 
     public String getContractId() {
         return contractId;
