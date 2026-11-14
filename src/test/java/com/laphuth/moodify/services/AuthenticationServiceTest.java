@@ -83,6 +83,56 @@ class AuthenticationServiceTest {
     }
 
     @Test
+    void moderatorProfileRemainsUpdatedWhenReadAgain() {
+        User user = activeUser("existing-hash");
+        user.setRole(UserRole.MODERATOR);
+        when(userRepository.findByEmailOrUsername("moderator01", "moderator01"))
+            .thenReturn(java.util.Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+        authenticationService.updateProfile("moderator01", new UpdateProfileRequest("Nguyễn Văn Moderator", "0901234567"));
+        UserProfileResponse reloaded = authenticationService.getCurrentUserProfile("moderator01");
+        assertThat(reloaded.fullName()).isEqualTo("Nguyễn Văn Moderator");
+        assertThat(reloaded.phone()).isEqualTo("0901234567");
+        assertThat(reloaded.role()).isEqualTo("MODERATOR");
+    }
+
+    @Test
+    void moderatorCanChangePasswordAndOnlyEncodedPasswordIsSaved() {
+        User user = activeUser("old-hash");
+        user.setRole(UserRole.MODERATOR);
+        when(userRepository.findByEmailOrUsername("moderator01", "moderator01"))
+            .thenReturn(java.util.Optional.of(user));
+        when(passwordEncoder.matches("current-password", "old-hash")).thenReturn(true);
+        when(passwordEncoder.encode("new-password")).thenReturn("new-encoded-hash");
+        assertThat(authenticationService.changePassword("moderator01", "current-password", "new-password"))
+            .containsEntry("success", true);
+        assertThat(user.getPassword()).isEqualTo("new-encoded-hash");
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void incorrectCurrentPasswordCannotChangeStoredPassword() {
+        User user = activeUser("old-hash");
+        when(userRepository.findByEmailOrUsername("moderator01", "moderator01"))
+            .thenReturn(java.util.Optional.of(user));
+        assertThatThrownBy(() -> authenticationService.changePassword("moderator01", "wrong-password", "new-password"))
+            .isInstanceOf(ResponseStatusException.class).hasMessageContaining("Mật khẩu hiện tại không đúng");
+        assertThat(user.getPassword()).isEqualTo("old-hash");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void passwordCannotBeChangedToCurrentPassword() {
+        User user = activeUser("old-hash");
+        when(userRepository.findByEmailOrUsername("moderator01", "moderator01"))
+            .thenReturn(java.util.Optional.of(user));
+        when(passwordEncoder.matches("current-password", "old-hash")).thenReturn(true);
+        assertThatThrownBy(() -> authenticationService.changePassword("moderator01", "current-password", "current-password"))
+            .isInstanceOf(ResponseStatusException.class).hasMessageContaining("phải khác mật khẩu hiện tại");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     void registerShouldDefaultToUserRole() {
         stubSuccessfulRegister();
         RegisterRequest request = buildRequest(null);
