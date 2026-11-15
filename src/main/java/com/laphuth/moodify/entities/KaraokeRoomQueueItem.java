@@ -31,6 +31,9 @@ public class KaraokeRoomQueueItem {
     @Column(name = "track_id", nullable = false, length = 64)
     private String trackId;
 
+    @Column(name = "queue_position", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private long queuePosition;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -46,5 +49,7 @@ public class KaraokeRoomQueueItem {
     public void setRequester(User requester) { this.requester = requester; }
     public String getTrackId() { return trackId; }
     public void setTrackId(String trackId) { this.trackId = trackId; }
+    public long getQueuePosition() { return queuePosition; }
+    public void setQueuePosition(long queuePosition) { this.queuePosition = queuePosition; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

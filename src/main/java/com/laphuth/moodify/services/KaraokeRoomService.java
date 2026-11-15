@@ -10,6 +10,7 @@ import com.laphuth.moodify.dto.karaoke.rooms.KaraokeRoomPlaybackTrackResponse;
 import com.laphuth.moodify.dto.karaoke.rooms.KaraokeRoomQueueItemResponse;
 import com.laphuth.moodify.dto.karaoke.rooms.KaraokeRoomSummaryResponse;
 import com.laphuth.moodify.dto.karaoke.rooms.QueueKaraokeSongRequest;
+import com.laphuth.moodify.dto.karaoke.rooms.MoveKaraokeQueueItemRequest;
 
 import com.laphuth.moodify.entities.KaraokeRoom;
 import com.laphuth.moodify.entities.KaraokePlaybackStatus;
@@ -44,6 +45,8 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -282,6 +285,7 @@ public class KaraokeRoomService {
         item.setRoom(room);
         item.setRequester(requester);
         item.setTrackId(trackId);
+        item.setQueuePosition(queueRepository.findLastQueuePosition(roomId) + 1);
         item = queueRepository.saveAndFlush(item);
         return toQueueItem(item, track, requester.getId());
     }
@@ -304,6 +308,33 @@ public class KaraokeRoomService {
     }
 
     @Transactional
+    public boolean moveQueueItem(Long roomId, Long itemId, MoveKaraokeQueueItemRequest request,
+                                 Authentication authentication) {
+        User actor = authenticatedUser(authentication);
+        KaraokeRoom room = lockedRoom(roomId);
+        requireHost(room, actor.getId());
+        List<KaraokeRoomQueueItem> items = new ArrayList<>(queueRepository
+                .findAllByRoom_IdOrderByQueuePositionAscCreatedAtAscIdAsc(roomId));
+        int index = -1;
+        for (int i = 0; i < items.size(); i++) {
+            if (items.get(i).getId().equals(itemId)) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "QUEUE_ITEM_NOT_FOUND");
+        }
+        int target = index + (request.direction() == MoveKaraokeQueueItemRequest.Direction.UP ? -1 : 1);
+        if (target < 0 || target >= items.size()) return false;
+        Collections.swap(items, index, target);
+        // Normalize legacy FIFO rows (all position 0) and persist the new order.
+        for (int i = 0; i < items.size(); i++) items.get(i).setQueuePosition(i);
+        queueRepository.saveAllAndFlush(items);
+        return true;
+    }
+
+    @Transactional
     public boolean closeRoom(Long roomId, Authentication authentication) {
         User actor = authenticatedUser(authentication);
         KaraokeRoom room = roomRepository.findByIdForUpdate(roomId)
@@ -321,7 +352,7 @@ public class KaraokeRoomService {
         room.setPlaybackVersion(room.getPlaybackVersion() + 1);
         memberRepository.findAllByRoom_IdAndLeftAtIsNullOrderByJoinedAtAsc(roomId)
                 .forEach(member -> member.setLeftAt(now));
-        queueRepository.deleteAll(queueRepository.findAllByRoom_IdOrderByCreatedAtAscIdAsc(roomId));
+        queueRepository.deleteAll(queueRepository.findAllByRoom_IdOrderByQueuePositionAscCreatedAtAscIdAsc(roomId));
         return true;
     }
 
@@ -385,7 +416,7 @@ public class KaraokeRoomService {
         List<KaraokeRoomMember> members = memberRepository
                 .findAllByRoom_IdAndLeftAtIsNullOrderByJoinedAtAsc(room.getId());
         List<KaraokeRoomQueueItem> queueItems = queueRepository
-                .findAllByRoom_IdOrderByCreatedAtAscIdAsc(room.getId());
+                .findAllByRoom_IdOrderByQueuePositionAscCreatedAtAscIdAsc(room.getId());
         Map<String, Document> tracks = loadTrackDocuments(queueItems);
 
         List<KaraokeRoomMemberResponse> memberResponses = members.stream()
@@ -516,7 +547,7 @@ public class KaraokeRoomService {
     }
 
     private void startNextTrack(KaraokeRoom room) {
-        List<KaraokeRoomQueueItem> queued = queueRepository.findAllByRoom_IdOrderByCreatedAtAscIdAsc(room.getId());
+        List<KaraokeRoomQueueItem> queued = queueRepository.findAllByRoom_IdOrderByQueuePositionAscCreatedAtAscIdAsc(room.getId());
         KaraokeRoomQueueItem next = queued.isEmpty() ? null : queued.getFirst();
         if (next == null) {
             room.setCurrentTrackId(null);

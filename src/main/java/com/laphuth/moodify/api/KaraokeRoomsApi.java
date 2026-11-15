@@ -11,6 +11,7 @@ import com.laphuth.moodify.dto.karaoke.rooms.KaraokeVoiceTicketResponse;
 import com.laphuth.moodify.dto.karaoke.rooms.KaraokeRoomContributionRequest;
 import com.laphuth.moodify.dto.karaoke.rooms.KaraokeRoomScoreSessionResponse;
 import com.laphuth.moodify.dto.karaoke.rooms.QueueKaraokeSongRequest;
+import com.laphuth.moodify.dto.karaoke.rooms.MoveKaraokeQueueItemRequest;
 import com.laphuth.moodify.services.KaraokeRoomRealtimeGateway;
 import com.laphuth.moodify.services.KaraokeRoomService;
 import com.laphuth.moodify.services.KaraokeMediaTicketService;
@@ -97,6 +98,14 @@ public class KaraokeRoomsApi {
     public ResponseEntity<Void> removeQueueItem(@PathVariable Long roomId, @PathVariable Long itemId,
                                                  Authentication authentication) {
         boolean changed = roomService.removeQueueItem(roomId, itemId, authentication);
+        if (changed) realtimeGateway.publishRoomChanged(roomId, "queue.updated");
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{roomId}/queue/{itemId}/position")
+    public ResponseEntity<Void> moveQueueItem(@PathVariable Long roomId, @PathVariable Long itemId,
+            @Valid @RequestBody MoveKaraokeQueueItemRequest request, Authentication authentication) {
+        boolean changed = roomService.moveQueueItem(roomId, itemId, request, authentication);
         if (changed) realtimeGateway.publishRoomChanged(roomId, "queue.updated");
         return ResponseEntity.noContent().build();
     }
