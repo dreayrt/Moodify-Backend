@@ -176,6 +176,12 @@ def run():
             cursor.execute(f"CREATE DATABASE `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
         sql.select_db(database)
         execute_script(sql, schema_source, database)
+        # CatalogIntegrityReadiness refuses to start without migration v1; the base schema does not contain it.
+        with sql.cursor() as cursor:
+            cursor.execute("CREATE TABLE IF NOT EXISTS catalog_schema_versions (version INT PRIMARY KEY, "
+                           "applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB")
+            cursor.execute("INSERT IGNORE INTO catalog_schema_versions(version) VALUES (1)")
+        sql.commit()
         mongo = client[database]
         now = datetime.now(timezone.utc)
         with sql.cursor() as cursor:
