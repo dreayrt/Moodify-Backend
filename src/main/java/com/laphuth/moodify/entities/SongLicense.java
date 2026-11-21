@@ -48,6 +48,21 @@ public class SongLicense {
     @Column(name = "acquisition_cost_vnd", precision = 18, scale = 0)
     private BigDecimal acquisitionCostVnd;
 
+    @Column(name = "document_sha256", length = 64)
+    private String documentSha256;
+
+    @Column(name = "rights_evidence_status", nullable = false, length = 20)
+    private String rightsEvidenceStatus = "UNVERIFIED";
+
+    @Column(name = "rights_verified_by")
+    private Long rightsVerifiedBy;
+
+    @Column(name = "rights_verified_at")
+    private LocalDateTime rightsVerifiedAt;
+
+    @Column(name = "rights_review_note", length = 1000)
+    private String rightsReviewNote;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -100,6 +115,17 @@ public class SongLicense {
     public void setDocumentSonglicensesUrl(String documentSonglicensesUrl) { this.documentSonglicensesUrl = documentSonglicensesUrl; }
     public BigDecimal getAcquisitionCostVnd() { return acquisitionCostVnd; }
     public void setAcquisitionCostVnd(BigDecimal acquisitionCostVnd) { this.acquisitionCostVnd = acquisitionCostVnd; }
+
+    public String getDocumentSha256() { return documentSha256; }
+    public void setDocumentSha256(String v) { this.documentSha256 = v; }
+    public String getRightsEvidenceStatus() { return rightsEvidenceStatus; }
+    public void setRightsEvidenceStatus(String v) { this.rightsEvidenceStatus = v; }
+    public Long getRightsVerifiedBy() { return rightsVerifiedBy; }
+    public void setRightsVerifiedBy(Long v) { this.rightsVerifiedBy = v; }
+    public LocalDateTime getRightsVerifiedAt() { return rightsVerifiedAt; }
+    public void setRightsVerifiedAt(LocalDateTime v) { this.rightsVerifiedAt = v; }
+    public String getRightsReviewNote() { return rightsReviewNote; }
+    public void setRightsReviewNote(String v) { this.rightsReviewNote = v; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

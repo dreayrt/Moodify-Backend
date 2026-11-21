@@ -367,7 +367,10 @@ public class ContentLeadCatalogService {
         license.setCopyrightOwner(owner);
         license.setDocumentSonglicensesUrl(licenseDocUrl);
         license.setAcquisitionCostVnd(verifiedCost);
-        license.setStatus(com.laphuth.moodify.entities.enums.LicenseStatus.ACTIVE);
+        // Awaiting moderator review: production DB only allows ACTIVE with VERIFIED evidence.
+        license.setStatus(com.laphuth.moodify.entities.enums.LicenseStatus.PENDING);
+        license.setRightsEvidenceStatus("UNVERIFIED");
+        license.setDocumentSha256(sha256Hex(licenseDocFile));
 
         license.setIssueDate(issueDate);
         license.setExpiryDate(expiryDate);
@@ -384,6 +387,18 @@ public class ContentLeadCatalogService {
         contentReviewRequestRepository.save(reviewRequest);
 
         return ContentLeadTrackResponse.from(savedTrack);
+    }
+
+    private static String sha256Hex(MultipartFile file) {
+        try (java.io.InputStream in = file.getInputStream()) {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+            return java.util.HexFormat.of().formatHex(md.digest());
+        } catch (IOException | java.security.NoSuchAlgorithmException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể tính mã băm tài liệu bản quyền.");
+        }
     }
 
     private String saveUploadedFile(MultipartFile file, String subDir) {

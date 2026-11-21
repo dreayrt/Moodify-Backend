@@ -195,8 +195,13 @@ public class ModeratorService {
         }
 
         // Flush the MySQL audit row before changing the MongoDB queue item.
+        final String approvalNote = reason != null && !reason.isBlank() ? reason.trim() : "Đã duyệt bởi kiểm duyệt viên";
         songLicenseRepository.findByTrackId(track.getId()).ifPresent(license -> {
             if ("approve".equals(action)) {
+                license.setRightsEvidenceStatus("VERIFIED");
+                license.setRightsVerifiedBy(moderator.getId());
+                license.setRightsVerifiedAt(LocalDateTime.now());
+                license.setRightsReviewNote(approvalNote);
                 license.setStatus(LicenseStatus.ACTIVE);
             } else if ("reject".equals(action)) {
                 license.setStatus(LicenseStatus.REVOKED);
