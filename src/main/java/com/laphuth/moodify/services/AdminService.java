@@ -55,6 +55,17 @@ public class AdminService {
     private final ArtistRepository artistRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private static final String COMBINED_SONG_FAVORITES_SUBQUERY =
+        "(SELECT ult.id, ult.user_id, ult.track_id, ult.added_at AS created_at, 'LIBRARY' AS fav_source " +
+        " FROM user_library_tracks ult " +
+        " UNION ALL " +
+        " SELECT fs.id, fs.user_id, fs.track_id, fs.created_at AS created_at, 'LEGACY_SONG' AS fav_source " +
+        " FROM favorite_songs fs " +
+        " WHERE NOT EXISTS (" +
+        "   SELECT 1 FROM user_library_tracks ult2 " +
+        "   WHERE ult2.user_id = fs.user_id AND ult2.track_id = fs.track_id" +
+        " ))";
+
     private Track findAdminTrack(String id) {
         if (id == null || id.isBlank()) return null;
         String key = id.trim();
@@ -178,7 +189,10 @@ public class AdminService {
 
         Long totalFavorites = 0L;
         try {
-            totalFavorites = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM favorite_songs", Long.class);
+            totalFavorites = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM " + COMBINED_SONG_FAVORITES_SUBQUERY + " f",
+                Long.class
+            );
         } catch (Exception ignored) {}
 
         Long totalListenedMs = 0L;
@@ -314,7 +328,7 @@ public class AdminService {
     }
 
     public List<Map<String, Object>> getTopFavoritedTracks(int limit) {
-        String sql = "SELECT track_id, COUNT(*) as favorite_count FROM favorite_songs GROUP BY track_id ORDER BY favorite_count DESC LIMIT ?";
+        String sql = "SELECT f.track_id, COUNT(*) as favorite_count FROM " + COMBINED_SONG_FAVORITES_SUBQUERY + " f GROUP BY f.track_id ORDER BY favorite_count DESC LIMIT ?";
         List<Map<String, Object>> rows = jdbcTemplate.query(sql, new Object[]{limit}, (rs, rowNum) -> {
             Map<String, Object> item = new HashMap<>();
             String trackId = rs.getString("track_id");
@@ -448,7 +462,7 @@ public class AdminService {
         // 3. Recent favorites
         try {
             String favSql = "SELECT f.id, u.full_name, f.track_id, f.created_at " +
-                            "FROM favorite_songs f " +
+                            "FROM " + COMBINED_SONG_FAVORITES_SUBQUERY + " f " +
                             "JOIN users u ON f.user_id = u.id " +
                             "ORDER BY f.created_at DESC LIMIT 5";
             jdbcTemplate.query(favSql, (rs, rowNum) -> {
@@ -885,7 +899,7 @@ public class AdminService {
             }
 
             {
-                String likesSql = "SELECT track_id, COUNT(*) as cnt FROM favorite_songs WHERE track_id IN (" + inSql + ") GROUP BY track_id";
+                String likesSql = "SELECT f.track_id, COUNT(*) as cnt FROM " + COMBINED_SONG_FAVORITES_SUBQUERY + " f WHERE f.track_id IN (" + inSql + ") GROUP BY f.track_id";
                 jdbcTemplate.query(likesSql, trackIds.toArray(), (rs, rowNum) -> {
                     likesMap.put(rs.getString("track_id"), rs.getLong("cnt"));
                     return null;
@@ -1886,17 +1900,19 @@ public class AdminService {
 
 
     // ==========================================
-    // 8. FAVORITES MANAGEMENT (MySQL)
+    // 8. FAVORITES MANAGEMENT (MySQL + MongoDB)
     // ==========================================
     public Map<String, Object> getFavorites(String type, String query, int page, int size) {
         String favType = (type != null && !type.isBlank()) ? type.toUpperCase().trim() : "SONG";
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.max(size, 1);
         StringBuilder sql = new StringBuilder();
         List<Object> params = new ArrayList<>();
 
         if ("ARTIST".equals(favType)) {
             sql.append(
                 "SELECT f.id, f.user_id, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, " +
-                "f.artist_id as target_id, 'ARTIST' as item_type, f.created_at " +
+                "f.artist_id as target_id, 'ARTIST' as item_type, 'FAVORITE_ARTISTS' as fav_source, f.created_at " +
                 "FROM favorite_artists f " +
                 "JOIN users u ON f.user_id = u.id " +
                 "WHERE 1=1 "
@@ -1904,30 +1920,40 @@ public class AdminService {
         } else if ("ALBUM".equals(favType)) {
             sql.append(
                 "SELECT f.id, f.user_id, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, " +
-                "f.album_id as target_id, 'ALBUM' as item_type, f.created_at " +
+                "f.album_id as target_id, 'ALBUM' as item_type, 'FAVORITE_ALBUMS' as fav_source, f.created_at " +
                 "FROM favorite_albums f " +
                 "JOIN users u ON f.user_id = u.id " +
                 "WHERE 1=1 "
             );
         } else {
+            favType = "SONG";
             sql.append(
                 "SELECT f.id, f.user_id, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, " +
-                "f.track_id as target_id, 'SONG' as item_type, f.created_at " +
-                "FROM favorite_songs f " +
+                "f.track_id as target_id, 'SONG' as item_type, f.fav_source as fav_source, f.created_at " +
+                "FROM " + COMBINED_SONG_FAVORITES_SUBQUERY + " f " +
                 "JOIN users u ON f.user_id = u.id " +
                 "WHERE 1=1 "
             );
         }
 
         if (query != null && !query.isBlank()) {
-            String q = "%" + query.toLowerCase().trim() + "%";
-            List<String> matchedTargetIds = new ArrayList<>();
+            String trimmedQuery = query.trim();
+            String q = "%" + trimmedQuery.toLowerCase(Locale.ROOT) + "%";
+            Set<String> matchedTargetIds = new LinkedHashSet<>();
             try {
                 if ("ALBUM".equals(favType)) {
-                    List<Album> matchedAlbums = albumRepository.findByNameContainingIgnoreCase(query.trim());
-                    for (Album a : matchedAlbums) {
-                        if (a.getId() != null) matchedTargetIds.add(a.getId());
-                        if (a.getSpotifyId() != null) matchedTargetIds.add(a.getSpotifyId());
+                    if (albumRepository != null) {
+                        List<Album> matchedAlbums = albumRepository.findByNameContainingIgnoreCase(trimmedQuery);
+                        for (Album a : matchedAlbums) {
+                            if (a.getId() != null && !a.getId().isBlank()) {
+                                matchedTargetIds.add(a.getId());
+                                matchedTargetIds.add("mongo:" + a.getId());
+                            }
+                            if (a.getSpotifyId() != null && !a.getSpotifyId().isBlank()) {
+                                matchedTargetIds.add(a.getSpotifyId());
+                                matchedTargetIds.add("mongo:" + a.getSpotifyId());
+                            }
+                        }
                     }
                     try {
                         List<String> mysqlIds = jdbcTemplate.query(
@@ -1935,32 +1961,43 @@ public class AdminService {
                             (rs, rowNum) -> String.valueOf(rs.getLong("id")),
                             q, q
                         );
-                        matchedTargetIds.addAll(mysqlIds);
+                        for (String mysqlId : mysqlIds) {
+                            if (mysqlId != null && !mysqlId.isBlank()) {
+                                matchedTargetIds.add(mysqlId);
+                                matchedTargetIds.add("sql:" + mysqlId);
+                            }
+                        }
                     } catch (Exception ignored) {}
                 } else if ("ARTIST".equals(favType)) {
-                    List<Artist> matchedArtists = artistRepository.findByNameContainingIgnoreCase(query.trim());
-                    for (Artist a : matchedArtists) {
-                        if (a.getId() != null) matchedTargetIds.add(a.getId());
-                        if (a.getSpotifyId() != null) matchedTargetIds.add(a.getSpotifyId());
+                    if (artistRepository != null) {
+                        List<Artist> matchedArtists = artistRepository.findByNameContainingIgnoreCase(trimmedQuery);
+                        for (Artist a : matchedArtists) {
+                            if (a.getId() != null && !a.getId().isBlank()) matchedTargetIds.add(a.getId());
+                            if (a.getSpotifyId() != null && !a.getSpotifyId().isBlank()) matchedTargetIds.add(a.getSpotifyId());
+                        }
                     }
                 } else {
-                    List<Track> matchedTracks = trackRepository.findByNameContainingIgnoreCase(query.trim());
-                    for (Track t : matchedTracks) {
-                        if (t.getId() != null) matchedTargetIds.add(t.getId());
-                        if (t.getSpotifyId() != null) matchedTargetIds.add(t.getSpotifyId());
+                    if (trackRepository != null) {
+                        List<Track> matchedTracks = trackRepository.findByNameContainingIgnoreCase(trimmedQuery);
+                        for (Track t : matchedTracks) {
+                            if (t.getId() != null && !t.getId().isBlank()) matchedTargetIds.add(t.getId());
+                            if (t.getSpotifyId() != null && !t.getSpotifyId().isBlank()) matchedTargetIds.add(t.getSpotifyId());
+                        }
                     }
                 }
             } catch (Exception ignored) {}
 
+            String targetCol = "ALBUM".equals(favType) ? "f.album_id" : "ARTIST".equals(favType) ? "f.artist_id" : "f.track_id";
             if (!matchedTargetIds.isEmpty()) {
-                String targetCol = "ALBUM".equals(favType) ? "f.album_id" : "ARTIST".equals(favType) ? "f.artist_id" : "f.track_id";
                 String inSql = matchedTargetIds.stream().map(id -> "?").collect(Collectors.joining(", "));
-                sql.append("AND (LOWER(u.full_name) LIKE ? OR LOWER(u.email) LIKE ? OR " + targetCol + " IN (" + inSql + ")) ");
+                sql.append("AND (LOWER(u.full_name) LIKE ? OR LOWER(u.email) LIKE ? OR LOWER(" + targetCol + ") LIKE ? OR " + targetCol + " IN (" + inSql + ")) ");
+                params.add(q);
                 params.add(q);
                 params.add(q);
                 params.addAll(matchedTargetIds);
             } else {
-                sql.append("AND (LOWER(u.full_name) LIKE ? OR LOWER(u.email) LIKE ?) ");
+                sql.append("AND (LOWER(u.full_name) LIKE ? OR LOWER(u.email) LIKE ? OR LOWER(" + targetCol + ") LIKE ?) ");
+                params.add(q);
                 params.add(q);
                 params.add(q);
             }
@@ -1970,8 +2007,8 @@ public class AdminService {
         Long total = jdbcTemplate.queryForObject(countSql, params.toArray(), Long.class);
 
         sql.append("ORDER BY f.created_at DESC LIMIT ? OFFSET ?");
-        params.add(size);
-        params.add(page * size);
+        params.add(safeSize);
+        params.add(safePage * safeSize);
 
         List<Map<String, Object>> items = jdbcTemplate.query(sql.toString(), params.toArray(), (rs, rowNum) -> {
             Map<String, Object> m = new HashMap<>();
@@ -1984,21 +2021,17 @@ public class AdminService {
             m.put("targetId", targetId);
             String itType = rs.getString("item_type");
             m.put("type", itType);
+            m.put("source", rs.getString("fav_source"));
             m.put("createdAt", rs.getTimestamp("created_at") != null
                     ? rs.getTimestamp("created_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
                     : "");
 
             if ("SONG".equals(itType)) {
                 Track t = findAdminTrack(targetId);
-                if (t == null) {
-                    t = findAdminTrack(targetId);
-                }
                 if (t != null) {
                     m.put("targetTitle", t.getName());
                     m.put("targetSubtitle", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ Moodify");
-                    m.put("targetCoverUrl", t.getImageUrl() != null && !t.getImageUrl().isBlank()
-                            ? t.getImageUrl()
-                            : "/images/cover-placeholder.svg");
+                    m.put("targetCoverUrl", resolveAdminImageUrl(t.getImageUrl()));
                     m.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
                 } else {
                     m.put("targetTitle", "Bài hát đã lưu");
@@ -2007,9 +2040,12 @@ public class AdminService {
                     m.put("audioUrl", resolveAudioUrl(null));
                 }
             } else if ("ARTIST".equals(itType)) {
-                Artist a = artistRepository.findById(targetId).orElse(null);
-                if (a == null) {
-                    a = artistRepository.findBySpotifyId(targetId).orElse(null);
+                Artist a = null;
+                if (artistRepository != null && targetId != null && !targetId.isBlank()) {
+                    a = artistRepository.findById(targetId).orElse(null);
+                    if (a == null) {
+                        a = artistRepository.findBySpotifyId(targetId).orElse(null);
+                    }
                 }
                 if (a != null) {
                     m.put("targetTitle", a.getName());
@@ -2020,9 +2056,7 @@ public class AdminService {
                         subtitle += " • " + a.getFollowers() + " người theo dõi";
                     }
                     m.put("targetSubtitle", subtitle);
-                    m.put("targetCoverUrl", a.getImageUrl() != null && !a.getImageUrl().isBlank()
-                            ? a.getImageUrl()
-                            : "/images/cover-placeholder.svg");
+                    m.put("targetCoverUrl", resolveAdminImageUrl(a.getImageUrl()));
                 } else {
                     m.put("targetTitle", "Không tìm thấy thông tin nghệ sĩ");
                     m.put("targetSubtitle", "Chưa có thông tin nghệ sĩ");
@@ -2040,8 +2074,8 @@ public class AdminService {
         Map<String, Object> result = new HashMap<>();
         result.put("items", items);
         result.put("total", total != null ? total : 0);
-        result.put("page", page);
-        result.put("size", size);
+        result.put("page", safePage);
+        result.put("size", safeSize);
         result.put("type", favType);
         return result;
     }
@@ -2051,19 +2085,20 @@ public class AdminService {
     }
 
     public List<Map<String, Object>> getFavoriteLeaderboard(String type) {
-        String favType = (type != null && !type.isBlank()) ? type.toUpperCase().trim() : "SONG";
-        String targetCol = "track_id";
-        String tableName = "favorite_songs";
+        String rawType = (type != null && !type.isBlank()) ? type.toUpperCase(Locale.ROOT).trim() : "SONG";
+        String favType = "ALBUM".equals(rawType) ? "ALBUM" : "ARTIST".equals(rawType) ? "ARTIST" : "SONG";
+        String targetCol = "f.track_id";
+        String fromExpr = COMBINED_SONG_FAVORITES_SUBQUERY + " f";
 
         if ("ALBUM".equals(favType)) {
-            targetCol = "album_id";
-            tableName = "favorite_albums";
+            targetCol = "f.album_id";
+            fromExpr = "favorite_albums f";
         } else if ("ARTIST".equals(favType)) {
-            targetCol = "artist_id";
-            tableName = "favorite_artists";
+            targetCol = "f.artist_id";
+            fromExpr = "favorite_artists f";
         }
 
-        String sql = "SELECT " + targetCol + " as target_id, COUNT(*) as fav_count FROM " + tableName + " GROUP BY " + targetCol + " ORDER BY fav_count DESC LIMIT 10";
+        String sql = "SELECT " + targetCol + " as target_id, COUNT(*) as fav_count FROM " + fromExpr + " GROUP BY " + targetCol + " ORDER BY fav_count DESC LIMIT 50";
         List<Map<String, Object>> rows = jdbcTemplate.query(sql, (rs, rowNum) -> {
             Map<String, Object> m = new HashMap<>();
             String targetId = rs.getString("target_id");
@@ -2073,122 +2108,194 @@ public class AdminService {
             return m;
         });
 
+        Map<String, Map<String, Object>> merged = new LinkedHashMap<>();
         for (Map<String, Object> r : rows) {
-            String targetId = (String) r.get("targetId");
+            String targetId = Objects.toString(r.get("targetId"), "");
+            long count = r.get("favoriteCount") instanceof Number n ? n.longValue() : 0L;
+            String canonicalKey;
+
             if ("SONG".equals(favType)) {
                 Track t = findAdminTrack(targetId);
                 if (t != null) {
+                    canonicalKey = (t.getId() != null && !t.getId().isBlank()) ? "track:" + t.getId() : "raw:" + targetId;
                     r.put("targetTitle", t.getName());
                     r.put("targetSubtitle", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ Moodify");
-                    r.put("targetCoverUrl", t.getImageUrl() != null && !t.getImageUrl().isBlank() ? t.getImageUrl() : "/images/cover-placeholder.svg");
+                    r.put("targetCoverUrl", resolveAdminImageUrl(t.getImageUrl()));
                     r.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
                 } else {
+                    canonicalKey = "raw:" + targetId;
                     r.put("targetTitle", "Bài hát đã lưu");
                     r.put("targetSubtitle", "Chưa có thông tin nghệ sĩ");
                     r.put("targetCoverUrl", "/images/cover-placeholder.svg");
                     r.put("audioUrl", resolveAudioUrl(null));
                 }
             } else if ("ARTIST".equals(favType)) {
-                Artist a = artistRepository.findById(targetId).orElse(null);
-                if (a == null) a = artistRepository.findBySpotifyId(targetId).orElse(null);
+                Artist a = null;
+                if (artistRepository != null && !targetId.isBlank()) {
+                    a = artistRepository.findById(targetId).orElse(null);
+                    if (a == null) a = artistRepository.findBySpotifyId(targetId).orElse(null);
+                }
                 if (a != null) {
+                    canonicalKey = (a.getId() != null && !a.getId().isBlank()) ? "artist:" + a.getId() : "raw:" + targetId;
                     r.put("targetTitle", a.getName());
                     String sub = (a.getGenres() != null && !a.getGenres().isEmpty()) ? String.join(", ", a.getGenres()) : "Chưa có thông tin nghệ sĩ";
                     if (a.getFollowers() != null && a.getFollowers() > 0) {
                         sub += " • " + a.getFollowers() + " người theo dõi";
                     }
                     r.put("targetSubtitle", sub);
-                    r.put("targetCoverUrl", a.getImageUrl() != null && !a.getImageUrl().isBlank() ? a.getImageUrl() : "/images/cover-placeholder.svg");
+                    r.put("targetCoverUrl", resolveAdminImageUrl(a.getImageUrl()));
                 } else {
+                    canonicalKey = "raw:" + targetId;
                     r.put("targetTitle", "Không tìm thấy thông tin nghệ sĩ");
                     r.put("targetSubtitle", "Chưa có thông tin nghệ sĩ");
                     r.put("targetCoverUrl", "/images/cover-placeholder.svg");
                 }
             } else { // ALBUM
                 Map<String, Object> albInfo = resolveAlbumDetail(targetId);
+                canonicalKey = Objects.toString(albInfo.get("canonicalKey"), targetId);
                 r.put("targetTitle", albInfo.get("title"));
                 r.put("targetSubtitle", albInfo.get("subtitle"));
                 r.put("targetCoverUrl", albInfo.get("coverUrl"));
             }
+
+            Map<String, Object> existing = merged.get(canonicalKey);
+            if (existing == null) {
+                merged.put(canonicalKey, r);
+            } else {
+                long prev = existing.get("favoriteCount") instanceof Number n ? n.longValue() : 0L;
+                existing.put("favoriteCount", prev + count);
+                String existingTargetId = Objects.toString(existing.get("targetId"), "");
+                if (!existingTargetId.contains(":") && targetId.contains(":")) {
+                    existing.put("targetId", targetId);
+                }
+            }
         }
-        return rows;
+
+        return merged.values().stream()
+                .sorted((a, b) -> Long.compare(
+                        b.get("favoriteCount") instanceof Number nb ? nb.longValue() : 0L,
+                        a.get("favoriteCount") instanceof Number na ? na.longValue() : 0L
+                ))
+                .limit(10)
+                .toList();
     }
 
     private Map<String, Object> resolveAlbumDetail(String targetId) {
         Map<String, Object> detail = new HashMap<>();
-        // 1. Check MongoDB Album
-        try {
-            Album alb = albumRepository.findById(targetId).orElse(null);
-            if (alb == null) {
-                alb = albumRepository.findBySpotifyId(targetId).orElse(null);
-            }
-            if (alb != null) {
-                detail.put("title", alb.getName());
-                String subtitle = alb.getArtistName() != null ? alb.getArtistName() : "Album tuyển chọn";
-                if (alb.getTotalTracks() != null && alb.getTotalTracks() > 0) {
-                    subtitle += " • " + alb.getTotalTracks() + " bài hát";
-                }
-                if (alb.getReleaseDate() != null && !alb.getReleaseDate().isBlank()) {
-                    subtitle += " (" + alb.getReleaseDate() + ")";
-                }
-                detail.put("subtitle", subtitle);
-                detail.put("coverUrl", alb.getImageUrl() != null && !alb.getImageUrl().isBlank()
-                        ? alb.getImageUrl()
-                        : "/images/cover-placeholder.svg");
-                return detail;
-            }
-        } catch (Exception ignored) {}
+        if (targetId == null || targetId.isBlank()) {
+            detail.put("canonicalKey", "");
+            detail.put("title", "Album tuyển chọn");
+            detail.put("subtitle", "Album tuyển chọn");
+            detail.put("coverUrl", "/images/cover-placeholder.svg");
+            return detail;
+        }
 
-        // 2. Check MySQL albums table
-        try {
-            List<Map<String, Object>> mysqlAlbums = jdbcTemplate.query(
-                "SELECT a.id, a.title, a.description, a.cover_url, a.release_date, u.full_name as artist_name, " +
-                "(SELECT COUNT(*) FROM album_tracks at WHERE at.album_id = a.id) as track_count " +
-                "FROM albums a " +
-                "LEFT JOIN users u ON a.user_id = u.id " +
-                "WHERE a.id = ?",
-                (rs, rowNum) -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("title", rs.getString("title"));
-                    String artistName = rs.getString("artist_name") != null ? rs.getString("artist_name") : "Chưa có thông tin nghệ sĩ";
-                    int trackCount = rs.getInt("track_count");
-                    String subtitle = artistName;
+        String raw = targetId.trim();
+        boolean sqlOnly = raw.startsWith("sql:");
+        boolean mongoOnly = raw.startsWith("mongo:");
+        String strippedId = sqlOnly ? raw.substring(4).trim() : mongoOnly ? raw.substring(6).trim() : raw;
+
+        // 1. Check MongoDB Album
+        if (!sqlOnly && albumRepository != null && !strippedId.isBlank()) {
+            try {
+                Album alb = albumRepository.findById(strippedId).orElse(null);
+                if (alb == null) {
+                    alb = albumRepository.findBySpotifyId(strippedId).orElse(null);
+                }
+                if (alb != null) {
+                    String canonicalId = (alb.getId() != null && !alb.getId().isBlank()) ? alb.getId() : strippedId;
+                    detail.put("canonicalKey", "mongo:" + canonicalId);
+                    detail.put("title", (alb.getName() != null && !alb.getName().isBlank()) ? alb.getName() : "Album tuyển chọn");
+                    String subtitle = (alb.getArtistName() != null && !alb.getArtistName().isBlank()) ? alb.getArtistName() : "Album tuyển chọn";
+                    int trackCount = (alb.getTotalTracks() != null && alb.getTotalTracks() > 0)
+                            ? alb.getTotalTracks()
+                            : (alb.getTrackIds() != null ? alb.getTrackIds().size() : 0);
                     if (trackCount > 0) {
                         subtitle += " • " + trackCount + " bài hát";
                     }
-                    java.sql.Date relDate = rs.getDate("release_date");
-                    if (relDate != null) {
-                        subtitle += " (" + relDate.toString() + ")";
+                    if (alb.getReleaseDate() != null && !alb.getReleaseDate().isBlank()) {
+                        subtitle += " (" + alb.getReleaseDate() + ")";
                     }
-                    m.put("subtitle", subtitle);
-                    String coverUrl = rs.getString("cover_url");
-                    m.put("coverUrl", coverUrl != null && !coverUrl.isBlank()
-                            ? coverUrl
-                            : "/images/cover-placeholder.svg");
-                    return m;
-                },
-                targetId
-            );
-            if (!mysqlAlbums.isEmpty()) {
-                return mysqlAlbums.get(0);
-            }
-        } catch (Exception ignored) {}
+                    detail.put("subtitle", subtitle);
+                    detail.put("coverUrl", resolveAdminImageUrl(alb.getImageUrl()));
+                    return detail;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 2. Check MySQL albums table
+        if (!mongoOnly && strippedId.matches("\\d{1,18}")) {
+            try {
+                long numericId = Long.parseLong(strippedId);
+                List<Map<String, Object>> mysqlAlbums = jdbcTemplate.query(
+                    "SELECT a.id, a.title, a.description, a.cover_url, a.release_date, u.full_name as artist_name, " +
+                    "(SELECT COUNT(*) FROM album_tracks at WHERE at.album_id = a.id) as track_count " +
+                    "FROM albums a " +
+                    "LEFT JOIN users u ON a.user_id = u.id " +
+                    "WHERE a.id = ?",
+                    (rs, rowNum) -> {
+                        Map<String, Object> m = new HashMap<>();
+                        m.put("canonicalKey", "sql:" + rs.getLong("id"));
+                        m.put("title", rs.getString("title"));
+                        String artistName = rs.getString("artist_name") != null ? rs.getString("artist_name") : "Chưa có thông tin nghệ sĩ";
+                        int trackCount = rs.getInt("track_count");
+                        String subtitle = artistName;
+                        if (trackCount > 0) {
+                            subtitle += " • " + trackCount + " bài hát";
+                        }
+                        java.sql.Date relDate = rs.getDate("release_date");
+                        if (relDate != null) {
+                            subtitle += " (" + relDate.toString() + ")";
+                        }
+                        m.put("subtitle", subtitle);
+                        m.put("coverUrl", resolveAdminImageUrl(rs.getString("cover_url")));
+                        return m;
+                    },
+                    numericId
+                );
+                if (!mysqlAlbums.isEmpty()) {
+                    return mysqlAlbums.get(0);
+                }
+            } catch (Exception ignored) {}
+        }
 
         // 3. Fallback
-        detail.put("title", "Album #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
+        detail.put("canonicalKey", raw);
+        detail.put("title", "Album #" + (strippedId.length() > 6 ? strippedId.substring(strippedId.length() - 6) : strippedId));
         detail.put("subtitle", "Album tuyển chọn");
         detail.put("coverUrl", "/images/cover-placeholder.svg");
         return detail;
     }
 
     public void deleteFavorite(Long id) {
-        deleteFavorite(id, null);
+        deleteFavorite(id, null, null);
     }
 
     public void deleteFavorite(Long id, String type) {
+        deleteFavorite(id, type, null);
+    }
+
+    public void deleteFavorite(Long id, String type, String source) {
         String normalized = type != null ? type.trim().toUpperCase(Locale.ROOT) : "";
+        String normalizedSource = source != null ? source.trim().toUpperCase(Locale.ROOT) : "";
+
         if ("SONG".equals(normalized) || "TRACK".equals(normalized)) {
-            int deleted = jdbcTemplate.update("DELETE FROM favorite_songs WHERE id = ?", id);
+            if ("LIBRARY".equals(normalizedSource)) {
+                if (deleteUserLibrarySongById(id) == 0) {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Favorite song record not found");
+                }
+                return;
+            }
+            if ("LEGACY_SONG".equals(normalizedSource)) {
+                if (jdbcTemplate.update("DELETE FROM favorite_songs WHERE id = ?", id) == 0) {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Favorite song record not found");
+                }
+                return;
+            }
+            int deleted = deleteUserLibrarySongById(id);
+            if (deleted == 0) {
+                deleted = jdbcTemplate.update("DELETE FROM favorite_songs WHERE id = ?", id);
+            }
             if (deleted == 0) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Favorite song record not found");
             }
@@ -2208,7 +2315,10 @@ public class AdminService {
             }
             return;
         }
-        int deleted = jdbcTemplate.update("DELETE FROM favorite_songs WHERE id = ?", id);
+        int deleted = deleteUserLibrarySongById(id);
+        if (deleted == 0) {
+            deleted = jdbcTemplate.update("DELETE FROM favorite_songs WHERE id = ?", id);
+        }
         if (deleted == 0) {
             deleted = jdbcTemplate.update("DELETE FROM favorite_artists WHERE id = ?", id);
         }
@@ -2218,6 +2328,31 @@ public class AdminService {
         if (deleted == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Favorite record not found");
         }
+    }
+
+    private int deleteUserLibrarySongById(Long id) {
+        Map<String, Object> row = null;
+        try {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT user_id, track_id FROM user_library_tracks WHERE id = ?",
+                id
+            );
+            if (!rows.isEmpty()) {
+                row = rows.get(0);
+            }
+        } catch (Exception ignored) {}
+
+        int deleted = jdbcTemplate.update("DELETE FROM user_library_tracks WHERE id = ?", id);
+        if (deleted > 0 && row != null && row.get("user_id") != null && row.get("track_id") != null) {
+            try {
+                jdbcTemplate.update(
+                    "DELETE FROM favorite_songs WHERE user_id = ? AND track_id = ?",
+                    ((Number) row.get("user_id")).longValue(),
+                    row.get("track_id").toString()
+                );
+            } catch (Exception ignored) {}
+        }
+        return deleted;
     }
 
     // ==========================================
@@ -2435,7 +2570,7 @@ public class AdminService {
             Long favCount = 0L;
             try {
                 favCount = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM favorite_songs WHERE track_id = ?",
+                    "SELECT COUNT(*) FROM " + COMBINED_SONG_FAVORITES_SUBQUERY + " f WHERE f.track_id = ?",
                     new Object[]{trackId},
                     Long.class
                 );

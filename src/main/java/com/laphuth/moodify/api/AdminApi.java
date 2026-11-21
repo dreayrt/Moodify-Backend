@@ -351,9 +351,10 @@ public class AdminApi {
     @DeleteMapping("/favorites/{id}")
     public ResponseEntity<Map<String, Object>> deleteFavorite(
             @PathVariable Long id,
-            @RequestParam(required = false) String type
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String source
     ) {
-        adminService.deleteFavorite(id, type);
+        adminService.deleteFavorite(id, type, source);
         return ResponseEntity.ok(Map.of("success", true, "message", "Lượt yêu thích đã được xóa khỏi hệ thống"));
     }
 
