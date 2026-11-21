@@ -316,10 +316,12 @@ public class ContentLeadCatalogService {
         track.setArtistName(fullArtist);
         track.setFeaturedArtists(feat.isEmpty() ? null : feat);
         track.setArtistSpotifyId(artistSpotifyId);
-        // MongoDB tracks validator requires artist_ids.
-        track.setArtistIds(artistSpotifyId != null && !artistSpotifyId.isBlank()
-            ? new java.util.ArrayList<>(List.of(artistSpotifyId))
-            : new java.util.ArrayList<>());
+        // MongoDB tracks validator requires artist_ids as 24-hex ObjectId strings (artists._id).
+        java.util.ArrayList<String> artistIds = new java.util.ArrayList<>();
+        if (artist != null && artist.getId() != null && artist.getId().matches("^[0-9a-f]{24}$")) {
+            artistIds.add(artist.getId());
+        }
+        track.setArtistIds(artistIds);
         track.setAlbumName(request.getAlbumName() != null && !request.getAlbumName().isBlank() ? request.getAlbumName().trim() : null);
         track.setGenres(List.of(request.getGenre() != null && !request.getGenre().isBlank() ? request.getGenre().trim() : "Pop"));
         track.setExplicit(request.isExplicit());
