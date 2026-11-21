@@ -32,6 +32,7 @@ import worker
 import compact_storage
 
 
+CF_MODEL_VERSION = "implicit-als-fixture"
 DISPOSABLE_DATABASE = re.compile(r"moodify_recommendation_test_[a-f0-9]{12}")
 FIXTURE_TABLES = frozenset({
     "users", "user_library_tracks", "favorite_songs", "favorite_artists", "favorite_albums",
@@ -634,14 +635,16 @@ def run():
         call("/api/admin/recommendations/controls",user=3,method="PUT",body=control_body,expected=409)
 
         mongo.recommendation_state.replace_one({"_id":"profile:1"},{"_id":"profile:1","kind":"PROFILE","user_id":1,
-            "as_of":datetime.now(timezone.utc),"collaborative_scores":{"track-6":1.0},"model_version":"fixture-cf"},upsert=True)
+            "as_of":datetime.now(timezone.utc),"collaborative_scores":{"track-6":1.0},"model_version":CF_MODEL_VERSION,
+            # RecommendationStore.validatedProfile() only trusts profiles that carry accepted training evidence.
+            "feature_schema_version":"behavior-v1","training_evaluation":{"accepted":True,"reason":"fixture"}},upsert=True)
         with_cf=call("/api/recommendations/home")
-        assert with_cf["modelVersion"]=="fixture-cf"
+        assert with_cf["modelVersion"]==CF_MODEL_VERSION, f"CF profile was not served: {str(with_cf)[:400]}"
         controls(collaborative=False)
         without_cf=call("/api/recommendations/home")
         assert without_cf["modelVersion"]=="content-session-v1"
         assert mix_versions(with_cf)!=mix_versions(without_cf)
-        assert mongo.recommendation_state.find_one({"_id":"profile:1"})["model_version"]=="fixture-cf"
+        assert mongo.recommendation_state.find_one({"_id":"profile:1"})["model_version"]==CF_MODEL_VERSION
         controls(collaborative=False,campaigns=False)
         extra_campaign=call("/api/admin/recommendations/campaigns",user=3,method="POST",body={**campaign,"name":"Flag fixture",
             "targets":[{"entityType":"TRACK","entityId":"track-6"}]})["id"]
@@ -700,7 +703,7 @@ def run():
             sql.commit()
         finally: mongo.command({"collMod":"recommendation_events","validator":{},"validationLevel":"strict"})
         metrics=call("/api/admin/recommendations/operations",user=3)["runtime"]["counters"]
-        assert metrics["playback.requests"]>0 and metrics["recommendation.unavailable"]>=1
+        assert metrics["playback.requests"]>0 and metrics["recommendation.home.unavailable"]>=1
         assert any(key.startswith("playback.latency_ms.") for key in metrics)
         checked.append("outcome circuit and drop metrics preserve committed sessions during repeated Mongo analytics failures")
         # An empty successful ranking and a failed dependency must have different metrics.
