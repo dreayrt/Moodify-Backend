@@ -42,6 +42,7 @@ def test_lost_lock_blocks_profile_publication(monkeypatch, tmp_path):
 
 
 def test_reconnect_reacquires_lock_and_retries_failed_training(monkeypatch, tmp_path):
+    monkeypatch.setenv('RECOMMENDATIONS_TRAINING_ENABLED', 'true'); monkeypatch.delenv('RECOMMENDATIONS_DEMO_CATALOG_ENABLED', raising=False)
     connections = [Connection(owned=0), Connection()]
     used, training, delays = [], [], []
     def connect(env):
