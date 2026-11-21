@@ -201,9 +201,15 @@ def run():
                 cursor.execute("INSERT INTO users(id,full_name,email,username,role,status) VALUES (%s,%s,%s,%s,%s,'ACTIVE')",
                                (index, f"Recommendation test {index}", f"test{index}@example.invalid", f"rec_test_{index}", role))
             for i in range(12):
-                cursor.execute("""INSERT INTO song_licenses(track_id,license_type,copyright_owner,status,issue_date,expiry_date)
-                                  VALUES (%s,'TEST','Isolated integration fixture','ACTIVE',%s,%s)""",
-                               (f"track-{i}", (now-timedelta(days=1)).date(), (now+timedelta(days=30)).date()))
+                # CatalogLicensePolicy only serves tracks whose rights evidence is fully verified.
+                cursor.execute("""INSERT INTO song_licenses(track_id,license_type,copyright_owner,status,issue_date,expiry_date,
+                                      document_songlicenses_url,document_sha256,rights_evidence_status,
+                                      rights_verified_by,rights_verified_at,rights_review_note)
+                                  VALUES (%s,'DIGITAL_STREAMING','Isolated integration fixture','ACTIVE',%s,%s,
+                                      %s,%s,'VERIFIED',3,%s,'Isolated integration fixture')""",
+                               (f"track-{i}", (now-timedelta(days=1)).date(), (now+timedelta(days=30)).date(),
+                                f"fixture/license-{i}.pdf", hashlib.sha256(f"fixture-license-{i}".encode()).hexdigest(),
+                                now.replace(tzinfo=None)))
             cursor.execute("INSERT INTO user_library_tracks(user_id,track_id) VALUES (1,'external-0')")
             cursor.execute("UPDATE users SET status='BANNED' WHERE id=5")
         sql.commit()
@@ -319,7 +325,7 @@ def run():
         call('/api/emotions/recommend',user=None,method='POST',body={'text':'fixture happy'},expected=401)
         call('/api/emotions/recommend',user=5,method='POST',body={'text':'fixture happy'},expected=(401,403))
         mood=call('/api/emotions/recommend',method='POST',body={'text':'fixture happy','limit':10})
-        assert mood['candidateCount']==12 and mood['matchStatus']=='MATCHED'
+        assert mood['candidateCount']==12 and mood['matchStatus']=='MATCHED', f"unexpected mood response: {str(mood)[:600]}"
         call('/api/emotions/recommend',method='POST',body={'text':'   '},expected=400)
         call('/api/emotions/recommend',method='POST',body={'text':'fixture-model-error'},expected=502)
         checked.append('free ACTIVE mood access uses the strict licensed catalog; anonymous/banned/blank/model error rejected')
