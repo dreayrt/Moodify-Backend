@@ -1,5 +1,6 @@
 package com.laphuth.moodify.services;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Component;
 public class AudioUrlResolver {
     private static String baseUrl = "";
     private static String backendBaseUrl = "";
+    private static CatalogPreviewTickets previews;
 
     public AudioUrlResolver(
         @Value("${audio.server.base-url:}") String configuredBaseUrl,
@@ -31,6 +33,26 @@ public class AudioUrlResolver {
         } else {
             backendBaseUrl = "";
         }
+    }
+
+    @Autowired
+    public void setPreviews(CatalogPreviewTickets value) {
+        previews = value;
+    }
+
+    private static String withPreview(String url, String path) {
+        return previews == null ? url : previews.previewForCurrentStaff(url, path);
+    }
+
+    public static String resolveProtectedDocumentUrl(String path) {
+        if (path == null || path.isBlank()) {
+            return path;
+        }
+        String normalized = path.startsWith("/") ? path : "/" + path;
+        if (!normalized.startsWith("/uploads/licenses/")) {
+            return path;
+        }
+        return withPreview(backendBaseUrl + normalized, normalized);
     }
 
     public static String getBaseUrl() {
@@ -74,8 +96,8 @@ public class AudioUrlResolver {
             return clean;
         }
         if (clean.startsWith("uploads/")) {
-            return backendBaseUrl.isEmpty() ? ("/" + clean) : (backendBaseUrl + "/" + clean);
+            return withPreview(backendBaseUrl.isEmpty() ? ("/" + clean) : (backendBaseUrl + "/" + clean), "/" + clean);
         }
-        return baseUrl.isEmpty() ? ("/" + clean) : (baseUrl + clean);
+        return withPreview(baseUrl.isEmpty() ? ("/" + clean) : (baseUrl + clean), "/" + clean);
     }
 }

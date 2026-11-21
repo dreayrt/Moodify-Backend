@@ -1,5 +1,6 @@
 package com.laphuth.moodify.dto.moderator;
 
+import com.laphuth.moodify.services.AudioUrlResolver;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.repositories.SongLicenseDetailsProjection;
 
@@ -73,7 +74,7 @@ public record ModerationQueueTrackResponse(
             license != null ? license.getIssueDate() : null,
             license != null ? license.getExpiryDate() : null,
             license != null ? license.getLicenseStatus() : null,
-            license != null ? license.getLicenseDocumentUrl() : null,
+            license != null ? AudioUrlResolver.resolveProtectedDocumentUrl(license.getLicenseDocumentUrl()) : null,
             track.getAudioFeatures()
         );
     }

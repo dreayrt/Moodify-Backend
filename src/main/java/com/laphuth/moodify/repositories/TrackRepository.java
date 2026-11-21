@@ -17,6 +17,7 @@ public interface TrackRepository extends MongoRepository<Track, String> {
     Page<Track> findByModerationStatusIn(java.util.List<String> moderationStatuses, Pageable pageable);
     Page<Track> findByArtistSpotifyId(String artistSpotifyId, Pageable pageable);
     List<Track> findByArtistSpotifyId(String artistSpotifyId);
+    List<Track> findByLocalPathIn(List<String> localPaths);
 
     @Query("{ 'status': { '$regex': '^published$', '$options': 'i' }, 'visibility': { '$regex': '^public$', '$options': 'i' }, 'local_path': { '$type': 'string', '$regex': '[A-Za-z0-9]' }, 'moderation_status': { '$not': { '$regex': '^rejected$', '$options': 'i' } } }")
     Page<Track> findCatalogPublic(Pageable pageable);
