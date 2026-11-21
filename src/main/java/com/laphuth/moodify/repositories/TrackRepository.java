@@ -16,7 +16,8 @@ public interface TrackRepository extends MongoRepository<Track, String> {
     java.util.List<Track> findByModerationStatusIgnoreCase(String moderationStatus);
     Page<Track> findByModerationStatus(String moderationStatus, Pageable pageable);
     Page<Track> findByModerationStatusIn(java.util.List<String> moderationStatuses, Pageable pageable);
-    @Query("{ '$or': [ { 'artist_spotify_id': ?0 }, { 'artist_ids': ?0 } ] }")
+    /** Content lead catalog page: tracks retired by a delete (deletion_status set) are not listed. */
+    @Query("{ '$and': [ { '$or': [ { 'artist_spotify_id': ?0 }, { 'artist_ids': ?0 } ] }, { 'deletion_status': { '$exists': false } } ] }")
     Page<Track> findByArtistSpotifyId(String artistSpotifyId, Pageable pageable);
     @Query("{ '$or': [ { 'artist_spotify_id': ?0 }, { 'artist_ids': ?0 } ] }")
     List<Track> findByArtistSpotifyId(String artistSpotifyId);
@@ -40,9 +41,11 @@ public interface TrackRepository extends MongoRepository<Track, String> {
     
     List<Track> findBySpotifyIdIn(List<String> spotifyIds);
 
+    /** Same as the page query above, filtered by a literal (already quoted) case-insensitive name regex. */
+    @Query("{ '$and': [ { '$or': [ { 'artist_spotify_id': ?0 }, { 'artist_ids': ?0 } ] }, { 'name': { '$regex': ?1, '$options': 'i' } }, { 'deletion_status': { '$exists': false } } ] }")
     Page<Track> findByArtistSpotifyIdAndNameContainingIgnoreCase(
         String artistSpotifyId,
-        String name,
+        String literalNameRegex,
         Pageable pageable
     );
 

@@ -212,7 +212,7 @@ public class ContentLeadCatalogService {
         }
         return trackRepository.findByArtistSpotifyIdAndNameContainingIgnoreCase(
             artistSpotifyId,
-            query.trim(),
+            java.util.regex.Pattern.quote(query.trim()),
             pageable
         );
     }

@@ -56,7 +56,10 @@ public class ModeratorService {
     }
 
     public List<ModerationQueueTrackResponse> getPendingQueue() {
-        List<Track> pendingTracks = trackRepository.findByModerationStatusIn(List.of("pending", "PENDING"));
+        // A deleted (retired) track is archived; it must not be reviewed again.
+        List<Track> pendingTracks = trackRepository.findByModerationStatusIn(List.of("pending", "PENDING")).stream()
+            .filter(t -> !"archived".equalsIgnoreCase(t.getStatus()))
+            .toList();
         if (pendingTracks.isEmpty()) {
             return List.of();
         }

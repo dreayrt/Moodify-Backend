@@ -153,6 +153,26 @@ class ContentLeadCatalogServiceTest {
     }
 
     @Test
+    void getCurrentCatalogSearchShouldPassLiteralNameRegex() {
+        User user = contentLeadUser("44ZNcW1ZSGB9oqX1ALnriH");
+        when(userRepository.findByEmailOrUsername("contentlead01", "contentlead01"))
+            .thenReturn(Optional.of(user));
+        when(artistRepository.findBySpotifyId("44ZNcW1ZSGB9oqX1ALnriH"))
+            .thenReturn(Optional.of(artist("44ZNcW1ZSGB9oqX1ALnriH")));
+        when(trackRepository.findByArtistSpotifyIdAndNameContainingIgnoreCase(
+            eq("44ZNcW1ZSGB9oqX1ALnriH"), eq(java.util.regex.Pattern.quote("a.b")), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of()));
+        when(albumRepository.findByArtistSpotifyId(eq("44ZNcW1ZSGB9oqX1ALnriH"), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of()));
+
+        ContentLeadCatalogResponse response = contentLeadCatalogService.getCurrentCatalog("contentlead01", 0, 50, " a.b ");
+
+        assertThat(response.tracks()).isEmpty();
+        verify(trackRepository).findByArtistSpotifyIdAndNameContainingIgnoreCase(
+            eq("44ZNcW1ZSGB9oqX1ALnriH"), eq(java.util.regex.Pattern.quote("a.b")), any(Pageable.class));
+    }
+
+    @Test
     void getCurrentCatalogShouldRejectNonContentLeadUser() {
         User user = contentLeadUser(null);
         user.setRole(UserRole.USER);
