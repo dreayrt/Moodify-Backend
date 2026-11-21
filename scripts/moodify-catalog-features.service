@@ -1,0 +1,15 @@
+[Unit]
+Description=Discover and analyze missing Moodify audio features
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+UMask=0077
+NoNewPrivileges=yes
+TimeoutStartSec=420
+TimeoutStopSec=10
+ExecStart=/opt/moodify/recommendation-operations/catalog-features.sh
+ExecStopPost=-/usr/bin/docker rm -f moodify-catalog-features-run

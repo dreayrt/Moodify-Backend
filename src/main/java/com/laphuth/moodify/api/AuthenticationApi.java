@@ -59,21 +59,45 @@ public class AuthenticationApi {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(
-            @Valid @RequestBody RefreshTokenRequest request
+    public ResponseEntity<?> refresh(
+            @Valid @RequestBody RefreshTokenRequest request,
+            @RequestHeader(value = "X-Device-Uuid", required = false) String deviceUuid
     ) {
-        return ResponseEntity.ok(authenticationService.refresh(request));
+        try {
+            return ResponseEntity.ok(authenticationService.refresh(request, deviceUuid));
+        } catch (org.springframework.web.server.ResponseStatusException ex) {
+            if (ex.getStatusCode().value() == HttpStatus.FORBIDDEN.value()
+                    && "DEVICE_REVOKED".equals(ex.getReason())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(java.util.Map.of(
+                    "error", "DEVICE_REVOKED",
+                    "message", "Phiên đăng nhập trên thiết bị này đã bị thu hồi. Vui lòng đăng nhập lại."
+                ));
+            }
+            throw ex;
+        }
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
-        authenticationService.logout();
+    public ResponseEntity<Void> logout(
+            Authentication authentication,
+            @RequestHeader(value = "X-Device-Uuid", required = false) String deviceUuid,
+            @RequestBody(required = false) java.util.Map<String, String> body
+    ) {
+        String principal = (authentication != null && authentication.isAuthenticated())
+                ? authentication.getName()
+                : null;
+        String refreshToken = body != null ? body.get("refreshToken") : null;
+        String resolvedDeviceUuid = (deviceUuid != null && !deviceUuid.isBlank())
+                ? deviceUuid
+                : (body != null ? body.get("deviceUuid") : null);
+        authenticationService.logout(principal, resolvedDeviceUuid, refreshToken);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/change-password")
     public ResponseEntity<java.util.Map<String, Object>> changePassword(
             Authentication authentication,
+            @RequestHeader(value = "X-Device-Uuid", required = false) String deviceUuid,
             @RequestBody(required = false) java.util.Map<String, String> body
     ) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -81,6 +105,11 @@ public class AuthenticationApi {
         }
         String currentPassword = body != null ? body.get("currentPassword") : null;
         String newPassword = body != null ? body.get("newPassword") : null;
+        if (deviceUuid != null && !deviceUuid.isBlank()) {
+            return ResponseEntity.ok(
+                    authenticationService.changePassword(authentication.getName(), currentPassword, newPassword, deviceUuid)
+            );
+        }
         return ResponseEntity.ok(
                 authenticationService.changePassword(authentication.getName(), currentPassword, newPassword)
         );

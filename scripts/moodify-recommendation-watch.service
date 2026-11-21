@@ -1,0 +1,13 @@
+[Unit]
+Description=Watch recommendation monitoring, catalog scans and seed sessions
+After=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+UMask=0077
+NoNewPrivileges=yes
+EnvironmentFile=-/etc/moodify/recommendation-watch.env
+TimeoutStartSec=75
+ExecStart=/usr/bin/python3 /opt/moodify/recommendation-operations/watch.py

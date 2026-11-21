@@ -6,6 +6,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class AudioUrlResolver {
     private static String baseUrl = "";
+    private static CatalogPreviewTickets previews;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPreviews(CatalogPreviewTickets value) { previews=value; }
+    private static String withPreview(String url,String path) { return previews==null?url:previews.previewForCurrentStaff(url,path); }
+    public static String resolveProtectedDocumentUrl(String path) {
+        if(path==null||path.isBlank())return path;
+        String normalized=path.startsWith("/")?path:"/"+path;
+        if(!normalized.startsWith("/uploads/licenses/"))return path;
+        return withPreview(backendBaseUrl+normalized,normalized);
+    }
+
     private static String backendBaseUrl = "";
 
     public AudioUrlResolver(
@@ -64,7 +75,7 @@ public class AudioUrlResolver {
 
     public static String resolve(String localPath) {
         if (localPath == null || localPath.isBlank()) {
-            return baseUrl.isEmpty() ? "" : (baseUrl + "data/audio/xesi-hoaprox/3b2kCFZhX9GYnQ58qL1cAM_vo-tinh.mp3");
+            return "";
         }
         String clean = localPath.trim().replace("\\", "/");
         if (clean.startsWith("/")) {
@@ -74,8 +85,8 @@ public class AudioUrlResolver {
             return clean;
         }
         if (clean.startsWith("uploads/")) {
-            return backendBaseUrl.isEmpty() ? ("/" + clean) : (backendBaseUrl + "/" + clean);
+            return withPreview(backendBaseUrl.isEmpty() ? ("/" + clean) : (backendBaseUrl + "/" + clean),"/"+clean);
         }
-        return baseUrl.isEmpty() ? ("/" + clean) : (baseUrl + clean);
+        return withPreview(baseUrl.isEmpty() ? ("/" + clean) : (baseUrl + clean),"/"+clean);
     }
 }

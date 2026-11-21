@@ -26,6 +26,13 @@ public class SongLicenseLifecycleScheduler {
 
     private final SongLicenseRepository songLicenseRepository;
     private final TrackRepository trackRepository;
+    private org.springframework.data.mongodb.core.MongoTemplate mongo;
+    private boolean demoCatalogEnabled;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setMongo(org.springframework.data.mongodb.core.MongoTemplate value) { mongo=value; }
+    @org.springframework.beans.factory.annotation.Value("${recommendations.demo-catalog-enabled:false}")
+    public void setDemoCatalogEnabled(boolean value) { demoCatalogEnabled=value; }
+
 
     public SongLicenseLifecycleScheduler(
         SongLicenseRepository songLicenseRepository,
@@ -57,54 +64,40 @@ public class SongLicenseLifecycleScheduler {
      * Xử lý đồng bộ các hợp đồng hết hạn sang MongoDB
      * @return Số lượng bản ghi đã được xử lý
      */
-    @Transactional
     public int processExpiredLicenses() {
-        LocalDate today = LocalDate.now();
-        List<SongLicense> expiredLicenses = songLicenseRepository.findExpiredLicenses();
-        if (expiredLicenses.isEmpty()) {
-            expiredLicenses = songLicenseRepository.findAllExpiredLicenses(today);
+        LocalDate today=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        List<SongLicense> expiredLicenses=songLicenseRepository.findAllExpiredLicenses(today);
+        java.util.Set<String> affected=new java.util.LinkedHashSet<>();
+        for(SongLicense license:expiredLicenses) {
+            if(license.getStatus()==LicenseStatus.ACTIVE && license.getExpiryDate()!=null && license.getExpiryDate().isBefore(today)) {
+                songLicenseRepository.expireIfActive(license.getId(),today);
+            }
+            if(license.getTrackId()!=null)affected.add(license.getTrackId());
         }
-
-        if (expiredLicenses.isEmpty()) {
-            log.debug("[License Lifecycle] Không có hợp đồng bản quyền nào hết hạn hôm nay ({}).", today);
-            return 0;
-        }
-
-        log.warn("[License Lifecycle] Phát hiện {} hợp đồng bản quyền đã hết hạn hoặc quá hạn trước ngày {}.",
-            expiredLicenses.size(), today);
-
-        int processed = 0;
-        for (SongLicense license : expiredLicenses) {
+        int processed=0;
+        for(String raw:affected) {
             try {
-                // 1. Cập nhật trạng thái SongLicense sang EXPIRED nếu chưa phải là EXPIRED
-                if (license.getStatus() != LicenseStatus.EXPIRED) {
-                    license.setStatus(LicenseStatus.EXPIRED);
-                    songLicenseRepository.save(license);
-                }
-
-                // 2. Cập nhật trạng thái Track trong MongoDB thành archived và ẩn khỏi phát hành công khai
-                String trackId = license.getTrackId();
-                if (trackId != null && !trackId.isBlank()) {
-                    trackRepository.findById(trackId).ifPresent(track -> {
-                        boolean needsUpdate = !"archived".equalsIgnoreCase(track.getStatus())
-                            || !"private".equalsIgnoreCase(track.getVisibility());
-                        if (needsUpdate) {
-                            track.setStatus("archived");
-                            track.setVisibility("private");
-                            track.setUpdatedAt(Instant.now());
-                            trackRepository.save(track);
-                            log.info("[License Lifecycle] Đã vô hiệu hóa bài hát '{}' (ID: {}) do hợp đồng hết hạn vào ngày {}.",
-                                track.getName(), track.getId(), license.getExpiryDate());
-                        }
-                    });
-                }
-                processed++;
-            } catch (Exception e) {
-                log.error("[License Lifecycle] Lỗi khi xử lý hợp đồng ID {} cho trackId {}: {}",
-                    license.getId(), license.getTrackId(), e.getMessage(), e);
+                Track track=trackRepository.findById(raw).or(()->trackRepository.findBySpotifyId(raw)).orElse(null);
+                if(track==null)continue;
+                java.util.List<String> ids=new java.util.ArrayList<>(java.util.List.of(track.getId()));
+                if(track.getSpotifyId()!=null)ids.add(track.getSpotifyId());
+                SongLicense current=CatalogLicensePolicy.select(track,songLicenseRepository.findByTrackIdIn(ids),today);
+                if(CatalogLicensePolicy.effective(current,today) && CatalogLicensePolicy.evidenceReady(track,current,demoCatalogEnabled))continue;
+                if("archived".equalsIgnoreCase(track.getStatus()) && "private".equalsIgnoreCase(track.getVisibility()))continue;
+                if(mongo==null)throw new IllegalStateException("Partial Mongo update service unavailable");
+                var query=org.springframework.data.mongodb.core.query.Query.query(
+                    org.springframework.data.mongodb.core.query.Criteria.where("_id").is(track.getId())
+                        .and("status").is(track.getStatus()).and("visibility").is(track.getVisibility()));
+                var update=new org.springframework.data.mongodb.core.query.Update().set("status","archived").set("visibility","private")
+                    .set("rights_hold",java.util.Map.of("reason","NO_EFFECTIVE_LICENSE","at",Instant.now()))
+                    .set("updated_at",Instant.now());
+                processed+=mongo.updateFirst(query,update,Track.class).getModifiedCount();
+            } catch(Exception failure) {
+                // SQL expiry is durable. All expired rows are revisited, so a Mongo
+                // failure is retried next time; serving already denies by live dates.
+                log.error("[License Lifecycle] Retry required for {}",raw,failure);
             }
         }
-
         return processed;
     }
 }

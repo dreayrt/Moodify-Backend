@@ -198,42 +198,4 @@ public class TrafficAnalyticsApi {
         ));
     }
 
-    @PostMapping("/seed-traffic")
-    public ResponseEntity<Map<String, Object>> seedTraffic(
-        Authentication authentication,
-        @RequestParam(defaultValue = "150") int count
-    ) {
-        List<String> targetIds = new ArrayList<>();
-
-        if (authentication != null && authentication.isAuthenticated()) {
-            Optional<User> userOpt = userRepository.findByEmailOrUsername(authentication.getName(), authentication.getName());
-            if (userOpt.isPresent()) {
-                User user = userOpt.get();
-                String artistSpotifyId = user.getArtistSpotifyId();
-                if (artistSpotifyId != null && !artistSpotifyId.isBlank()) {
-                    List<Track> tracks = trackRepository.findByArtistSpotifyId(artistSpotifyId.trim());
-                    for (Track t : tracks) {
-                        if (t.getId() != null) targetIds.add(t.getId());
-                        if (t.getSpotifyId() != null) targetIds.add(t.getSpotifyId());
-                    }
-                }
-            }
-        }
-
-        if (targetIds.isEmpty()) {
-            List<Track> sampleTracks = trackRepository.findByModerationStatus("approved");
-            for (int i = 0; i < Math.min(5, sampleTracks.size()); i++) {
-                Track t = sampleTracks.get(i);
-                if (t.getId() != null) targetIds.add(t.getId());
-            }
-        }
-
-        int inserted = platformTrafficService.seedTrafficData(targetIds, count);
-        return ResponseEntity.ok(Map.of(
-            "success", true,
-            "inserted", inserted,
-            "targetCount", targetIds.size(),
-            "message", "Successfully seeded " + inserted + " traffic events"
-        ));
-    }
 }

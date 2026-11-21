@@ -1,79 +1,35 @@
 package com.laphuth.moodify.services;
-
-import com.laphuth.moodify.entities.SongLicense;
-import com.laphuth.moodify.entities.Track;
+import com.laphuth.moodify.entities.*;
 import com.laphuth.moodify.entities.enums.LicenseStatus;
-import com.laphuth.moodify.repositories.SongLicenseRepository;
-import com.laphuth.moodify.repositories.TrackRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.laphuth.moodify.repositories.*;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.*;
+import com.mongodb.client.result.UpdateResult;
+import java.time.*;import java.util.*;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
-@ExtendWith(MockitoExtension.class)
+import static org.mockito.ArgumentMatchers.*;
 class SongLicenseLifecycleSchedulerTest {
-
-    @Mock
-    private SongLicenseRepository songLicenseRepository;
-
-    @Mock
-    private TrackRepository trackRepository;
-
-    @InjectMocks
-    private SongLicenseLifecycleScheduler scheduler;
-
-    @Test
-    void processExpiredLicensesShouldDisableExpiredTracks() {
-        LocalDate yesterday = LocalDate.now().minusDays(1);
-
-        SongLicense expiredLicense = new SongLicense();
-        expiredLicense.setId(101L);
-        expiredLicense.setTrackId("mongo-track-expired");
-        expiredLicense.setStatus(LicenseStatus.ACTIVE);
-        expiredLicense.setExpiryDate(yesterday);
-
-        Track activeTrack = new Track();
-        activeTrack.setStatus("published");
-        activeTrack.setVisibility("public");
-
-        when(songLicenseRepository.findExpiredLicenses())
-            .thenReturn(List.of(expiredLicense));
-        when(trackRepository.findById("mongo-track-expired"))
-            .thenReturn(Optional.of(activeTrack));
-
-        int processed = scheduler.processExpiredLicenses();
-
-        assertThat(processed).isEqualTo(1);
-        assertThat(expiredLicense.getStatus()).isEqualTo(LicenseStatus.EXPIRED);
-        assertThat(activeTrack.getStatus()).isEqualTo("archived");
-        assertThat(activeTrack.getVisibility()).isEqualTo("private");
-
-        verify(songLicenseRepository).save(expiredLicense);
-        verify(trackRepository).save(activeTrack);
+    SongLicenseRepository licenses=mock(SongLicenseRepository.class);TrackRepository tracks=mock(TrackRepository.class);MongoTemplate mongo=mock(MongoTemplate.class);
+    SongLicenseLifecycleScheduler scheduler=new SongLicenseLifecycleScheduler(licenses,tracks);
+    Track track() { Track t=new Track();t.setId("one");t.setStatus("published");t.setVisibility("public");return t; }
+    SongLicense license(long id,boolean expired) { SongLicense l=new SongLicense();l.setId(id);l.setTrackId("one");l.setStatus(LicenseStatus.ACTIVE);l.setIssueDate(LocalDate.now().minusDays(20));l.setExpiryDate(LocalDate.now().plusDays(expired?-1:5));l.setRightsEvidenceStatus("VERIFIED");l.setLicenseType("DIGITAL_STREAMING");l.setRightsVerifiedBy(1L);l.setRightsVerifiedAt(java.time.LocalDateTime.now());l.setRightsReviewNote("Fixture document review");l.setDocumentSha256("a".repeat(64));l.setDocumentSonglicensesUrl("a.pdf");return l; }
+    @Test void allExpiredRowsAreConsideredAndMongoUsesPartialUpdates() {
+        scheduler.setMongo(mongo);var old=license(1,true);old.setStatus(LicenseStatus.EXPIRED);var newly=license(2,true);
+        when(licenses.findAllExpiredLicenses(any())).thenReturn(List.of(old,newly));when(tracks.findById("one")).thenReturn(Optional.of(track()));
+        when(licenses.findByTrackIdIn(anyList())).thenReturn(List.of(old,newly));when(mongo.updateFirst(any(Query.class),any(Update.class),eq(Track.class))).thenReturn(UpdateResult.acknowledged(1,1L,null));
+        assertThat(scheduler.processExpiredLicenses()).isEqualTo(1);verify(licenses).expireIfActive(eq(2L),any());verify(tracks,never()).save(any());
     }
-
-    @Test
-    void processExpiredLicensesShouldDoNothingWhenNoExpiredLicenses() {
-        when(songLicenseRepository.findExpiredLicenses())
-            .thenReturn(List.of());
-        when(songLicenseRepository.findAllExpiredLicenses(any(LocalDate.class)))
-            .thenReturn(List.of());
-
-        int processed = scheduler.processExpiredLicenses();
-
-        assertThat(processed).isEqualTo(0);
-        verify(songLicenseRepository, never()).save(any());
-        verify(trackRepository, never()).save(any());
+    @Test void anExpiredOldAgreementDoesNotArchiveRenewal() {
+        scheduler.setMongo(mongo);var old=license(1,true);old.setStatus(LicenseStatus.EXPIRED);var current=license(2,false);
+        when(licenses.findAllExpiredLicenses(any())).thenReturn(List.of(old));when(tracks.findById("one")).thenReturn(Optional.of(track()));when(licenses.findByTrackIdIn(anyList())).thenReturn(List.of(old,current));
+        assertThat(scheduler.processExpiredLicenses()).isZero();verifyNoInteractions(mongo);
+    }
+    @Test void failedMongoUpdateIsRetriedEvenAfterSqlExpiry() {
+        scheduler.setMongo(mongo);var expired=license(1,true);expired.setStatus(LicenseStatus.EXPIRED);
+        when(licenses.findAllExpiredLicenses(any())).thenReturn(List.of(expired));when(tracks.findById("one")).thenReturn(Optional.of(track()));when(licenses.findByTrackIdIn(anyList())).thenReturn(List.of(expired));
+        when(mongo.updateFirst(any(Query.class),any(Update.class),eq(Track.class))).thenThrow(new IllegalStateException("temporary")).thenReturn(UpdateResult.acknowledged(1,1L,null));
+        assertThat(scheduler.processExpiredLicenses()).isZero();assertThat(scheduler.processExpiredLicenses()).isEqualTo(1);
     }
 }

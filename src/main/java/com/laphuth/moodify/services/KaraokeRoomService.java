@@ -56,6 +56,10 @@ import java.util.UUID;
 
 @Service
 public class KaraokeRoomService {
+    private TrackService servingTracks;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setServingTracks(TrackService value) { servingTracks=value; }
+
     private static final int MAX_ROOM_CAPACITY = 6;
     private static final String TRACKS = "tracks";
     private static final String ASSETS = "karaoke_assets";
@@ -614,7 +618,7 @@ public class KaraokeRoomService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TRACK_NOT_AVAILABLE");
         }
         Document track = mongo.findById(new ObjectId(trackId), Document.class, TRACKS);
-        if (!isCatalogVisible(track)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TRACK_NOT_AVAILABLE");
+        if (!isCatalogVisible(track) || servingTracks==null || !servingTracks.isTrackPubliclyAvailable(servingTracks.getTrackEntity(trackId))) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TRACK_NOT_AVAILABLE");
         return track;
     }
 
@@ -623,9 +627,9 @@ public class KaraokeRoomService {
         String status = track.getString("status");
         String visibility = track.getString("visibility");
         String moderation = track.getString("moderation_status");
-        return !(status != null && (status.equalsIgnoreCase("archived") || status.equalsIgnoreCase("disabled") || status.equalsIgnoreCase("draft")))
-            && !(visibility != null && (visibility.equalsIgnoreCase("private") || visibility.equalsIgnoreCase("unlisted")))
-            && !(moderation != null && moderation.equalsIgnoreCase("rejected"));
+        return "published".equalsIgnoreCase(status) && "public".equalsIgnoreCase(visibility)
+            && PublicTrackPolicy.hasAudioPath(track.getString("local_path"))
+            && "approved".equalsIgnoreCase(moderation);
     }
 
     private static boolean hasStorageKey(Document assets, String role) {

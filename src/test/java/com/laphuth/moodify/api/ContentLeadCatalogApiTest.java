@@ -121,7 +121,7 @@ class ContentLeadCatalogApiTest {
     }
 
     @Test
-    void getMyCatalogWithLegacyArtistsMeShouldReturnOkForContentLead() throws Exception {
+    void getMyCatalogWithSupportedNamespaceShouldReturnOkForContentLead() throws Exception {
         ContentLeadProfileResponse profile = new ContentLeadProfileResponse(
             "mongo-id-1",
             "spotify-artist-1",
@@ -147,7 +147,8 @@ class ContentLeadCatalogApiTest {
         when(contentLeadCatalogService.getCurrentCatalog(eq("contentlead01"), anyInt(), anyInt(), any()))
             .thenReturn(catalogResponse);
 
-        mockMvc.perform(get("/api/artists/me/catalog").with(user("contentlead01").roles("CONTENT_LEAD")))
+        // The supported resource namespace is /api/content-lead/me/catalog.
+        mockMvc.perform(get("/api/content-lead/me/catalog").with(user("contentlead01").roles("CONTENT_LEAD")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.artist.name").value("Sơn Tùng M-TP"));
     }

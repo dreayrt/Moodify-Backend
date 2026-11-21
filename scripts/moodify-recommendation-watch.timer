@@ -1,0 +1,10 @@
+[Unit]
+Description=Check recommendation operations every five minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target

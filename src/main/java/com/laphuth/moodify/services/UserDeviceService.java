@@ -301,4 +301,24 @@ public class UserDeviceService {
         );
         return count;
     }
+
+    public int revokeDeviceByUuid(Long userId, String deviceUuid) {
+        if (userId == null || deviceUuid == null || deviceUuid.isBlank()) {
+            return 0;
+        }
+        return jdbcTemplate.update(
+            "UPDATE user_devices SET status = 'REVOKED' WHERE user_id = ? AND device_uuid = ? AND status = 'ACTIVE'",
+            userId, deviceUuid.trim()
+        );
+    }
+
+    public int revokeAllDevicesForUser(Long userId) {
+        if (userId == null) {
+            return 0;
+        }
+        return jdbcTemplate.update(
+            "UPDATE user_devices SET status = 'REVOKED' WHERE user_id = ? AND status = 'ACTIVE'",
+            userId
+        );
+    }
 }

@@ -79,47 +79,6 @@ public class SubscriptionApi {
     }
 
     /**
-     * Đăng ký mua gói dịch vụ (Sandbox Payment).
-     */
-    @PostMapping("/subscriptions/subscribe")
-    public ResponseEntity<Map<String, Object>> subscribe(
-        Authentication authentication,
-        @RequestBody Map<String, Object> request
-    ) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        Object pkgIdObj = request.get("packageId");
-        if (pkgIdObj == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "packageId là bắt buộc.");
-        }
-        Long packageId = Long.valueOf(pkgIdObj.toString());
-        String paymentMethod = (String) request.getOrDefault("paymentMethod", "QR_TRANSFER");
-
-        return ResponseEntity.ok(subscriptionService.subscribePackage(authentication.getName(), packageId, paymentMethod));
-    }
-
-    /**
-     * Endpoint DEV/TEST: Bật / Tắt Premium tức thì để demo và kiểm thử.
-     * Chỉ ADMIN mới được phép tự cấp/gỡ premium (trước đây mọi user đăng nhập đều gọi được).
-     */
-    @PostMapping("/subscriptions/dev-toggle")
-    public ResponseEntity<Map<String, Object>> devToggle(
-        Authentication authentication,
-        @RequestBody Map<String, Object> request
-    ) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        boolean enable = Boolean.TRUE.equals(request.get("enable"));
-        Integer days = request.get("days") != null ? Integer.valueOf(request.get("days").toString()) : 30;
-        Long packageId = request.get("packageId") != null ? Long.valueOf(request.get("packageId").toString()) : null;
-
-        return ResponseEntity.ok(subscriptionService.devTogglePremium(authentication.getName(), enable, days, packageId));
-    }
-
-    /**
      * Tải nhạc ngoại tuyến (Offline Download): Yêu cầu tài khoản có gói Premium.
      */
     @GetMapping("/subscriptions/tracks/{trackSpotifyId}/download")

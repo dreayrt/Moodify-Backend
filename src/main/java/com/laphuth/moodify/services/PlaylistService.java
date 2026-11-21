@@ -16,6 +16,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class PlaylistService {
+    private TrackService servingTracks;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setServingTracks(TrackService value) { servingTracks=value; }
+
     private final PlaylistRepository playlistRepository;
     private final TrackRepository trackRepository;
     private final com.laphuth.moodify.repositories.UserRepository users;
@@ -181,7 +185,7 @@ public class PlaylistService {
         List<TrackResponse> ordered = new ArrayList<>();
         for (String id : spotifyIds) {
             Track t = trackMap.get(id);
-            if (t != null) {
+            if (servingTracks != null && servingTracks.isTrackPubliclyAvailable(t)) {
                 ordered.add(TrackResponse.fromSummary(t));
             }
         }

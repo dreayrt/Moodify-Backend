@@ -49,6 +49,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/karaoke")
 public class KaraokeController {
+    private com.laphuth.moodify.services.TrackService servingTracks;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setServingTracks(com.laphuth.moodify.services.TrackService value) { servingTracks=value; }
+    private boolean licensed(Document track) {
+        return isCatalogVisible(track) && servingTracks!=null && servingTracks.isTrackPubliclyAvailable(servingTracks.getTrackEntity(track.get("_id").toString()));
+    }
+
     private static final String ASSETS = "karaoke_assets";
     private static final String SESSIONS = "karaoke_sessions";
     private static final long MAX_RECORDING_BYTES = 80L * 1024 * 1024;
@@ -102,7 +109,7 @@ public class KaraokeController {
         String normalizedQuery = normalizeSearchText(query);
         List<Map<String, Object>> matching = new ArrayList<>();
         for (Document track : tracks) {
-            if (!isCatalogVisible(track)) continue;
+            if (!licensed(track)) continue;
             String songId = track.getObjectId("_id").toHexString();
             Document asset = assetBySongId.get(songId);
             if (asset == null) continue;
@@ -491,7 +498,7 @@ public class KaraokeController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Track was not found");
         }
         Document track = mongo.findOne(Query.query(Criteria.where("_id").is(new ObjectId(songId))), Document.class, "tracks");
-        if (!isCatalogVisible(track)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Track was not found");
+        if (!licensed(track)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Track was not found");
         return track;
     }
 
@@ -500,9 +507,9 @@ public class KaraokeController {
         String status = track.getString("status");
         String visibility = track.getString("visibility");
         String moderation = track.getString("moderation_status");
-        return !(status != null && (status.equalsIgnoreCase("archived") || status.equalsIgnoreCase("disabled") || status.equalsIgnoreCase("draft")))
-            && !(visibility != null && (visibility.equalsIgnoreCase("private") || visibility.equalsIgnoreCase("unlisted")))
-            && !(moderation != null && moderation.equalsIgnoreCase("rejected"));
+        return "published".equalsIgnoreCase(status) && "public".equalsIgnoreCase(visibility)
+            && "approved".equalsIgnoreCase(moderation)
+            && com.laphuth.moodify.services.PublicTrackPolicy.hasAudioPath(track.getString("local_path"));
     }
 
     private Document readyAsset(String songId) {

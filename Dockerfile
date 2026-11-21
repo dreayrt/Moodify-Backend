@@ -20,7 +20,7 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Required to measure uploaded audio without depending on Essentia availability.
-RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg poppler-utils && ffprobe -version && ffmpeg -version && pdftotext -v
 
 # Create unprivileged user for security
 RUN addgroup -S moodify && adduser -S moodify -G moodify

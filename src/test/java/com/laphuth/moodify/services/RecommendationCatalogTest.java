@@ -17,7 +17,7 @@ class RecommendationCatalogTest {
         track.setStatus("published"); track.setVisibility("public"); track.setModerationStatus("approved");
         track.setLocalPath("data/audio/song.mp3"); return track;
     }
-    SongLicense license() { SongLicense license = new SongLicense(); license.setStatus(LicenseStatus.ACTIVE); return license; }
+    SongLicense license() { SongLicense license = new SongLicense(); license.setStatus(LicenseStatus.ACTIVE); license.setIssueDate(LocalDate.of(2020,1,1));license.setRightsEvidenceStatus("VERIFIED");license.setLicenseType("DIGITAL_STREAMING");license.setRightsVerifiedBy(1L);license.setRightsVerifiedAt(java.time.LocalDateTime.now());license.setRightsReviewNote("Fixture document review");license.setDocumentSonglicensesUrl("a.pdf");license.setDocumentSha256("a".repeat(64)); return license; }
     @Test void strictPolicyRequiresAnActiveLicense() {
         assertThat(RecommendationCatalog.eligible(track(),null,today,true)).isFalse();
         assertThat(RecommendationCatalog.eligible(track(),license(),today,true)).isTrue();

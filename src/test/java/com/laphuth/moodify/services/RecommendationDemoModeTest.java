@@ -14,7 +14,7 @@ class RecommendationDemoModeTest {
         var tracks=mock(TrackRepository.class);var licenses=mock(SongLicenseRepository.class);
         Track track=new Track();track.setId("demo");track.setStatus("published");track.setVisibility("public");
         track.setModerationStatus("approved");track.setLocalPath("data/audio/demo.mp3");track.setRecommendationDemo(Map.of("simulated",true));
-        SongLicense license=new SongLicense();license.setId(7L);license.setTrackId("demo");license.setStatus(LicenseStatus.ACTIVE);license.setLicenseType("DEMO_SIMULATED");
+        SongLicense license=new SongLicense();license.setId(7L);license.setTrackId("demo");license.setStatus(LicenseStatus.ACTIVE);license.setLicenseType("DEMO_SIMULATED");license.setRightsEvidenceStatus("SIMULATED");license.setIssueDate(LocalDate.now().minusDays(1));license.setDocumentSonglicensesUrl("demo.pdf");license.setDocumentSha256("a".repeat(64));
         when(tracks.findAll()).thenReturn(List.of(track));when(licenses.findByTrackIdIn(anyList())).thenReturn(List.of(license));
         var normal=new RecommendationCatalog(tracks,licenses,mock(PlaylistRepository.class),mock(UserRepository.class),true,false);
         var demo=new RecommendationCatalog(tracks,licenses,mock(PlaylistRepository.class),mock(UserRepository.class),true,true);

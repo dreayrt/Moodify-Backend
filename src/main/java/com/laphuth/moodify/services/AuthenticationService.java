@@ -43,6 +43,10 @@ import java.util.UUID;
 
 @Service
 public class AuthenticationService {
+    private CatalogIntegrityService catalogIntegrity;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setCatalogIntegrity(CatalogIntegrityService value) { catalogIntegrity=value; }
+
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthenticationService.class);
 
     private final UserRepository userRepository;
@@ -81,6 +85,7 @@ public class AuthenticationService {
         this.userDeviceService = userDeviceService;
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public AuthResponse register(RegisterRequest request) {
         validateRegisterRequest(request);
 
@@ -127,11 +132,12 @@ public class AuthenticationService {
                 ? request.stageName().trim()
                 : request.fullName().trim();
 
-            String artistSpotifyId = "artist_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+            String artistSpotifyId = new org.bson.types.ObjectId().toHexString();
 
             Artist artist = new Artist();
             artist.setName(stageName);
-            artist.setSpotifyId(artistSpotifyId);
+            artist.setId(artistSpotifyId);
+            artist.setSpotifyId(null);
             artist.setImageUrl(newUser.getAvatarUrl());
             artist.setFollowers(0);
             artist.setPopularity(0);
@@ -153,7 +159,8 @@ public class AuthenticationService {
             artist.setCreatedAt(Instant.now());
             artist.setUpdatedAt(Instant.now());
             artistRepository.save(artist);
-
+            if(catalogIntegrity==null)throw new IllegalStateException("Catalog integrity service unavailable");
+            catalogIntegrity.registerArtist(artist);
             newUser.setArtistSpotifyId(artistSpotifyId);
 
         }
@@ -212,6 +219,15 @@ public class AuthenticationService {
             String currentPassword,
             String newPassword
     ) {
+        return changePassword(principal, currentPassword, newPassword, null);
+    }
+
+    public java.util.Map<String, Object> changePassword(
+            String principal,
+            String currentPassword,
+            String newPassword,
+            String currentDeviceUuid
+    ) {
         User currentUser = userRepository
             .findByEmailOrUsername(
                 normalizeIdentifier(principal),
@@ -237,6 +253,14 @@ public class AuthenticationService {
 
         currentUser.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(currentUser);
+
+        if (userDeviceService != null) {
+            if (currentDeviceUuid != null && !currentDeviceUuid.isBlank()) {
+                userDeviceService.revokeOtherDevices(currentUser.getId(), currentDeviceUuid);
+            } else {
+                userDeviceService.revokeAllDevicesForUser(currentUser.getId());
+            }
+        }
 
         return java.util.Map.of(
             "success", true,
@@ -513,6 +537,10 @@ public class AuthenticationService {
     }
 
     public AuthResponse refresh(RefreshTokenRequest request) {
+        return refresh(request, null);
+    }
+
+    public AuthResponse refresh(RefreshTokenRequest request, String deviceUuid) {
         String rawRefreshToken = request.refreshToken().trim();
         String username;
 
@@ -546,11 +574,40 @@ public class AuthenticationService {
             );
         }
 
+        if (deviceUuid != null && !deviceUuid.isBlank() && userDeviceService != null) {
+            if (!userDeviceService.isDeviceActive(currentUser.getId(), deviceUuid)) {
+                throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "DEVICE_REVOKED"
+                );
+            }
+        }
+
         return buildAuthResponse(currentUser);
     }
 
     public void logout() {
         SecurityContextHolder.clearContext();
+    }
+
+    public void logout(String principal, String deviceUuid, String rawRefreshToken) {
+        try {
+            String resolvedPrincipal = (principal != null && !principal.isBlank()) ? principal : null;
+            if (resolvedPrincipal == null && rawRefreshToken != null && !rawRefreshToken.isBlank()) {
+                try {
+                    resolvedPrincipal = jwtService.extractUsername(rawRefreshToken.trim());
+                } catch (JwtException | IllegalArgumentException ignored) {
+                    resolvedPrincipal = null;
+                }
+            }
+            if (resolvedPrincipal != null && deviceUuid != null && !deviceUuid.isBlank() && userDeviceService != null) {
+                String normalized = normalizeIdentifier(resolvedPrincipal);
+                userRepository.findByEmailOrUsername(normalized, normalized)
+                    .ifPresent(user -> userDeviceService.revokeDeviceByUuid(user.getId(), deviceUuid));
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     public UserProfileResponse getCurrentUserProfile(String principal) {

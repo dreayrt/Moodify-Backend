@@ -10,6 +10,13 @@ import java.util.Map;
 
 @Document(collection = "tracks")
 public class Track {
+    @Field("audio_hash") private String audioHash;
+    @Field("has_synced_lyrics") private Boolean hasSyncedLyrics;
+    public String getAudioHash() { return audioHash; }
+    public void setAudioHash(String value) { audioHash=value; }
+    public Boolean getHasSyncedLyrics() { return hasSyncedLyrics; }
+    public void setHasSyncedLyrics(Boolean value) { hasSyncedLyrics=value; }
+
     @Id
     private String id;
 
@@ -222,6 +229,16 @@ public class Track {
 
         @Field("acousticness")
         private Double acousticness;
+
+        @Field("analysis_version") private String analysisVersion;
+        @Field("assessment") private String assessment;
+        @Field("source_audio_sha256") private String sourceAudioSha256;
+        public String getAnalysisVersion() { return analysisVersion; }
+        public void setAnalysisVersion(String value) { analysisVersion=value; }
+        public String getAssessment() { return assessment; }
+        public void setAssessment(String value) { assessment=value; }
+        public String getSourceAudioSha256() { return sourceAudioSha256; }
+        public void setSourceAudioSha256(String value) { sourceAudioSha256=value; }
 
         public Boolean getSuccess() { return success; }
         public void setSuccess(Boolean success) { this.success = success; }

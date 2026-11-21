@@ -7,7 +7,10 @@ on:
   workflow_dispatch:
 
 jobs:
+  recommendation-checks:
+    uses: ./.github/workflows/recommendations.yml
   build-and-deploy:
+    needs: recommendation-checks
     name: Build & Deploy Backend to Google Cloud VM
     # 40m: allow a cold karaoke-media build (mediasoup-worker C++ compile) to finish
     timeout-minutes: 40
@@ -29,13 +32,25 @@ jobs:
       - name: Compile and Package with Maven
         run: ./mvnw -B clean package -DskipTests
 
-      - name: Verify recommendation classes are included
+      - name: Preserve recommendation serving contract in a full backend release
         run: |
-          set -eu
-          jar tf target/moodify-0.0.1-SNAPSHOT.jar > target/jar-entries.txt
-          for entry in api/RecommendationMonitorApi services/RecommendationCatalog services/RecommendationMonitorStatus; do
-            grep -Fx "BOOT-INF/classes/com/laphuth/moodify/${entry}.class" target/jar-entries.txt
-          done
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          prefix='BOOT-INF/classes/com/laphuth/moodify/'
+          required=['api/RecommendationMonitorApi.class','services/RecommendationArtistIdentities.class','services/RecommendationSeedAccounts.class',
+                    'services/RecommendationCatalog.class','services/RecommendationMonitorStatus.class',
+                    'security/RecommendationTokens.class']
+          with ZipFile('target/moodify-0.0.1-SNAPSHOT.jar') as jar:
+              missing=[name for name in required if prefix+name not in jar.namelist()]
+              if missing:raise SystemExit('Refusing a full release that drops the deployed recommendation contract: '+', '.join(missing))
+          PY
+
+      - name: Prepare a consistent deployment bundle
+        run: |
+          mkdir -p deploy-bundle/scripts deploy-bundle/supporting-services/karaoke-media
+          cp target/moodify-0.0.1-SNAPSHOT.jar Dockerfile.prod deploy-bundle/
+          cp scripts/configure-karaoke-room-websocket-nginx.py scripts/recommendation.production.compose.yaml deploy-bundle/scripts/
+          cp supporting-services/karaoke-media/{Dockerfile,package.json,package-lock.json,server.js,compose.production.yaml} deploy-bundle/supporting-services/karaoke-media/
 
       - name: Copy JAR & Dockerfile to Google Cloud VM
         uses: appleboy/scp-action@v1.0.0
@@ -44,7 +59,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          source: "target/moodify-0.0.1-SNAPSHOT.jar,Dockerfile.prod,scripts/configure-karaoke-room-websocket-nginx.py,scripts/recommendation.production.compose.yaml,supporting-services/karaoke-media/Dockerfile,supporting-services/karaoke-media/package.json,supporting-services/karaoke-media/package-lock.json,supporting-services/karaoke-media/server.js,supporting-services/karaoke-media/compose.production.yaml"
+          source: "deploy-bundle/*"
           target: "/opt/moodify/backend"
           strip_components: 1
 

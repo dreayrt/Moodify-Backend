@@ -89,6 +89,8 @@ public class OcrService {
         response.setSuccess(true);
         response.setConfidence(raw.getConfidence());
         response.setMessage("Bóc tách thông tin thành công");
+        Map<String, String> labeledText = AgreementOcrFields.labels(raw.getRawText());
+        response.setAgreementDetails(AgreementOcrFields.parse(labeledText));
 
         Map<String, Object> fields = raw.getExtractedFields();
         response.setRawFields(fields);
@@ -114,13 +116,16 @@ public class OcrService {
         response.setLicenseType(normalizeLicenseType(rawLicenseType));
 
         // 2. Copyright Owner
-        String rawOwner = getString(fields, "copyright_owner");
+        String rawOwner = AgreementOcrFields.field(labeledText, "chu so huu quyen tac gia", 200);
+        if (rawOwner == null) rawOwner = getString(fields, "copyright_owner");
         if (rawOwner != null && !rawOwner.isBlank()) {
             response.setCopyrightOwner(rawOwner.trim());
         }
 
         // 3. Distributor
-        String rawDistributor = getString(fields, "distributor");
+        String rawDistributor = AgreementOcrFields.field(labeledText, "nha phan phoi", 200);
+        if (rawDistributor == null) rawDistributor = AgreementOcrFields.field(labeledText, "don vi phan phoi", 200);
+        if (rawDistributor == null) rawDistributor = getString(fields, "distributor");
         normalizeDistributor(rawDistributor, response);
 
         // 4. Contract ID

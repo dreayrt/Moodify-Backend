@@ -7,7 +7,8 @@ public final class PublicTrackPolicy {
     private PublicTrackPolicy() {}
     public static boolean isPublishedAudioTrack(Track track) {
         if (track == null || !"published".equalsIgnoreCase(track.getStatus())
-            || !"public".equalsIgnoreCase(track.getVisibility())) return false;
+            || !"public".equalsIgnoreCase(track.getVisibility())
+            || !"approved".equalsIgnoreCase(track.getModerationStatus())) return false;
         return hasAudioPath(track.getLocalPath());
     }
     public static boolean hasAudioPath(String path) {

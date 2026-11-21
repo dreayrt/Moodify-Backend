@@ -1,7 +1,10 @@
 package com.laphuth.moodify.entities;
 
+import com.laphuth.moodify.dto.contract.AgreementDetails;
 import com.laphuth.moodify.entities.enums.LicenseStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
@@ -32,6 +35,13 @@ public class SongLicense {
     @Column(name = "copyright_owner", length = 200)
     private String copyrightOwner;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "agreement_details")
+    private AgreementDetails agreementDetails;
+
+    public AgreementDetails getAgreementDetails() { return agreementDetails; }
+    public void setAgreementDetails(AgreementDetails details) { agreementDetails = details; }
+
     @Column(name = "issue_date")
     private LocalDate issueDate;
 
@@ -47,6 +57,32 @@ public class SongLicense {
 
     @Column(name = "acquisition_cost_vnd", precision = 18, scale = 0)
     private BigDecimal acquisitionCostVnd;
+
+    @Column(name = "rights_evidence_status", nullable = false, length = 20)
+    private String rightsEvidenceStatus = "UNVERIFIED";
+
+    @Column(name = "document_sha256", length = 64)
+    private String documentSha256;
+
+    @Column(name="declared_acquisition_cost_vnd",precision=18,scale=0) private BigDecimal declaredAcquisitionCostVnd;
+    public BigDecimal getDeclaredAcquisitionCostVnd() { return declaredAcquisitionCostVnd; }
+    public void setDeclaredAcquisitionCostVnd(BigDecimal value) { declaredAcquisitionCostVnd=value; }
+    @Column(name="document_inspection_status",length=32) private String documentInspectionStatus;
+    public String getDocumentInspectionStatus() { return documentInspectionStatus; }
+    public void setDocumentInspectionStatus(String value) { documentInspectionStatus=value; }
+    @Column(name="rights_verified_by") private Long rightsVerifiedBy;
+    @Column(name="rights_verified_at") private LocalDateTime rightsVerifiedAt;
+    @Column(name="rights_review_note",length=1000) private String rightsReviewNote;
+    public Long getRightsVerifiedBy() { return rightsVerifiedBy; }
+    public void setRightsVerifiedBy(Long value) { rightsVerifiedBy=value; }
+    public LocalDateTime getRightsVerifiedAt() { return rightsVerifiedAt; }
+    public void setRightsVerifiedAt(LocalDateTime value) { rightsVerifiedAt=value; }
+    public String getRightsReviewNote() { return rightsReviewNote; }
+    public void setRightsReviewNote(String value) { rightsReviewNote=value; }
+    public String getRightsEvidenceStatus() { return rightsEvidenceStatus; }
+    public void setRightsEvidenceStatus(String value) { rightsEvidenceStatus = value; }
+    public String getDocumentSha256() { return documentSha256; }
+    public void setDocumentSha256(String value) { documentSha256 = value; }
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -1,0 +1,22 @@
+services:
+  recommendation-worker:
+    build:
+      context: ../..
+      dockerfile: supporting-services/recommendation-worker/Dockerfile
+    image: moodify-recommendation-worker:1.3
+    restart: unless-stopped
+    volumes:
+      - ${RECOMMENDATION_WORKER_ENV:?set dedicated SQL read-only and Mongo recommendation-only credentials}:/run/secrets/recommendation-worker.env:ro
+      - recommendation-worker-state:/state
+    networks: [moodify]
+    mem_limit: 512m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+networks:
+  moodify:
+    external: true
+    name: ${MOODIFY_NETWORK:-moodify_default}
+volumes:
+  recommendation-worker-state:

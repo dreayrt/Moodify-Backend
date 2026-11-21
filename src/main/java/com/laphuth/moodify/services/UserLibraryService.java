@@ -26,6 +26,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class UserLibraryService {
+    private TrackService servingTracks;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setServingTracks(TrackService value) { servingTracks=value; }
+
     private static final int MAX_PAGE_SIZE = 100;
 
     private final UserRepository userRepository;
@@ -114,7 +118,7 @@ public class UserLibraryService {
             if (track == null) {
                 track = trackRepository.findById(libraryTrack.getTrackSpotifyId()).orElse(null);
             }
-            if (track != null) {
+            if (servingTracks != null && servingTracks.isTrackPubliclyAvailable(track)) {
                 LibraryTrackResponse response = new LibraryTrackResponse();
                 // Copy fields directly from Track entity
                 response.setId(track.getId());

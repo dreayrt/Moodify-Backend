@@ -33,6 +33,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AuthenticationServiceTest {
+    @org.mockito.Mock private CatalogIntegrityService catalogIntegrity;
+    @org.junit.jupiter.api.BeforeEach void integrity() { authenticationService.setCatalogIntegrity(catalogIntegrity); }
     @Mock
     private UserRepository userRepository;
 

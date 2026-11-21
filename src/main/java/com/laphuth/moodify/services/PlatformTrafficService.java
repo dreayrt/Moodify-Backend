@@ -3,7 +3,6 @@ package com.laphuth.moodify.services;
 import com.laphuth.moodify.dto.analytics.TrackVisitRequest;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.repositories.TrackRepository;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -86,6 +85,16 @@ public class PlatformTrafficService {
             return Map.of("success", false, "message", "trackId is required");
         }
 
+        if (userId == null) {
+            return Map.of("success", false, "message", "Authenticated user is required");
+        }
+        Track track = trackRepository.findById(trackId.trim())
+                .or(() -> trackRepository.findBySpotifyId(trackId.trim())).orElse(null);
+        if (track == null) {
+            return Map.of("success", false, "message", "Track not found");
+        }
+        String canonicalTrackId = track.getId();
+
         long durMs = (durationMs != null && durationMs > 0) ? durationMs : 0L;
         long posMs = (positionMs != null && positionMs > 0) ? positionMs : durMs;
         long tgtPosMs = (targetPositionMs != null && targetPositionMs >= 0) ? targetPositionMs : posMs;
@@ -116,17 +125,6 @@ public class PlatformTrafficService {
             }
 
             // Trường hợp 2: Khởi tạo phiên nghe mới trong listening_history
-            final Long effectiveUserId;
-            if (userId != null) {
-                effectiveUserId = userId;
-            } else {
-                Long fallbackId = null;
-                try {
-                    fallbackId = jdbcTemplate.queryForObject("SELECT id FROM users ORDER BY id ASC LIMIT 1", Long.class);
-                } catch (Exception ignored) {}
-                effectiveUserId = fallbackId != null ? fallbackId : 1L;
-            }
-
             String normSource = normalizeListeningSource(source);
             String normDevice = normalizePlatform(deviceType);
 
@@ -140,8 +138,8 @@ public class PlatformTrafficService {
 
             jdbcTemplate.update(connection -> {
                 java.sql.PreparedStatement ps = connection.prepareStatement(sqlHistory, java.sql.Statement.RETURN_GENERATED_KEYS);
-                ps.setLong(1, effectiveUserId);
-                ps.setString(2, trackId.trim());
+                ps.setLong(1, userId);
+                ps.setString(2, canonicalTrackId);
                 ps.setLong(3, secondsAgo);
                 ps.setLong(4, durMs);
                 ps.setLong(5, posMs);
@@ -187,7 +185,7 @@ public class PlatformTrafficService {
     }
 
     private String normalizePlaybackEvent(String val) {
-        if (val == null) return "COMPLETE";
+        if (val == null) return "PLAY";
         val = val.trim().toUpperCase();
         return switch (val) {
             case "PLAY" -> "PLAY";
@@ -196,98 +194,9 @@ public class PlatformTrafficService {
             case "SEEK" -> "SEEK";
             case "SKIP_NEXT" -> "SKIP_NEXT";
             case "SKIP_PREVIOUS" -> "SKIP_PREVIOUS";
-            default -> "COMPLETE";
+            case "COMPLETE" -> "COMPLETE";
+            default -> "PLAY";
         };
-    }
-
-    public int seedTrafficData(List<String> targetIds, int countPerTrack) {
-        log.info("seedTrafficData is disabled to preserve 100% real platform telemetry data.");
-        return 0;
-    }
-
-    private int unused_seedTrafficData(List<String> targetIds, int countPerTrack) {
-        if (targetIds == null || targetIds.isEmpty()) return 0;
-
-        // Chỉ 3 nền tảng chính: Web, Android, iOS
-        String[] platforms = {"WEB", "ANDROID", "IOS"};
-        double[] platformWeights = {0.45, 0.35, 0.20};
-
-        String[] referrers = {"DIRECT", "SEARCH", "TIKTOK", "FACEBOOK", "AI_RECOMMEND"};
-        double[] referrerWeights = {0.30, 0.30, 0.20, 0.10, 0.10};
-
-        Random rand = new Random();
-        int totalInserted = 0;
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-        for (String targetId : targetIds) {
-            if (targetId == null || targetId.isBlank()) continue;
-
-            for (int i = 0; i < countPerTrack; i++) {
-                String platform = pickWeighted(platforms, platformWeights, rand);
-                String referrer = pickWeighted(referrers, referrerWeights, rand);
-
-                // Phân bổ thời gian: rải đều 90 ngày để khi xem 7d, 30d, 90d số liệu khác biệt rõ rệt
-                int daysAgo;
-                int rVal = rand.nextInt(100);
-                if (rVal < 40) {
-                    daysAgo = rand.nextInt(7); // 40% trong 7 ngày gần nhất
-                } else if (rVal < 75) {
-                    daysAgo = 7 + rand.nextInt(23); // 35% từ ngày 7 đến 30
-                } else {
-                    daysAgo = 30 + rand.nextInt(60); // 25% từ ngày 30 đến 90
-                }
-
-                int hoursAgo = rand.nextInt(24);
-                int minsAgo = rand.nextInt(60);
-                LocalDateTime visitTime = LocalDateTime.now().minusDays(daysAgo).minusHours(hoursAgo).minusMinutes(minsAgo);
-                String visitTimeStr = visitTime.format(dtf);
-
-                Long mockUserId = (long) (rand.nextInt(3) + 1);
-                String sessionId = "sess_" + UUID.randomUUID().toString().substring(0, 8);
-
-                String sql = """
-                    INSERT INTO platform_traffic_events 
-                    (target_type, target_id, platform, referrer_type, user_id, session_id, visited_at)
-                    VALUES ('TRACK', ?, ?, ?, ?, ?, ?)
-                """;
-
-                try {
-                    jdbcTemplate.update(sql, targetId, platform, referrer, mockUserId, sessionId, visitTimeStr);
-                    totalInserted++;
-
-                    // Xác suất bấm nghe thực tế (tạo bản ghi listening_history tương ứng)
-                    // Càng gần đây tỷ lệ bấm nghe càng cao (7 ngày: ~84%, 30 ngày: ~76%, 90 ngày: ~70%)
-                    double playProbability = daysAgo < 7 ? 0.84 : daysAgo < 30 ? 0.76 : 0.70;
-                    if (rand.nextDouble() < playProbability) {
-                        String sourceVal = switch (referrer) {
-                            case "AI_RECOMMEND" -> "EMOTION";
-                            case "SEARCH" -> "SEARCH";
-                            default -> "HOME";
-                        };
-
-                        String streamSql = """
-                            INSERT INTO listening_history 
-                            (user_id, track_id, started_at, listened_duration_ms, last_position_ms, source, device_type)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """;
-                        int durationMs = 120000 + rand.nextInt(120000);
-                        jdbcTemplate.update(streamSql, mockUserId, targetId, visitTimeStr, durationMs, durationMs, sourceVal, platform);
-                    }
-                } catch (Exception ignored) {}
-            }
-        }
-
-        return totalInserted;
-    }
-
-    private String pickWeighted(String[] items, double[] weights, Random rand) {
-        double r = rand.nextDouble();
-        double sum = 0.0;
-        for (int i = 0; i < items.length; i++) {
-            sum += weights[i];
-            if (r <= sum) return items[i];
-        }
-        return items[0];
     }
 
     private String normalizeTargetType(String val) {

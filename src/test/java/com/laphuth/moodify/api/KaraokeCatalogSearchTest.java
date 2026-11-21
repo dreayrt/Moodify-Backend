@@ -26,6 +26,10 @@ class KaraokeCatalogSearchTest {
 
     @BeforeEach
     void prepareCatalog() {
+        var serving=mock(com.laphuth.moodify.services.TrackService.class);
+        controller.setServingTracks(serving);
+        when(serving.getTrackEntity(anyString())).thenReturn(new com.laphuth.moodify.entities.Track());
+        when(serving.isTrackPubliclyAvailable(any(com.laphuth.moodify.entities.Track.class))).thenReturn(true);
         Document hidden = track("Lưu Niên (private)", "Đặng Luân").append("visibility", "private");
         Document unprepared = track("Lưu Niên (unprepared)", "Đặng Luân");
         when(mongo.find(any(Query.class), eq(Document.class), eq("karaoke_assets")))
@@ -113,7 +117,7 @@ class KaraokeCatalogSearchTest {
     }
 
     private static Document track(String title, String artist) {
-        return new Document("_id", new ObjectId()).append("name", title).append("artist_name", artist);
+        return new Document("_id", new ObjectId()).append("name", title).append("artist_name", artist).append("status","published").append("visibility","public").append("moderation_status","approved").append("local_path","data/audio/test.mp3");
     }
 
     private static Document asset(Document track) {

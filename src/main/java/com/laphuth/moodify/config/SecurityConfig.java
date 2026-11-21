@@ -69,6 +69,7 @@ public class SecurityConfig {
                 // SePay: Cho phép frontend polling trạng thái thanh toán mà không cần JWT
                 .requestMatchers(HttpMethod.GET, "/api/subscriptions/payment-status/**").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/catalog/media-authorize").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/me").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/user").hasRole(UserRole.USER.name())
                 .requestMatchers(HttpMethod.GET, "/api/dashboard/content-lead", "/api/dashboard/artist")

@@ -547,10 +547,18 @@ CREATE TABLE song_licenses (
     distribution_contract_code VARCHAR(80) NULL,
     license_type VARCHAR(80) NOT NULL,
     copyright_owner VARCHAR(200) NULL,
+    agreement_details JSON NULL,
     issue_date DATE NULL,
     expiry_date DATE NULL,
-    status ENUM('ACTIVE','EXPIRED','REVOKED','PENDING') NOT NULL DEFAULT 'ACTIVE',
+    status ENUM('ACTIVE','EXPIRED','REVOKED','PENDING') NOT NULL DEFAULT 'PENDING',
     document_songlicenses_url VARCHAR(1000) NULL,
+    rights_evidence_status VARCHAR(20) NOT NULL DEFAULT 'UNVERIFIED',
+    document_sha256 VARCHAR(64) NULL,
+    document_inspection_status VARCHAR(32) NULL,
+    declared_acquisition_cost_vnd DECIMAL(18,0) NULL,
+    rights_verified_by BIGINT NULL,
+    rights_verified_at DATETIME NULL,
+    rights_review_note VARCHAR(1000) NULL,
     acquisition_cost_vnd DECIMAL(18,0) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -559,7 +567,7 @@ CREATE TABLE song_licenses (
         FOREIGN KEY (distributor_id) REFERENCES distributors(id),
     CONSTRAINT fk_song_license_contract
         FOREIGN KEY (distribution_contract_id)
-        REFERENCES distribution_contracts(id) ON DELETE SET NULL,
+        REFERENCES distribution_contracts(id) ON DELETE RESTRICT,
     CONSTRAINT chk_song_license_owner
         CHECK (distributor_id IS NOT NULL OR copyright_owner IS NOT NULL),
     CONSTRAINT chk_song_license_dates
@@ -818,119 +826,31 @@ CREATE TABLE karaoke_room_queue (
 );
 
 
-INSERT INTO users (
-    id, full_name, phone, email, username, password, avatar_url,
-    role, artist_spotify_id, status, last_login_at, created_at, updated_at
-) VALUES
-(1, 'Nguyễn Văn Listener', '0901000001', 'listener@moodify.local', 'listener01',
- '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
- 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240',
- 'USER', NULL, 'ACTIVE', '2026-09-15 08:10:00', '2026-01-01 08:00:00', '2026-09-15 08:10:00'),
-(2, 'Trần Minh Content Lead', '0901000002', 'contentlead@moodify.local', 'contentlead01',
- '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
- 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=240',
- 'CONTENT_LEAD', '4OCl7UfKRXLcYouOYa3Bwc', 'ACTIVE', '2026-09-15 08:00:00', '2026-02-01 08:00:00', '2026-09-15 08:00:00'),
-(3, 'Lê Hoàng Moderator', '0901000003', 'moderator@moodify.local', 'moderator01',
- '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
- NULL, 'MODERATOR', NULL, 'ACTIVE', '2026-09-15 07:45:00', '2026-03-01 08:00:00', '2026-09-15 07:45:00'),
-(4, 'Phạm Quốc Admin', '0901000004', 'admin@moodify.local', 'admin01',
- '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
- NULL, 'ADMIN', NULL, 'INACTIVE', NULL, '2026-01-15 08:00:00', '2026-08-30 09:00:00'),
-(5, 'Hoàng Anh Banned', '0901000005', 'banned@moodify.local', 'banned01',
- '$2a$10$1732WbZGs1pwdRxZTYGWtewCkRmYYPBY2GFFGn4t8HpL9hJMuAFJq',
- NULL, 'USER', NULL, 'BANNED', NULL, '2026-04-01 08:00:00', '2026-09-10 14:00:00');
-
 -- ============================================================
 -- 2. USER_LIBRARY_TRACKS
 -- ============================================================
-INSERT INTO user_library_tracks (id, user_id, track_id, added_at) VALUES
-(1, 1, '6a8230b53cccfc45cd626ced', '2026-09-01 10:00:00'),
-(2, 1, '6a8230b53cccfc45cd626cee', '2026-09-02 11:00:00'),
-(3, 2, '6a8230b53cccfc45cd626cef', '2026-09-03 12:00:00'),
-(4, 2, '6a8230b53cccfc45cd626cf0', '2026-09-04 13:00:00'),
-(5, 5, '6a8230b53cccfc45cd626cf1', '2026-09-05 14:00:00');
-
 -- ============================================================
 -- 3. FAVORITE_SONGS
 -- ============================================================
-INSERT INTO favorite_songs (id, user_id, track_id, created_at) VALUES
-(1, 1, '6a8230b53cccfc45cd626ced', '2026-09-05 08:00:00'),
-(2, 1, '6a8230b53cccfc45cd626cef', '2026-09-06 08:30:00'),
-(3, 2, '6a8230b53cccfc45cd626cee', '2026-09-07 09:00:00'),
-(4, 2, '6a8230b53cccfc45cd626cf1', '2026-09-08 09:30:00'),
-(5, 5, '6a8230b53cccfc45cd626cf0', '2026-09-09 10:00:00');
-
 -- ============================================================
 -- 4. FAVORITE_ARTISTS
 -- ============================================================
-INSERT INTO favorite_artists (id, user_id, artist_id, created_at) VALUES
-(1, 1, '7b8230b53cccfc45cd626001', '2026-09-01 08:00:00'),
-(2, 1, '7b8230b53cccfc45cd626002', '2026-09-02 08:00:00'),
-(3, 2, '7b8230b53cccfc45cd626003', '2026-09-03 08:00:00'),
-(4, 2, '7b8230b53cccfc45cd626004', '2026-09-04 08:00:00'),
-(5, 5, '7b8230b53cccfc45cd626005', '2026-09-05 08:00:00');
-
 -- ============================================================
 -- 5. FAVORITE_ALBUMS
 -- ============================================================
-INSERT INTO favorite_albums (id, user_id, album_id, created_at) VALUES
-(1, 1, '8c8230b53cccfc45cd626001', '2026-09-01 09:00:00'),
-(2, 1, '8c8230b53cccfc45cd626002', '2026-09-02 09:00:00'),
-(3, 2, '8c8230b53cccfc45cd626003', '2026-09-03 09:00:00'),
-(4, 2, '8c8230b53cccfc45cd626004', '2026-09-04 09:00:00'),
-(5, 5, '8c8230b53cccfc45cd626005', '2026-09-05 09:00:00');
-
 -- ============================================================
 -- 6. LISTENING_HISTORY
 -- Bao phủ toàn bộ source: HOME, SEARCH, PLAYLIST, ALBUM, ARTIST,
 -- LIBRARY, FAVORITES, EMOTION, OTHER và đủ device_type.
 -- ============================================================
-INSERT INTO listening_history (
-    id, user_id, track_id, started_at, ended_at,
-    listened_duration_ms, last_position_ms, source, source_id, device_type
-) VALUES
-(1, 1, '6a8230b53cccfc45cd626ced', '2026-09-10 08:00:00', '2026-09-10 08:05:38', 338390, 338390, 'HOME', NULL, 'WEB'),
-(2, 1, '6a8230b53cccfc45cd626cee', '2026-09-10 09:00:00', '2026-09-10 09:01:30', 90000, 90000, 'SEARCH', NULL, 'ANDROID'),
-(3, 2, '6a8230b53cccfc45cd626cef', '2026-09-11 10:00:00', NULL, 60000, 60000, 'PLAYLIST', '9d8230b53cccfc45cd626001', 'IOS'),
-(4, 1, '6a8230b53cccfc45cd626cf0', '2026-09-12 20:00:00', '2026-09-12 20:03:40', 220000, 220000, 'ALBUM', '8c8230b53cccfc45cd626001', 'WEB'),
-(5, 2, '6a8230b53cccfc45cd626cf1', '2026-09-13 21:00:00', '2026-09-13 21:02:00', 120000, 120000, 'ARTIST', '7b8230b53cccfc45cd626001', 'OTHER'),
-(6, 1, '6a8230b53cccfc45cd626ced', '2026-09-14 07:30:00', '2026-09-14 07:32:30', 150000, 150000, 'LIBRARY', NULL, 'ANDROID'),
-(7, 1, '6a8230b53cccfc45cd626cee', '2026-09-14 08:00:00', '2026-09-14 08:04:00', 240000, 240000, 'FAVORITES', NULL, 'IOS'),
-(8, 1, '6a8230b53cccfc45cd626cf0', '2026-09-14 20:00:00', '2026-09-14 20:03:00', 180000, 180000, 'EMOTION', NULL, 'WEB'),
-(9, 2, '6a8230b53cccfc45cd626cf1', '2026-09-15 06:30:00', '2026-09-15 06:31:00', 60000, 60000, 'OTHER', NULL, 'ANDROID');
-
 -- ============================================================
 -- 7. PLAYBACK_EVENTS
 -- Bao phủ toàn bộ 7 event_type.
 -- ============================================================
-INSERT INTO playback_events (
-    id, listening_history_id, event_type, position_ms, target_position_ms, occurred_at
-) VALUES
-(1, 1, 'PLAY', 0, NULL, '2026-09-10 08:00:00'),
-(2, 2, 'PAUSE', 45000, NULL, '2026-09-10 09:00:45'),
-(3, 2, 'RESUME', 45000, NULL, '2026-09-10 09:01:00'),
-(4, 3, 'SEEK', 30000, 60000, '2026-09-11 10:00:30'),
-(5, 4, 'SKIP_NEXT', 45000, NULL, '2026-09-12 20:00:45'),
-(6, 5, 'SKIP_PREVIOUS', 15000, NULL, '2026-09-13 21:00:15'),
-(7, 1, 'COMPLETE', 338390, NULL, '2026-09-10 08:05:38');
-
 -- ============================================================
 -- 8. SEARCH_HISTORY
 -- Bao phủ toàn bộ search_type và các selected_target_type.
 -- ============================================================
-INSERT INTO search_history (
-    id, user_id, keyword, search_type, detected_emotion, emotion_confidence,
-    selected_target_type, selected_target_id, searched_at
-) VALUES
-(1, 1, 'Teeme', 'ALL', NULL, NULL, 'ARTIST', '7b8230b53cccfc45cd626001', '2026-09-10 07:30:00'),
-(2, 1, 'TINH VE', 'TRACK', NULL, NULL, 'TRACK', '6a8230b53cccfc45cd626ced', '2026-09-10 08:30:00'),
-(3, 2, 'Hoaprox', 'ARTIST', NULL, NULL, 'ARTIST', '7b8230b53cccfc45cd626002', '2026-09-11 09:00:00'),
-(4, 1, 'TINH VE Album', 'ALBUM', NULL, NULL, 'ALBUM', '8c8230b53cccfc45cd626001', '2026-09-12 10:00:00'),
-(5, 2, 'Nhạc chill học bài', 'PLAYLIST', NULL, NULL, 'PLAYLIST', '9d8230b53cccfc45cd626001', '2026-09-13 20:00:00'),
-(6, 1, 'Hôm nay tôi cảm thấy rất buồn và cô đơn', 'EMOTION', 'SADNESS', 0.9234, 'TRACK', '6a8230b53cccfc45cd626cf0', '2026-09-14 19:50:00');
-
-
-
 -- ============================================================
 -- 8. BẬC QUYỀN LỢI THUÊ BAO (SUBSCRIPTION TIERS)
 -- ============================================================
@@ -948,198 +868,42 @@ INSERT INTO subscription_tiers (
 -- 9. SERVICE_PACKAGES
 -- Bao phủ: miễn phí/trả phí, nhiều thời hạn, ACTIVE/INACTIVE.
 -- ============================================================
-INSERT INTO service_packages (
-    id, name, description, price, duration_days, display_order, status, tier_id, created_at, updated_at
-) VALUES
-(1, 'Gói VIP Tiết Kiệm (30 Ngày)', 'Dành cho 1 người: 15 bài hát/ngày không quảng cáo, 30 lượt skip/ngày, tải 50 bài offline.', 29000, 30, 1, 'ACTIVE', 'INDIVIDUAL_BASIC', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(2, 'Gói VIP Tiết Kiệm (1 Năm)', 'Tiết kiệm 20%: Trọn gói 365 ngày nghe nhạc tiết kiệm.', 279000, 365, 2, 'ACTIVE', 'INDIVIDUAL_BASIC', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(3, 'Gói Cá Nhân FULL (30 Ngày)', 'Dành cho 1 người: 100% không quảng cáo vô hạn, chuyển bài và tải nhạc offline vô hạn.', 49000, 30, 3, 'ACTIVE', 'INDIVIDUAL_FULL', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(4, 'Gói Cá Nhân FULL (90 Ngày)', 'Tiết kiệm 12%: 3 tháng âm nhạc không quảng cáo vô hạn.', 129000, 90, 4, 'ACTIVE', 'INDIVIDUAL_FULL', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(5, 'Gói Cá Nhân FULL (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng, trọn bộ đặc quyền cá nhân không giới hạn.', 469000, 365, 5, 'ACTIVE', 'INDIVIDUAL_FULL', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(6, 'Gói Gia Đình (30 Ngày)', 'Tối đa 6 tài khoản/thiết bị đồng thời: Trọn bộ đặc quyền FULL chia sẻ cả gia đình.', 79000, 30, 6, 'ACTIVE', 'FAMILY', '2026-01-01 00:00:00', '2026-01-01 00:00:00'),
-(7, 'Gói Gia Đình (1 Năm)', 'Tiết kiệm tối đa: Tặng 2 tháng cho cả 6 thành viên gia đình.', 790000, 365, 7, 'ACTIVE', 'FAMILY', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
-
 -- ============================================================
 -- 10. SUBSCRIPTIONS
 -- Bao phủ toàn bộ 5 status.
 -- ============================================================
-INSERT INTO subscriptions (
-    id, user_id, service_package_id, start_at, end_at,
-    auto_renew, status, created_at, updated_at
-) VALUES
-(1, 1, 2, '2026-09-15 10:00:00', '2026-10-15 10:00:00', FALSE, 'PENDING', '2026-09-15 09:55:00', '2026-09-15 09:55:00'),
-(2, 1, 3, '2026-09-01 00:00:00', '2026-11-30 00:00:00', TRUE, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-01 00:02:00'),
-(3, 2, 4, '2025-01-01 00:00:00', '2026-01-01 00:00:00', FALSE, 'EXPIRED', '2025-01-01 00:00:00', '2026-01-01 00:00:00'),
-(4, 2, 2, '2026-08-01 00:00:00', '2026-08-31 00:00:00', FALSE, 'CANCELLED', '2026-08-01 00:00:00', '2026-08-15 10:00:00'),
-(5, 5, 2, '2026-09-01 00:00:00', '2026-10-01 00:00:00', FALSE, 'SUSPENDED', '2026-09-01 00:00:00', '2026-09-10 14:00:00');
-
 -- ============================================================
 -- 11. PAYMENT_TRANSACTIONS
 -- Bao phủ toàn bộ 5 status và nhiều phương thức/provider.
 -- ============================================================
-INSERT INTO payment_transactions (
-    id, subscription_id, amount, payment_method, provider,
-    provider_transaction_id, status, paid_at, created_at, updated_at
-) VALUES
-(1, 1, 59000, 'QR', 'VNPAY', NULL, 'PENDING', NULL, '2026-09-15 09:55:00', '2026-09-15 09:55:00'),
-(2, 2, 149000, 'EWALLET', 'MOMO', 'MOMO-20260901-00001', 'SUCCESS', '2026-09-01 00:02:00', '2026-09-01 00:00:00', '2026-09-01 00:02:00'),
-(3, 3, 599000, 'CARD', 'VNPAY', 'VNPAY-20250101-00003', 'FAILED', NULL, '2025-01-01 10:00:00', '2025-01-01 10:01:00'),
-(4, 4, 59000, 'BANK_TRANSFER', 'MOMO', 'MOMO-20260801-00004', 'CANCELLED', NULL, '2026-08-01 10:00:00', '2026-08-01 10:05:00'),
-(5, 5, 59000, 'CARD', 'VNPAY', 'VNPAY-20260901-00005', 'REFUNDED', '2026-09-01 00:05:00', '2026-09-01 00:00:00', '2026-09-10 15:00:00');
-
-
 -- ============================================================
 -- 12. USER_DEVICES
 -- Bao phủ ANDROID / IOS / OTHER và ACTIVE / REVOKED.
 -- ============================================================
-INSERT INTO user_devices (
-    id, user_id, device_uuid, platform, device_name, status, created_at
-) VALUES
-(1, 1, 'android-user1-phone-001', 'ANDROID', 'Samsung Galaxy S24', 'ACTIVE', '2026-05-01 08:00:00'),
-(2, 1, 'ios-user1-phone-002', 'IOS', 'iPhone 15', 'ACTIVE', '2026-06-01 08:00:00'),
-(3, 2, 'android-artist-phone-003', 'ANDROID', 'Google Pixel 9', 'ACTIVE', '2026-07-01 08:00:00'),
-(4, 2, 'other-artist-device-004', 'OTHER', 'Android Tablet', 'REVOKED', '2026-05-15 08:00:00'),
-(5, 5, 'android-banned-phone-005', 'ANDROID', 'Xiaomi 14', 'ACTIVE', '2026-08-01 08:00:00');
-
 -- ============================================================
 -- 13. OFFLINE_DOWNLOADS
 -- Bao phủ toàn bộ 6 status.
 -- ============================================================
-INSERT INTO offline_downloads (id, device_id, track_id, status, local_path, downloaded_at, expires_at, created_at, updated_at) VALUES
-(1, 1, '11dFghVXANMlKmJXsNCbNl', 'DOWNLOADED', '/storage/offline/11dFghVXANMlKmJXsNCbNl.enc', '2026-09-02 10:00:00', '2026-10-02 10:00:00', '2026-09-02 10:00:00', '2026-09-02 10:00:00'),
-(2, 2, '22eFghVXANMlKmJXsNCbNm', 'DOWNLOADED', '/storage/offline/22eFghVXANMlKmJXsNCbNm.enc', '2026-09-03 11:30:00', '2026-10-03 11:30:00', '2026-09-03 11:30:00', '2026-09-03 11:30:00');
-
 -- ============================================================
 -- 14. CONTENT_REVIEW_REQUESTS
 -- Bao phủ toàn bộ 5 status, TRACK/ALBUM, PUBLISH/UPDATE.
 -- ============================================================
-INSERT INTO content_review_requests (
-    id, artist_user_id, content_type, content_id,
-    request_type, status, submitted_at, resolved_at
-) VALUES
-(1, 2, 'TRACK', '6a8230b53cccfc45cd626d10', 'PUBLISH', 'PENDING', '2026-09-15 08:00:00', NULL),
-(2, 2, 'TRACK', '6a8230b53cccfc45cd626d11', 'UPDATE', 'IN_REVIEW', '2026-09-14 08:00:00', NULL),
-(3, 2, 'ALBUM', '8c8230b53cccfc45cd626010', 'PUBLISH', 'APPROVED', '2026-09-10 08:00:00', '2026-09-11 10:00:00'),
-(4, 2, 'TRACK', '6a8230b53cccfc45cd626d12', 'PUBLISH', 'REJECTED', '2026-09-09 08:00:00', '2026-09-10 15:00:00'),
-(5, 2, 'ALBUM', '8c8230b53cccfc45cd626011', 'UPDATE', 'CANCELLED', '2026-09-08 08:00:00', '2026-09-08 12:00:00');
-
 -- ============================================================
 -- 15. CONTENT_REVIEW_ACTIONS
 -- Bao phủ START_REVIEW / APPROVE / REJECT / RETURN_FOR_EDIT.
 -- ============================================================
-INSERT INTO content_review_actions (
-    id, review_request_id, moderator_user_id, action, reason, created_at
-) VALUES
-(1, 2, 3, 'START_REVIEW', NULL, '2026-09-14 09:00:00'),
-(2, 3, 3, 'START_REVIEW', NULL, '2026-09-10 09:00:00'),
-(3, 3, 3, 'APPROVE', 'Nội dung đạt yêu cầu kiểm duyệt.', '2026-09-11 10:00:00'),
-(4, 4, 3, 'RETURN_FOR_EDIT', 'Ảnh bìa chưa đáp ứng quy định.', '2026-09-09 12:00:00'),
-(5, 4, 3, 'REJECT', 'Nội dung chỉnh sửa vẫn chưa đáp ứng yêu cầu.', '2026-09-10 15:00:00');
-
 -- ============================================================
 -- 16. DISTRIBUTORS
 -- Bao phủ ACTIVE / INACTIVE, nhiều quốc gia, contact NULL/non-NULL.
 -- ============================================================
-INSERT INTO distributors (
-    id, company_name, country, contact_name, contact_email,
-    contact_phone, status, created_at, updated_at
-) VALUES
-(1, 'Universal Music Vietnam', 'Vietnam', 'Nguyễn Quốc Anh', 'contact1@distributor.local', '02830000001', 'ACTIVE', '2025-01-01 08:00:00', '2026-09-01 08:00:00'),
-(2, 'Believe Digital Vietnam', 'Vietnam', 'Trần Minh Đức', 'contact2@distributor.local', '02830000002', 'ACTIVE', '2025-02-01 08:00:00', '2026-09-01 08:00:00'),
-(3, 'Independent Distribution Co.', 'Singapore', 'Lê Hoàng Nam', 'contact3@distributor.local', '02830000003', 'INACTIVE', '2025-03-01 08:00:00', '2026-07-01 08:00:00'),
-(4, 'Vietnam Music Distribution', 'Vietnam', NULL, 'contact4@distributor.local', NULL, 'ACTIVE', '2025-04-01 08:00:00', '2026-09-01 08:00:00'),
-(5, 'Global Sound Distribution', 'United States', 'Phạm Quang Huy', NULL, '02830000005', 'ACTIVE', '2025-05-01 08:00:00', '2026-09-01 08:00:00');
-
 -- ============================================================
 -- 17. DISTRIBUTION_CONTRACTS
 -- Bao phủ DRAFT / ACTIVE / EXPIRED / TERMINATED,
 -- revenue_share NULL/non-NULL, document_url NULL/non-NULL.
 -- revenue_share ở đây dùng theo đơn vị phần trăm (ví dụ 70 = 70%).
 -- ============================================================
-INSERT INTO distribution_contracts (
-    id, distributor_id, contract_code, title, signed_date,
-    effective_from, effective_to, revenue_share, status,
-    document_url, created_at, updated_at
-) VALUES
-(1, 1, 'DIST-2026-001', 'Hợp đồng phân phối Universal 2026', '2026-01-01', '2026-01-01', '2026-12-31', 70.0, 'ACTIVE', 'https://example.com/contracts/DIST-2026-001.pdf', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-(2, 2, 'DIST-2026-002', 'Hợp đồng đang soạn thảo', '2026-08-01', NULL, NULL, NULL, 'DRAFT', NULL, '2026-08-01 08:00:00', '2026-08-01 08:00:00'),
-(3, 3, 'DIST-2025-003', 'Hợp đồng phân phối năm 2025', '2025-01-01', '2025-01-01', '2025-12-31', 65.0, 'EXPIRED', 'https://example.com/contracts/DIST-2025-003.pdf', '2025-01-01 08:00:00', '2026-01-01 08:00:00'),
-(4, 4, 'DIST-2026-004', 'Hợp đồng chấm dứt trước hạn', '2026-01-10', '2026-02-01', '2026-08-01', 60.0, 'TERMINATED', 'https://example.com/contracts/DIST-2026-004.pdf', '2026-01-10 08:00:00', '2026-08-01 08:00:00'),
-(5, 5, 'DIST-2026-005', 'Hợp đồng Global Sound', '2026-06-01', '2026-06-01', NULL, 75.0, 'ACTIVE', 'https://example.com/contracts/DIST-2026-005.pdf', '2026-06-01 08:00:00', '2026-06-01 08:00:00');
-
--- ============================================================
--- 18. SONG_LICENSES
--- Bao phủ ACTIVE / EXPIRED / REVOKED / PENDING,
--- distributor + contract, distributor không contract,
--- copyright_owner độc lập, document URL NULL/non-NULL.
--- ============================================================
-INSERT INTO song_licenses (
-    id, track_id, distributor_id, distribution_contract_id,
-    license_type, copyright_owner, issue_date, expiry_date,
-    status, document_songlicenses_url, created_at, updated_at
-) VALUES
-(1, '6a8230b53cccfc45cd626ced', 1, 1, 'DIGITAL_STREAMING', NULL, '2026-01-01', '2026-12-31', 'ACTIVE', 'https://example.com/licenses/license-001.pdf', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-(2, '6a8230b53cccfc45cd626cee', 3, 3, 'DIGITAL_STREAMING', NULL, '2025-01-01', '2025-12-31', 'EXPIRED', 'https://example.com/licenses/license-002.pdf', '2025-01-01 08:00:00', '2026-01-01 08:00:00'),
-(3, '6a8230b53cccfc45cd626cef', 4, 4, 'MASTER_LICENSE', NULL, '2026-02-01', '2026-08-01', 'REVOKED', 'https://example.com/licenses/license-003.pdf', '2026-02-01 08:00:00', '2026-08-01 08:00:00'),
-(4, '6a8230b53cccfc45cd626cf0', 2, NULL, 'STREAMING_PENDING', NULL, NULL, NULL, 'PENDING', NULL, '2026-09-10 08:00:00', '2026-09-10 08:00:00'),
-(5, '6a8230b53cccfc45cd626cf1', NULL, NULL, 'DIRECT_LICENSE', 'Independent Artist', '2026-06-01', NULL, 'ACTIVE', NULL, '2026-06-01 08:00:00', '2026-06-01 08:00:00');
-
-
-USE moodify;
--- Script Khởi Tạo Toàn Bộ (Event Scheduler + Stored Procedure + Event Hàng Ngày)--
--- 1. Bật tính năng Event Scheduler của MySQL Server
-SET GLOBAL event_scheduler = ON;
-
--- 2. Tạo Stored Procedure quét và cập nhật hợp đồng hết hạn
-DELIMITER $$
-DROP PROCEDURE IF EXISTS sp_expire_outdated_song_licenses $$
-
-CREATE PROCEDURE sp_expire_outdated_song_licenses()
-BEGIN
-    -- Cập nhật tất cả các hợp đồng đang ACTIVE nhưng expiry_date đã qua ngày hiện tại
-    UPDATE song_licenses
-    SET status = 'EXPIRED'
-    WHERE status = 'ACTIVE'
-      AND expiry_date IS NOT NULL
-      AND expiry_date < CURRENT_DATE();
-      
-    SELECT ROW_COUNT() AS expired_licenses_count;
-END $$
-
-DELIMITER ;
--- 3. Tạo Event Scheduler tự động chạy mỗi ngày lúc 00:01:00
-DROP EVENT IF EXISTS evt_daily_song_license_expiry;
-
-CREATE EVENT evt_daily_song_license_expiry
-ON SCHEDULE EVERY 1 DAY
-STARTS (TIMESTAMP(CURRENT_DATE) + INTERVAL 1 DAY + INTERVAL 1 MINUTE)
-ON COMPLETION PRESERVE
-ENABLE
-COMMENT 'Moodify: Tu dong quet va cap nhat trang thai EXPIRED cho hop dong ban quyen het han'
-DO CALL sp_expire_outdated_song_licenses();
-
---  Lệnh Kiểm Tra Trạng Thái Sau Khi Dán --
--- 1. Kiểm tra Event Scheduler đã BẬT chưa (kết quả Value phải là ON)
-SHOW VARIABLES LIKE 'event_scheduler';
--- 2. Xem Event đã được lập lịch trong cơ sở dữ liệu chưa (Status: ENABLED)
-SHOW EVENTS FROM moodify;
--- 3. Chạy thử Stored Procedure thủ công ngay lập tức để test
-CALL sp_expire_outdated_song_licenses();
-
-
--- Giả sử bạn muốn test với track_id cụ thể (đổi track_id thành ID bài hát của bạn):
-UPDATE song_licenses 
-SET expiry_date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
-WHERE track_id = 'YOUR_TRACK_ID_HERE';
--- Chạy procedure để kích hoạt cập nhật ngay lập tức:
-CALL sp_expire_outdated_song_licenses();
--- Kiểm tra lại trạng thái bài hát đó trong DB (status sẽ đổi sang EXPIRED):
-SELECT id, track_id, status, expiry_date 
-FROM song_licenses 
-WHERE track_id = 'YOUR_TRACK_ID_HERE';
-
-
-
+-- Song-license expiry is owned by the Spring scheduler in Asia/Ho_Chi_Minh.
+-- Apply database/catalog_integrity_v1.sql and the catalog migration before starting the runtime.
 
 USE moodify;
 

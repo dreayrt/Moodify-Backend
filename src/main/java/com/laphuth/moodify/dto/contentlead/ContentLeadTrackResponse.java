@@ -1,5 +1,6 @@
 package com.laphuth.moodify.dto.contentlead;
 
+import com.laphuth.moodify.dto.contract.AgreementDetails;
 import com.laphuth.moodify.entities.SongLicense;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.entities.enums.LicenseStatus;
@@ -35,7 +36,8 @@ public record ContentLeadTrackResponse(
     String licenseStatus,
     String licenseExpiryDate,
     String licenseIssueDate,
-    java.math.BigDecimal acquisitionCostVnd
+    java.math.BigDecimal acquisitionCostVnd,
+    AgreementDetails agreementDetails
 ) {
     public static ContentLeadTrackResponse from(Track track) {
         return from(track, null);
@@ -101,7 +103,8 @@ public record ContentLeadTrackResponse(
             licStatus,
             licExpiry,
             licIssue,
-            license == null ? null : license.getAcquisitionCostVnd()
+            license == null ? null : license.getAcquisitionCostVnd(),
+            license == null ? null : license.getAgreementDetails()
         );
     }
 

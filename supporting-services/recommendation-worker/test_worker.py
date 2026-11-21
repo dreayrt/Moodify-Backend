@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pytest
 from worker import aggregate_daily, canonical_tracks, interaction_matrix, fit_implicit_als, evaluate, ndcg_at_k, sql_statements, effective_licensed_tracks, normalize_top_scores
+from worker import publish_profiles
 
 UTC = timezone.utc
 NOW = datetime(2026, 10, 27, 12, tzinfo=UTC)
@@ -83,3 +84,22 @@ def test_serving_profile_is_bounded_and_keeps_highest_scores():
     assert len(scores) == 500 and scores["599"] == 1.0 and "0" not in scores
     with pytest.raises(ValueError, match="non-finite"):
         normalize_top_scores(np.array([float("nan")]), ["bad"])
+
+
+def test_nontraining_refresh_includes_today_without_rejuvenating_old_cf(tmp_path):
+    from types import SimpleNamespace
+    class Profiles:
+        def __init__(self):
+            self.profile={'_id':'profile:1','kind':'PROFILE','as_of':NOW-timedelta(days=1),
+                'model_version':'implicit-als-verified','training_evaluation':{'accepted':True},'collaborative_scores':{'t':.8}}
+        def find_one(self,query):return dict(self.profile)
+        def replace_one(self,query,profile,upsert):self.profile=profile
+    profiles=Profiles();daily={(1,'t',NOW.date()):{'engaged':1,'saves':1}}
+    calls=[]
+    result=publish_profiles(SimpleNamespace(recommendation_state=profiles),daily,NOW,False,tmp_path,lambda:calls.append('guard'))
+    assert result['users']==1 and calls==['guard']
+    assert profiles.profile['content_weights']=={'t':5}
+    assert profiles.profile['refreshed_at']==NOW and profiles.profile['as_of']==NOW-timedelta(days=1)
+    profiles.profile['training_evaluation']={'accepted':False}
+    publish_profiles(SimpleNamespace(recommendation_state=profiles),daily,NOW,False,tmp_path)
+    assert profiles.profile['collaborative_scores']=={} and profiles.profile['model_version']=='content-session-v1'

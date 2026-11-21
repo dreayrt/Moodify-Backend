@@ -1,0 +1,16 @@
+name: moodify-recommendation-fixture
+services:
+  mysql:
+    image: mysql:8.0.44
+    command: ["--server-id=773313", "--event-scheduler=OFF"]
+    environment:
+      MYSQL_ROOT_PASSWORD: isolated-bootstrap-only
+    ports: ["127.0.0.1:13316:3306"]
+    volumes: ["./fixture-init.sql:/docker-entrypoint-initdb.d/fixture-init.sql:ro"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 20
+  mongo:
+    image: mongo:7.0.26
+    ports: ["127.0.0.1:13318:27017"]

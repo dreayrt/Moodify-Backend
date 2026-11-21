@@ -19,7 +19,7 @@ class EmotionInternalTrackTest {
     }
     Track track() {
         Track t=new Track();t.setId("internal");t.setName("Local");t.setArtistName("Artist");
-        t.setStatus("published");t.setVisibility("public");t.setLocalPath("data/audio/local.mp3");
+        t.setStatus("published");t.setModerationStatus("approved");t.setVisibility("public");t.setLocalPath("data/audio/local.mp3");
         var af=new Track.AudioFeatures();af.setValence(.5);af.setEnergy(.5);af.setDanceability(.5);af.setAcousticness(.5);af.setBpm(110.0);t.setAudioFeatures(af);return t;
     }
     @Test void licensedInternalTrackIsScored() {

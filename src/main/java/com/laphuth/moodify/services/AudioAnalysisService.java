@@ -97,6 +97,9 @@ public class AudioAnalysisService {
             }
 
             Track.AudioFeatures af = new Track.AudioFeatures();
+            af.setAnalysisVersion(java.util.Objects.toString(response.get("version"), "unversioned"));
+            af.setAssessment("estimated_not_listener_verified");
+            af.setSourceAudioSha256(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(audioBytes)));
             if (response.get("bpm") != null) {
                 af.setBpm(Double.valueOf(response.get("bpm").toString()));
             }
@@ -115,6 +118,10 @@ public class AudioAnalysisService {
             if (response.get("acousticness") != null) {
                 af.setAcousticness(Double.valueOf(response.get("acousticness").toString()));
             }
+            if (af.getBpm()==null || !Double.isFinite(af.getBpm()) || af.getBpm()<=0) return null;
+            for (Double index : new Double[]{af.getEnergy(),af.getDanceability(),af.getValence(),af.getAcousticness()})
+                if(index==null || !Double.isFinite(index) || index<0 || index>1) return null;
+            if(response.get("keyConfidence") instanceof Number confidence) af.setKeyConfidence(confidence.doubleValue());
 
             log.info("Phân tích âm học thành công cho [{}]: BPM={}, Key={}, Energy={}, Danceability={}, Valence={}, Acousticness={}",
                     filename, af.getBpm(), af.getKeySignature(), af.getEnergy(), af.getDanceability(), af.getValence(), af.getAcousticness());

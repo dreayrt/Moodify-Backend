@@ -1,6 +1,10 @@
 package com.laphuth.moodify.dto.moderator;
 
 public class ModerationDecisionRequest {
+    private boolean rightsVerified;
+    public boolean isRightsVerified() { return rightsVerified; }
+    public void setRightsVerified(boolean value) { rightsVerified=value; }
+
     private String trackId;
     private String actionType; // approve, reject, needs_revision
     private String rejectionReason;

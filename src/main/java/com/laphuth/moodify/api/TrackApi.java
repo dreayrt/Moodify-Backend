@@ -174,44 +174,10 @@ public class TrackApi {
     }
 
     private File resolveAudioFile(Track track) {
-        if (track == null) return null;
-        String localPath = track.getLocalPath();
-        String spotifyId = track.getSpotifyId();
-
-        // 1. Direct path check
-        if (localPath != null && !localPath.isBlank()) {
-            File f = new File(localPath);
-            if (f.exists() && f.length() > 0) return f;
-
-            File fJustName = new File("data/audio", f.getName());
-            if (fJustName.exists() && fJustName.length() > 0) return fJustName;
-
-            File fData = new File("data", localPath);
-            if (fData.exists() && fData.length() > 0) return fData;
-
-            File fBackend = new File("Moodify-Backend", localPath);
-            if (fBackend.exists() && fBackend.length() > 0) return fBackend;
-        }
-
-        // 2. Search data/audio directory by spotifyId
-        File[] searchDirs = new File[] { new File("data/audio"), new File("Moodify-Backend/data/audio") };
-        for (File audioDir : searchDirs) {
-            if (audioDir.exists() && audioDir.isDirectory() && spotifyId != null) {
-                File[] matches = audioDir.listFiles((dir, name) -> name.contains(spotifyId));
-                if (matches != null && matches.length > 0) {
-                    return matches[0];
-                }
-                File[] subdirs = audioDir.listFiles(File::isDirectory);
-                if (subdirs != null) {
-                    for (File subdir : subdirs) {
-                        File[] subMatches = subdir.listFiles((dir, name) -> name.contains(spotifyId));
-                        if (subMatches != null && subMatches.length > 0) {
-                            return subMatches[0];
-                        }
-                    }
-                }
-            }
-        }
-        return null;
+        if (track == null || !com.laphuth.moodify.services.PublicTrackPolicy.hasAudioPath(track.getLocalPath())) return null;
+        // Never search by basename/Spotify substring: that can serve another recording.
+        String declared = track.getLocalPath();
+        File file = declared.startsWith("/uploads/") ? new File("/app" + declared) : new File(declared);
+        return file.isFile() && file.length() > 0 ? file : null;
     }
 }

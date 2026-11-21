@@ -28,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -37,6 +38,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ModeratorServiceTest {
+    @org.junit.jupiter.api.BeforeEach void integrityDependency() { moderatorService.setCatalogIntegrity(catalogIntegrity); }
+    @org.mockito.Mock private CatalogIntegrityService catalogIntegrity;
 
     @Mock
     private TrackRepository trackRepository;
@@ -232,7 +235,7 @@ class ModeratorServiceTest {
             .thenReturn(Optional.of(reviewRequest));
         when(userRepo.findByEmailOrUsername("moderator", "moderator"))
             .thenReturn(Optional.of(moderator));
-        when(songLicenseRepository.findByTrackId(track.getId())).thenReturn(Optional.empty());
+        when(songLicenseRepository.findFirstByTrackIdOrderByIdDesc(track.getId())).thenReturn(Optional.empty());
 
         moderatorService.processDecision(request, "moderator");
 
@@ -249,7 +252,7 @@ class ModeratorServiceTest {
             .isEqualTo("Bản quyền chưa được xác minh; metadata sai lệch");
         assertThat(track.getModerationStatus()).isEqualTo("rejected");
         assertThat(track.getStatus()).isEqualTo("draft");
-        verify(trackRepository).save(track);
+        verify(catalogIntegrity).stagePatch(eq(track.getId()),any(org.bson.Document.class));
     }
 
     @Test
@@ -295,7 +298,7 @@ class ModeratorServiceTest {
             .thenReturn(Optional.of(artistOwner));
         when(userRepo.findByEmailOrUsername("moderator", "moderator"))
             .thenReturn(Optional.of(moderator));
-        when(songLicenseRepository.findByTrackId(track.getId())).thenReturn(Optional.empty());
+        when(songLicenseRepository.findFirstByTrackIdOrderByIdDesc(track.getId())).thenReturn(Optional.empty());
 
         moderatorService.processDecision(request, "moderator");
 
@@ -315,7 +318,7 @@ class ModeratorServiceTest {
         assertThat(actionCaptor.getValue().getAction()).isEqualTo("REJECT");
         assertThat(actionCaptor.getValue().getReason()).isEqualTo("Vi phạm bản quyền");
         assertThat(track.getModerationStatus()).isEqualTo("rejected");
-        verify(trackRepository).save(track);
+        verify(catalogIntegrity).stagePatch(eq(track.getId()),any(org.bson.Document.class));
     }
 
     @Test

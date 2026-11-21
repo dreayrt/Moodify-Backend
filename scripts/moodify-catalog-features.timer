@@ -1,0 +1,11 @@
+[Unit]
+Description=Scan Moodify audio feature backlog hourly
+
+[Timer]
+OnCalendar=*-*-* *:35:00
+RandomizedDelaySec=3min
+AccuracySec=1min
+Persistent=false
+
+[Install]
+WantedBy=timers.target

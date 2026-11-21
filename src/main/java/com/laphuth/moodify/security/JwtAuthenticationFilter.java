@@ -1,5 +1,6 @@
 package com.laphuth.moodify.security;
 
+import com.laphuth.moodify.entities.enums.UserRole;
 import com.laphuth.moodify.entities.enums.UserStatus;
 import com.laphuth.moodify.entities.User;
 import com.laphuth.moodify.repositories.UserRepository;
@@ -73,13 +74,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         ) {
             String deviceUuid = request.getHeader("X-Device-Uuid");
             String path = request.getRequestURI();
-            boolean isDeviceManagementPath = path != null && (
-                path.startsWith("/api/auth/devices") ||
-                path.startsWith("/api/auth/logout") ||
-                path.startsWith("/api/subscriptions") ||
-                path.startsWith("/api/payment") ||
-                path.equals("/api/users/me")
+            boolean isAlwaysAllowedPath = path != null && (
+                path.equals("/api/auth/logout") ||
+                path.equals("/api/auth/devices/ping")
             );
+            boolean isListenerReclaimOrBillingPath = path != null &&
+                currentUser.getRole() == UserRole.USER && (
+                    path.equals("/api/auth/devices") ||
+                    path.equals("/api/auth/devices/revoke-others") ||
+                    path.startsWith("/api/subscriptions") ||
+                    path.startsWith("/api/payment") ||
+                    path.equals("/api/users/me")
+                );
+            boolean isDeviceManagementPath = isAlwaysAllowedPath || isListenerReclaimOrBillingPath;
 
             // Kiểm tra ràng buộc thiết bị: nếu thiết bị gửi request đã bị REVOKED thì chặn ngay lập tức
             if (deviceUuid != null && !deviceUuid.isBlank() && !isDeviceManagementPath) {

@@ -47,4 +47,23 @@ class OcrServiceLicenseIdentificationTest {
         assertThat(result.getDistributorId()).isNull();
         assertThat(result.getDistributorName()).isEqualTo("Independent Distribution Company");
     }
+
+    @Test
+    void explicitDistributorLineTakesPrecedenceOverOcrConfusingTheLicenseeWithADistributor() {
+        OcrRawResponse raw = new OcrRawResponse();
+        raw.setSuccess(true);
+        raw.setExtractedFields(Map.of("distributor", "Nguyễn Khánh Duy", "issue_date", "2026-11-10"));
+        raw.setRawText("""
+            Tên bên nhận quyền: Nguyễn Khánh Duy
+            Nhà phân phối: Không qua trung gian
+            Ngày dự kiến ký: 16/11/2026
+            """);
+        OcrExtractResponse result = ReflectionTestUtils.invokeMethod(service, "mapToExtractResponse", raw);
+        assertThat(result).isNotNull();
+        assertThat(result.isDirectLicensing()).isTrue();
+        assertThat(result.getDistributorId()).isNull();
+        assertThat(result.getAgreementDetails().licenseeName()).isEqualTo("Nguyễn Khánh Duy");
+        assertThat(result.getAgreementDetails().plannedSigningDate()).isEqualTo("2026-11-16");
+        assertThat(result.getIssueDate()).isEqualTo("2026-11-10");
+    }
 }

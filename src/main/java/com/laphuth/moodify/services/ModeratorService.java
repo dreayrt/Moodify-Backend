@@ -32,6 +32,10 @@ import java.util.stream.Collectors;
 public class ModeratorService {
 
     private final TrackRepository trackRepository;
+    private CatalogIntegrityService catalogIntegrity;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setCatalogIntegrity(CatalogIntegrityService value) { catalogIntegrity=value; }
+
     private final SongLicenseRepository songLicenseRepository;
     private final ContentReviewRequestRepository contentReviewRequestRepository;
     private final ContentReviewActionRepository contentReviewActionRepository;
@@ -194,15 +198,30 @@ public class ModeratorService {
             );
         }
 
-        // Flush the MySQL audit row before changing the MongoDB queue item.
-        songLicenseRepository.findByTrackId(track.getId()).ifPresent(license -> {
-            if ("approve".equals(action)) {
-                license.setStatus(LicenseStatus.ACTIVE);
-            } else if ("reject".equals(action)) {
-                license.setStatus(LicenseStatus.REVOKED);
+        SongLicense license=songLicenseRepository.findFirstByTrackIdOrderByIdDesc(track.getId()).orElse(null);
+        if("approve".equals(action)) {
+            if(license==null)throw new ResponseStatusException(HttpStatus.CONFLICT,"Thiếu hồ sơ giấy phép.");
+            if(track.getDurationMs()==null||track.getDurationMs()<=0||track.getAudioHash()==null||!track.getAudioHash().matches("[0-9a-f]{64}")
+                || track.getArtistIds()==null||track.getArtistIds().isEmpty())
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"Bài hát thiếu thời lượng, hash hoặc định danh nghệ sĩ.");
+            boolean simulated=CatalogLicensePolicy.simulated(track,license);
+            if(!simulated) {
+                if(!request.isRightsVerified() || "SIMULATION_DETECTED".equals(license.getDocumentInspectionStatus()) || ContentLeadCatalogService.looksSimulated(license.getCopyrightOwner(),license.getDistributionContractCode()))
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,"Phải xác nhận hồ sơ quyền thật; tài liệu mô phỏng không được duyệt như quyền thật.");
+                if(request.getInternalNote()==null||request.getInternalNote().isBlank())
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Cần ghi căn cứ xác minh hồ sơ quyền.");
+                license.setAcquisitionCostVnd(license.getDeclaredAcquisitionCostVnd());
+                license.setRightsEvidenceStatus("VERIFIED");
+                license.setRightsVerifiedBy(moderator.getId());
+                license.setRightsVerifiedAt(LocalDateTime.now(java.time.ZoneOffset.UTC));
+                license.setRightsReviewNote(request.getInternalNote().trim());
             }
-            songLicenseRepository.save(license);
-        });
+            license.setStatus(LicenseStatus.ACTIVE);
+            if(!CatalogLicensePolicy.effective(license,java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")))
+                || !CatalogLicensePolicy.evidenceReady(track,license,true))
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"Hồ sơ thiếu tài liệu, hash hoặc ngoài thời hạn hiệu lực.");
+        } else if(license!=null && "reject".equals(action))license.setStatus(LicenseStatus.REVOKED);
+        if(license!=null)songLicenseRepository.saveAndFlush(license);
 
         if ("approve".equals(action)) {
             track.setModerationStatus("approved");
@@ -223,7 +242,12 @@ public class ModeratorService {
             track.setExplicit(request.getExplicitTag());
         }
         track.setUpdatedAt(Instant.now());
-        trackRepository.save(track);
+        if(catalogIntegrity==null)throw new IllegalStateException("Catalog integrity service unavailable");
+        org.bson.Document patch=new org.bson.Document("moderation_status",track.getModerationStatus())
+            .append("status",track.getStatus()).append("moderation_score",track.getModerationScore())
+            .append("download_status",track.getDownloadStatus()).append("explicit",track.isExplicit())
+            .append("updated_at",java.util.Date.from(track.getUpdatedAt()));
+        catalogIntegrity.stagePatch(track.getId(),patch);
     }
 
     private ContentReviewRequest createReviewRequestForPendingTrack(Track track) {

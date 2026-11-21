@@ -25,6 +25,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class AlbumService {
+    private TrackService servingTracks;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setServingTracks(TrackService value) { servingTracks=value; }
+
 
     private final AlbumEntityRepository albumRepository;
     private final AlbumTrackRepository albumTrackRepository;
@@ -270,7 +274,7 @@ public class AlbumService {
             if (t == null) {
                 t = trackRepository.findBySpotifyId(id).orElse(null);
             }
-            if (t != null) {
+            if (servingTracks != null && servingTracks.isTrackPubliclyAvailable(t)) {
                 result.add(TrackResponse.fromSummary(t));
             }
         }

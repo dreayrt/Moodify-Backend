@@ -15,7 +15,7 @@ INSERT INTO users (
     status
 )
 SELECT
-    'Trần Minh Content Lead',
+    'Lâm Phước Thuận',
     '0901000002',
     'contentlead@moodify.local',
     'contentlead01',
@@ -37,7 +37,7 @@ INSERT INTO users (
     status
 )
 SELECT
-    'Lê Hoàng Moderator',
+    'Lê Vũ Hải',
     '0901000003',
     'moderator@moodify.local',
     'moderator01',

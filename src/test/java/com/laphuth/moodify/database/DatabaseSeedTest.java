@@ -1,8 +1,6 @@
 package com.laphuth.moodify.database;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
@@ -11,26 +9,14 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DatabaseSeedTest {
-    private static final Pattern BCRYPT_HASH = Pattern.compile(
-        "\\$2[aby]\\$\\d{2}\\$[./A-Za-z0-9]{53}"
-    );
-
     @Test
-    void allSeedUsersShouldUseBcrypt() throws Exception {
+    void freshDatabaseContainsNoSampleAccountsOrBusinessActivity() throws Exception {
         String sql = java.nio.file.Files.readString(java.nio.file.Path.of("database/Moodify.sql"), StandardCharsets.UTF_8);
-
-        assertThat(sql).doesNotContainIgnoringCase("SHA2(");
-
-        Matcher matcher = BCRYPT_HASH.matcher(sql);
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        int hashCount = 0;
-
+        Matcher matcher = Pattern.compile("(?i)INSERT INTO\\s+(\\w+)").matcher(sql);
         while (matcher.find()) {
-            assertThat(encoder.matches("123456", matcher.group())).isTrue();
-            hashCount++;
+            assertThat(matcher.group(1)).isEqualTo("subscription_tiers");
         }
-
-        assertThat(hashCount).isGreaterThanOrEqualTo(5);
+        assertThat(sql).doesNotContain("moodify.local", "example.com", "$2a$");
     }
 
     @Test
@@ -66,7 +52,7 @@ class DatabaseSeedTest {
 
     private static String createTableBlock(String sql, String tableName) {
         Pattern tablePattern = Pattern.compile(
-            "(?s)CREATE TABLE " + tableName + " \\(.*?\\R\\) ;"
+            "(?s)CREATE TABLE (?:IF NOT EXISTS )?" + tableName + " \\(.*?\\R\\)\\s*(?:ENGINE=[^;]+)?;"
         );
         Matcher matcher = tablePattern.matcher(sql);
         assertThat(matcher.find()).isTrue();

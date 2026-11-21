@@ -161,11 +161,13 @@ public class OfflineDownloadService {
                 ? LocalDateTime.parse(expiresAtStr.replace(" ", "T"))
                 : LocalDateTime.now().plusDays(30);
 
+        expiresAt=trackService.capOfflineExpiry(track,expiresAt);
         // 6. Sinh khóa mã hóa AES-256 (256-bit Hex) riêng biệt cho bộ (user, device, track)
         String encryptionKey = generateTrackKey(user.getId(), deviceId, track.getId());
 
         // 7. Sinh Stateless HMAC-SHA256 Signed Ticket (15 phút TTL) - Không cần lưu bảng DB
         LocalDateTime tokenExpiresAt = LocalDateTime.now().plusMinutes(15);
+        if(expiresAt.isBefore(tokenExpiresAt))tokenExpiresAt=expiresAt;
         String downloadToken = createStatelessDownloadTicket(user.getId(), deviceId, track.getId(), tokenExpiresAt);
 
         // 8. Cập nhật bản ghi trong bảng có sẵn offline_downloads thành QUEUED
@@ -217,6 +219,8 @@ public class OfflineDownloadService {
 
         Long deviceId = ticket.deviceId();
         String trackId = ticket.trackId();
+        if(!trackService.isTrackPubliclyAvailable(trackService.getTrackEntity(trackId)))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Quyền khai thác bài hát đã thay đổi.");
 
         // 2. Kiểm tra bản ghi trong bảng có sẵn offline_downloads
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
@@ -292,7 +296,10 @@ public class OfflineDownloadService {
                     deviceId, trackId.trim()
                 );
 
-                if (rows.isEmpty()) {
+                boolean catalogAvailable;
+                try { catalogAvailable=trackService.isTrackPubliclyAvailable(trackService.getTrackEntity(trackId)); }
+                catch(TrackService.TrackNotFoundException missing) { catalogAvailable=false; }
+                if (rows.isEmpty() || !catalogAvailable) {
                     revokedTracks.add(trackId);
                     continue;
                 }
@@ -300,7 +307,7 @@ public class OfflineDownloadService {
                 String status = (String) rows.get(0).get("status");
                 LocalDateTime expiresAt = toLocalDateTime(rows.get(0).get("expires_at"));
 
-                if (!isPremium || "EXPIRED".equalsIgnoreCase(status) || (expiresAt != null && expiresAt.isBefore(now))) {
+                if (!isPremium || "EXPIRED".equalsIgnoreCase(status) || (expiresAt != null && !expiresAt.isAfter(now))) {
                     expiredTracks.add(trackId);
                 } else if ("REMOVED".equalsIgnoreCase(status)) {
                     revokedTracks.add(trackId);
@@ -452,11 +459,14 @@ public class OfflineDownloadService {
         int updatedCount = 0;
         if (!deviceIds.isEmpty()) {
             Long deviceId = deviceIds.get(0);
-            updatedCount = jdbcTemplate.update(
-                "UPDATE offline_downloads SET status = 'DOWNLOADED', expires_at = ?, updated_at = NOW() " +
-                "WHERE device_id = ? AND status IN ('DOWNLOADED', 'EXPIRED')",
-                expiresAt, deviceId
-            );
+            List<String> ids=jdbcTemplate.queryForList("SELECT track_id FROM offline_downloads WHERE device_id=? AND status IN ('DOWNLOADED','EXPIRED')",String.class,deviceId);
+            for(String id:ids) {
+                Track track;
+                try { track=trackService.getTrackEntity(id); } catch(TrackService.TrackNotFoundException missing) { continue; }
+                if(!trackService.isTrackPubliclyAvailable(track))continue;
+                LocalDateTime capped=trackService.capOfflineExpiry(track,expiresAt);
+                updatedCount+=jdbcTemplate.update("UPDATE offline_downloads SET status='DOWNLOADED',expires_at=?,updated_at=NOW() WHERE device_id=? AND track_id=? AND status IN ('DOWNLOADED','EXPIRED')",capped,deviceId,id);
+            }
         }
 
         return Map.of(

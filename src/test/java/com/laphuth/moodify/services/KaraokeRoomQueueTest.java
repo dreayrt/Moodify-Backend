@@ -42,6 +42,9 @@ class KaraokeRoomQueueTest {
 
     @BeforeEach
     void setUp() {
+        var serving=mock(TrackService.class);service.setServingTracks(serving);
+        lenient().when(serving.getTrackEntity(anyString())).thenReturn(new com.laphuth.moodify.entities.Track());
+        lenient().when(serving.isTrackPubliclyAvailable(any(com.laphuth.moodify.entities.Track.class))).thenReturn(true);
         user = new User();
         user.setId(2L);
         user.setFullName("Người hát");
@@ -59,7 +62,7 @@ class KaraokeRoomQueueTest {
                 .thenReturn(new Document("assets", new Document("instrumental", new Document("storageKey", "i.wav"))
                         .append("vocals", new Document("storageKey", "v.wav"))));
         when(mongo.findById(any(ObjectId.class), eq(Document.class), eq("tracks")))
-                .thenAnswer(call -> new Document("_id", call.getArgument(0)).append("name", "Bài hát"));
+                .thenAnswer(call -> new Document("_id", call.getArgument(0)).append("name", "Bài hát").append("status","published").append("visibility","public").append("moderation_status","approved").append("local_path","data/audio/test.mp3"));
         when(queue.saveAndFlush(any(KaraokeRoomQueueItem.class))).thenAnswer(call -> call.getArgument(0));
     }
 

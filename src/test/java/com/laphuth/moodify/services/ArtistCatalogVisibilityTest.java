@@ -24,7 +24,7 @@ class ArtistCatalogVisibilityTest {
         AlbumTrackRepository albumTracks=mock(AlbumTrackRepository.class);
         SongLicenseRepository licenses=mock(SongLicenseRepository.class);
         Artist artist=new Artist();artist.setSpotifyId("artist");artist.setName("Artist");
-        Track active=new Track();active.setId("active");active.setName("New");active.setStatus("published");
+        Track active=new Track();active.setId("active");active.setName("New");active.setStatus("published");active.setModerationStatus("approved");active.setModerationStatus("approved");active.setVisibility("public");active.setLocalPath("data/audio/active.mp3");
         Track old=new Track();old.setId("old");old.setName("Old");old.setStatus("archived");
         when(artists.findBySpotifyId("artist")).thenReturn(Optional.of(artist));
         when(tracks.findByArtistSpotifyId("artist")).thenReturn(List.of(active,old));

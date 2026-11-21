@@ -13,4 +13,5 @@ public interface SongLicenseDetailsProjection {
     String getExpiryDate();
     String getLicenseStatus();
     String getLicenseDocumentUrl();
+    String getAgreementDetailsJson();
 }

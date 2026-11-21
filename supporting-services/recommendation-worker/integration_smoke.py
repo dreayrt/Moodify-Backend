@@ -1,7 +1,7 @@
 """Exercise the packaged backend against disposable local SQL/Mongo databases.
 
 Never copies user data. Only databases matching the generated test prefix can be
-dropped. Run after mvnw -DskipTests package; credentials come from backend .env.
+dropped. Run after mvnw -DskipTests package; requires RECOMMENDATION_SMOKE_ENV; never reads application .env.
 """
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import shutil
 import socket
 import subprocess
 import time
@@ -22,23 +23,95 @@ from urllib.parse import urlparse
 import uuid
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import threading
 
 from bson import ObjectId
 import worker
 import compact_storage
 
 
-def execute_script(connection, source):
-    # These schema files contain DDL only, not stored routines or DELIMITER blocks.
+DISPOSABLE_DATABASE = re.compile(r"moodify_recommendation_test_[a-f0-9]{12}")
+FIXTURE_TABLES = frozenset({
+    "users", "user_library_tracks", "favorite_songs", "favorite_artists", "favorite_albums",
+    "listening_history", "artist_profiles", "artist_reviews", "albums", "album_tracks",
+    "playback_events", "search_history", "subscription_tiers", "service_packages", "subscriptions",
+    "payment_transactions", "user_devices", "offline_downloads", "content_review_requests",
+    "content_review_actions", "distributors", "distribution_contracts", "song_licenses",
+    "platform_traffic_events", "notifications", "notification_broadcasts", "revenue_playback_sessions",
+    "qualified_streams", "karaoke_rooms", "karaoke_room_members", "karaoke_room_queue",
+})
+
+
+def safe_schema_statements(source):
+    """Validate the complete fixture schema before executing any of its DDL.
+
+    The application schema includes database bootstrap commands. Never execute
+    them, even on a connection which has selected a disposable database.
+    """
+    if any(marker in source for marker in ("/*", "*/", "#")):
+        raise ValueError("SQL block/executable comments and directives are not allowed in the fixture schema")
+    validated = []
+    for statement in worker.sql_statements(source):
+        # Mask string literals; quoted identifiers are restricted to simple names.
+        plain = re.sub(r"'(?:\\.|''|[^'\\])*'|\"(?:\\.|\"\"|[^\"\\])*\"", "''", statement)
+        if any(not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", identifier)
+               for identifier in re.findall(r"`([^`]*)`", plain)):
+            raise ValueError("Unsupported quoted SQL identifier")
+        plain = re.sub(r"`([^`]*)`", r"\1", plain).strip()
+        if "`" in plain:
+            raise ValueError("Unsupported quoted SQL identifier")
+        if re.fullmatch(r"DROP\s+DATABASE\s+(?:IF\s+EXISTS\s+)?moodify", plain, re.I):
+            continue
+        if re.fullmatch(r"CREATE\s+DATABASE\s+(?:IF\s+NOT\s+EXISTS\s+)?moodify"
+                        r"(?:\s+CHARACTER\s+SET\s+utf8mb4\s+COLLATE\s+utf8mb4_unicode_ci)?", plain, re.I):
+            continue
+        if re.fullmatch(r"USE\s+moodify", plain, re.I):
+            continue
+        match = re.match(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_]\w*)\s*\(", plain, re.I)
+        if not match or match.group(1).lower() not in FIXTURE_TABLES:
+            raise ValueError("Only allowlisted unqualified CREATE TABLE statements are permitted")
+        if "." in plain or re.search(r"\b(?:SELECT|LIKE|OUTFILE|DUMPFILE|DEFINER|TRIGGER|EVENT|PROCEDURE|"
+                                     r"FUNCTION|GRANT|REVOKE|CALL|GLOBAL|PERSIST|DATABASE|SCHEMA|RENAME|ALTER|DROP)\b", plain, re.I):
+            raise ValueError("Cross-schema references or executable SQL are not allowed in the fixture schema")
+        if not re.search(r"\)\s*(?:ENGINE\s*=\s*InnoDB\s+DEFAULT\s+CHARSET\s*=\s*utf8mb4"
+                         r"\s+COLLATE\s*=\s*utf8mb4_unicode_ci)?\s*$", plain, re.I):
+            raise ValueError("Unsupported fixture table options")
+        for reference in re.finditer(r"\bREFERENCES\s+([A-Za-z_]\w*)\s*\(", plain, re.I):
+            if reference.group(1).lower() not in FIXTURE_TABLES:
+                raise ValueError("Foreign keys must reference fixture tables")
+        # Every REFERENCES must have matched the restricted unqualified form.
+        if len(re.findall(r"\bREFERENCES\b", plain, re.I)) != len(list(re.finditer(r"\bREFERENCES\s+[A-Za-z_]\w*\s*\(", plain, re.I))):
+            raise ValueError("Unsupported foreign-key reference")
+        validated.append(statement)
+    if not validated:
+        raise ValueError("Fixture schema contains no tables")
+    return validated
+
+
+def require_disposable_database(connection, database):
+    if not DISPOSABLE_DATABASE.fullmatch(database):
+        raise RuntimeError("Invalid disposable database name")
     with connection.cursor() as cursor:
-        for statement in worker.sql_statements(source):
-            statement = statement.strip()
-            if not statement:
-                continue
-            if re.match(r"^(CREATE\s+DATABASE|USE\s)", statement, re.I):
-                continue
+        cursor.execute("SELECT DATABASE() AS selected_database")
+        if cursor.fetchone()["selected_database"] != database:
+            raise RuntimeError("Connection is not scoped to the disposable database")
+
+
+def execute_script(connection, source, database):
+    statements = safe_schema_statements(source)
+    require_disposable_database(connection, database)
+    with connection.cursor() as cursor:
+        for statement in statements:
             cursor.execute(statement)
     connection.commit()
+
+
+def drop_disposable_databases(connection, client, database):
+    require_disposable_database(connection, database)
+    with connection.cursor() as cursor:
+        cursor.execute(f"DROP DATABASE IF EXISTS `{database}`")
+    client.drop_database(database)
 
 
 def jwt(username, role, user_id, secret):
@@ -50,32 +123,58 @@ def jwt(username, role, user_id, secret):
     return body + "." + base64.urlsafe_b64encode(hmac.new(secret.encode(), body.encode(), hashlib.sha256).digest()).decode().rstrip("=")
 
 
+def smoke_connections():
+    # Never load application .env or inherit its DB credentials.
+    from dotenv import dotenv_values
+    import pymysql
+    from pymongo import MongoClient
+    env_file = os.environ.get("RECOMMENDATION_SMOKE_ENV")
+    if not env_file:
+        raise RuntimeError("Set RECOMMENDATION_SMOKE_ENV to the isolated fixture environment; application .env is forbidden")
+    config = dotenv_values(env_file)
+    parsed = urlparse(config.get("DATABASE_SOURCE_URL", "").removeprefix("jdbc:"))
+    mongo_url = urlparse(config.get("MONGODB_URI", ""))
+    if (config.get("RECOMMENDATION_TEST_INSTANCE") != "isolated" or parsed.hostname not in {"localhost", "127.0.0.1"}
+        or parsed.port != 13316 or mongo_url.hostname not in {"localhost", "127.0.0.1"} or mongo_url.port != 13318
+        or config.get("DATABASE_USERNAME") != "rec_fixture"):
+        raise RuntimeError("Smoke requires the dedicated fixture servers on 13316/13318 and fixture-only SQL account")
+    sql = pymysql.connect(host=parsed.hostname, port=parsed.port, user="rec_fixture", password=config["DATABASE_PASSWORD"],
+        database="moodify_recommendation_test_000000000000", cursorclass=pymysql.cursors.DictCursor,
+        connect_timeout=5, read_timeout=15, write_timeout=15)
+    with sql.cursor() as cursor:
+        cursor.execute("SELECT @@server_id id")
+        if cursor.fetchone()["id"] != 773313:
+            sql.close(); raise RuntimeError("Not the isolated test server")
+        cursor.execute("SHOW GRANTS")
+        grants = " ".join(str(next(iter(row.values()))) for row in cursor.fetchall())
+        if " ON *.*" in grants.replace("GRANT USAGE ON *.*", ""):
+            sql.close(); raise RuntimeError("Global SQL privileges are forbidden for fixture account")
+    for key in ("DATABASE_SOURCE_URL", "DATABASE_USERNAME", "DATABASE_PASSWORD", "MONGODB_URI", "MONGODB_DATABASE"):
+        os.environ[key] = config[key]
+    client = MongoClient(config["MONGODB_URI"], tz_aware=True, serverSelectionTimeoutMS=5000)
+    return sql, client[config["MONGODB_DATABASE"]], client
+
+
 def run():
-    sql, source_mongo, client = worker.connections(worker.ROOT / ".env")
+    schema_source = (worker.ROOT / "database/Moodify.annotated.schema.sql").read_text(encoding="utf-8")
+    safe_schema_statements(schema_source)
+    sql, source_mongo, client = smoke_connections()
     parsed = urlparse(os.environ["DATABASE_SOURCE_URL"].removeprefix("jdbc:"))
     if parsed.hostname not in {"localhost", "127.0.0.1", "::1"} or client.address[0] not in {"localhost", "127.0.0.1", "::1"}:
         raise RuntimeError("Smoke tests require local database servers")
     database = "moodify_recommendation_test_" + secrets.token_hex(6)
-    if not re.fullmatch(r"moodify_recommendation_test_[a-f0-9]{12}", database):
+    if not DISPOSABLE_DATABASE.fullmatch(database):
         raise RuntimeError("Invalid disposable database name")
     process = None
+    model_server = None
     log = None
+    packaged_jar = None
     checked = []
     try:
         with sql.cursor() as cursor:
             cursor.execute(f"CREATE DATABASE `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
         sql.select_db(database)
-        execute_script(sql, (worker.ROOT / "database/Moodify.annotated.schema.sql").read_text(encoding="utf-8"))
-        # These are existing business tables in the application, absent from the older annotated fixture schema.
-        with sql.cursor() as cursor:
-            cursor.execute("""CREATE TABLE albums (id BIGINT PRIMARY KEY,title VARCHAR(200) NOT NULL,user_id BIGINT NOT NULL,
-                description TEXT,cover_url VARCHAR(500),release_date DATE,is_public BOOLEAN NOT NULL DEFAULT TRUE,
-                status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(user_id) REFERENCES users(id))""")
-            cursor.execute("""CREATE TABLE album_tracks (id BIGINT AUTO_INCREMENT PRIMARY KEY,album_id BIGINT NOT NULL,
-                track_id VARCHAR(80) NOT NULL,track_order INT NOT NULL DEFAULT 0,added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(album_id) REFERENCES albums(id))""")
-        sql.commit()
+        execute_script(sql, schema_source, database)
         mongo = client[database]
         now = datetime.now(timezone.utc)
         with sql.cursor() as cursor:
@@ -111,8 +210,27 @@ def run():
             free_socket.bind(("127.0.0.1",0))
             port = free_socket.getsockname()[1]
         port = int(os.environ.get("RECOMMENDATION_SMOKE_PORT", port))
+        class FixtureEmotion(BaseHTTPRequestHandler):
+            def do_POST(self):
+                if self.headers.get('Transfer-Encoding','').lower()=='chunked':
+                    chunks=[]
+                    while True:
+                        size=int(self.rfile.readline().split(b';',1)[0].strip(),16)
+                        if size==0:self.rfile.readline();break
+                        chunks.append(self.rfile.read(size));self.rfile.read(2)
+                    raw=b''.join(chunks)
+                else:raw=self.rfile.read(int(self.headers.get('Content-Length',0)))
+                body=json.loads(raw)
+                if body.get('text')=='fixture-model-error':
+                    self.send_error(503);return
+                response={'text':body.get('text'),'label':'Enjoyment','confidence':.9,
+                    'music_recommendation':{'strategy':'empathy','target_valence':.5,'target_energy':.5}}
+                data=json.dumps(response).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+            def log_message(self,*args): pass
+        model_server=ThreadingHTTPServer(('127.0.0.1',0),FixtureEmotion)
+        threading.Thread(target=model_server.serve_forever,daemon=True).start()
         env = os.environ.copy()
-        env.update(SERVER_PORT=str(port), DATABASE_SOURCE_URL=f"jdbc:mysql://{parsed.hostname}:{parsed.port or 3306}/{database}?useSSL=false&serverTimezone=UTC",
+        env.update(EMOTION_SERVICE_BASE_URL=f"http://127.0.0.1:{model_server.server_port}", RECOMMENDATIONS_CAMPAIGNS_ENABLED="true", SERVER_PORT=str(port), DATABASE_SOURCE_URL=f"jdbc:mysql://{parsed.hostname}:{parsed.port or 3306}/{database}?useSSL=false&serverTimezone=UTC",
                    MONGODB_DATABASE=database, JWT_SECRET=secret, SYNC_SCHEDULER_ENABLED="false",
                    APP_SCHEDULING_ENABLED="false", SPRING_JPA_SHOW_SQL="false", SPRING_JPA_HIBERNATE_DDL_AUTO="none",
                    APP_CORS_ALLOWED_ORIGINS="http://localhost:38100", SERVER_ADDRESS="127.0.0.1",
@@ -127,9 +245,12 @@ def run():
             entries = set(packaged.namelist())
             assert "BOOT-INF/classes/db/recommendation_v1.sql" not in entries, "Run mvnw clean package to remove the obsolete SQL resource"
             assert "BOOT-INF/classes/com/laphuth/moodify/recommendation/RecommendationSchema.class" not in entries
+        # Keep the running test immutable if a developer builds another artifact on Windows.
+        packaged_jar = worker.ROOT / ("target/recommendation-smoke-" + uuid.uuid4().hex + ".jar")
+        shutil.copy2(jar, packaged_jar)
         log_path = worker.ROOT / "target/recommendation-smoke-server.log"
         log = log_path.open("w", encoding="utf-8")
-        process = subprocess.Popen([str(java),"-jar",str(jar),"--spring.config.import=optional:file:target/no-integration-env.properties",
+        process = subprocess.Popen([str(java),"-jar",str(packaged_jar),"--spring.config.import=optional:file:target/no-integration-env.properties",
                                     "--app.scheduling.enabled=false", "--subscription.maintenance.enabled=false"],
                                    cwd=worker.ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
                                    creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
@@ -172,9 +293,17 @@ def run():
         else:
             raise RuntimeError(f"Backend startup timeout; inspect {log_path}")
         checked.append("anonymous access rejected")
+        call('/api/emotions/recommend',user=None,method='POST',body={'text':'fixture happy'},expected=401)
+        call('/api/emotions/recommend',user=5,method='POST',body={'text':'fixture happy'},expected=(401,403))
+        mood=call('/api/emotions/recommend',method='POST',body={'text':'fixture happy','limit':10})
+        assert mood['candidateCount']==12 and mood['matchStatus']=='MATCHED'
+        call('/api/emotions/recommend',method='POST',body={'text':'   '},expected=400)
+        call('/api/emotions/recommend',method='POST',body={'text':'fixture-model-error'},expected=502)
+        checked.append('free ACTIVE mood access uses the strict licensed catalog; anonymous/banned/blank/model error rejected')
+        business_collections=set(mongo.list_collection_names())-{"recommendation_state","recommendation_events"}
         # Every worker batch must leave its snapshot, even when a different connection commits.
         first_sources=worker.load_sources(sql,mongo,now)
-        other,_,other_client=worker.connections(worker.ROOT/".env")
+        other,_,other_client=smoke_connections()
         try:
             other.select_db(database)
             with other.cursor() as cursor:
@@ -230,6 +359,9 @@ def run():
         queue = call("/api/playback/queues",method="POST",body=queue_body)
         call("/api/playback/queues",user=2,method="POST",body=queue_body,expected=403)
         first = queue["tracks"][0]
+        call('/api/playback/queues/validate',method='POST',body={'trackId':first['track']['id'],'queueToken':first['queueToken']})
+        call('/api/playback/queues/validate',user=2,method='POST',body={'trackId':first['track']['id'],'queueToken':first['queueToken']},expected=403)
+        checked.append('queue preflight checks current rights and token owner before clients start audio')
         playback = {"sessionKey":str(uuid.uuid4()),"trackId":first["track"]["id"],"positionMs":0,"eventType":"PLAY","queueToken":first["queueToken"],"deviceType":"WEB"}
         recorded = call("/api/analytics/listening-session",method="POST",body=playback)
         assert recorded["success"]
@@ -571,7 +703,7 @@ def run():
         forbidden={"recommendation_requests","recommendation_items","recommendation_events","recommendation_feedback",
                    "user_track_daily","content_metrics_windows","editorial_campaigns","recommendation_model_versions"}
         assert not (forbidden & actual_tables), "Recommendation must work without any new MySQL table"
-        new_collections=set(mongo.list_collection_names())-{"tracks","playlists","artists","albums"}
+        new_collections=set(mongo.list_collection_names())-business_collections
         assert new_collections=={"recommendation_state","recommendation_events"}, new_collections
         checked.append("recommendations and worker use zero new MySQL tables and only two Mongo collections")
         assert mongo.recommendation_events.index_information()["rec_log_expiry"]["expireAfterSeconds"]==0
@@ -602,26 +734,36 @@ def run():
             assert not (forbidden & {next(iter(row.values())) for row in cursor.fetchall()})
             cursor.execute("SELECT COUNT(*) n FROM users")
             assert cursor.fetchone()["n"]==business_users
-        assert set(mongo.list_collection_names())-{"tracks","playlists","artists","albums"}=={"recommendation_state","recommendation_events"}
+        assert set(mongo.list_collection_names())-business_collections=={"recommendation_state","recommendation_events"}
         checked.append("legacy cleanup verifies backup, preserves business data and removes only its allowlist")
         print(json.dumps({"passed":len(checked),"checks":checked,"disposable_database":database},ensure_ascii=False))
         hold_seconds = int(os.environ.get("RECOMMENDATION_SMOKE_HOLD_SECONDS", "0"))
         if hold_seconds > 0:
             mongo.playlists.update_one({"_id":"public-playlist"},{"$set":{"is_public":True}})
+            # Only synthetic fixture credentials are persisted, under ignored build artifacts.
+            device=str(uuid.uuid4())
+            with sql.cursor() as cursor:
+                cursor.execute("INSERT INTO user_devices(user_id,device_uuid,platform,device_name,status) VALUES (1,%s,'OTHER','Browser fixture','ACTIVE')",(device,))
+            sql.commit()
+            fixture={'base':base,'token':tokens[1],'adminToken':tokens[3],'deviceUuid':device,'database':database,'fixtureOnly':True}
+            (worker.ROOT/'target/recommendation-browser-fixture.json').write_text(json.dumps(fixture),encoding='utf-8')
             print("Browser fixture ready on local backend port " + str(port),flush=True)
-            time.sleep(min(hold_seconds,900))
+            time.sleep(min(hold_seconds,3600))
     finally:
+        if model_server is not None: model_server.shutdown();model_server.server_close()
         if process is not None:
             process.terminate()
             try: process.wait(timeout=15)
             except subprocess.TimeoutExpired: process.kill(); process.wait(timeout=10)
         if log is not None:
             log.close()
+        if packaged_jar is not None:
+            packaged_jar.unlink(missing_ok=True)
         # Targets are exact generated disposable DBs, never the configured application DB.
-        if re.fullmatch(r"moodify_recommendation_test_[a-f0-9]{12}",database):
-            with sql.cursor() as cursor: cursor.execute(f"DROP DATABASE IF EXISTS `{database}`")
-            client.drop_database(database)
-        sql.close(); client.close()
+        try:
+            drop_disposable_databases(sql, client, database)
+        finally:
+            sql.close(); client.close()
 
 
 if __name__=="__main__":

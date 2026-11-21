@@ -1,107 +1,44 @@
 package com.laphuth.moodify.services;
-
-import com.laphuth.moodify.dto.track.TrackPageResponse;
-import com.laphuth.moodify.dto.track.TrackResponse;
-import com.laphuth.moodify.entities.Track;
-import com.laphuth.moodify.repositories.SongLicenseRepository;
-import com.laphuth.moodify.repositories.TrackRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.laphuth.moodify.entities.*;
+import com.laphuth.moodify.entities.enums.LicenseStatus;
+import com.laphuth.moodify.repositories.*;
+import java.time.*;
+import java.util.*;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
-
-@ExtendWith(MockitoExtension.class)
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 class TrackServiceLicenseFilterTest {
-
-    @Mock
-    private TrackRepository trackRepository;
-
-    @Mock
-    private SongLicenseRepository songLicenseRepository;
-
-    private TrackService trackService;
-
-    @BeforeEach
-    void setUp() {
-        trackService = new TrackService(trackRepository, songLicenseRepository);
+    TrackRepository tracks=mock(TrackRepository.class);
+    SongLicenseRepository licenses=mock(SongLicenseRepository.class);
+    TrackService service=new TrackService(tracks,licenses);
+    Track track(String id) { Track t=new Track();t.setId(id);t.setName(id);t.setStatus("published");t.setVisibility("public");t.setModerationStatus("approved");t.setLocalPath("data/audio/"+id+".mp3");return t; }
+    SongLicense license(String id) { SongLicense l=new SongLicense();l.setId(1L);l.setTrackId(id);l.setStatus(LicenseStatus.ACTIVE);l.setIssueDate(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1));l.setExpiryDate(LocalDate.now().plusDays(1));l.setLicenseType("DIGITAL_STREAMING");l.setRightsEvidenceStatus("VERIFIED");l.setLicenseType("DIGITAL_STREAMING");l.setRightsVerifiedBy(1L);l.setRightsVerifiedAt(java.time.LocalDateTime.now());l.setRightsReviewNote("Fixture document review");l.setDocumentSha256("a".repeat(64));l.setDocumentSonglicensesUrl("/uploads/licenses/a.pdf");return l; }
+    @Test void missingLicenseAndApprovalCannotBypassDirectDetail() {
+        Track t=track("unlicensed");when(tracks.findById(t.getId())).thenReturn(Optional.of(t));
+        assertThatThrownBy(()->service.getTrack(t.getId())).isInstanceOf(TrackService.TrackNotFoundException.class);
+        t.setModerationStatus(null);assertThat(service.isTrackPubliclyAvailable(t)).isFalse();
     }
-
-    @Test
-    void shouldFilterOutTrackWhenLicenseIsExpiredInDatabase() {
-        Track expiredTrack = new Track();
-        expiredTrack.setId("expired-123");
-        expiredTrack.setName("test expired");
-        expiredTrack.setImageUrl("/uploads/covers/test.jpg");
-        expiredTrack.setVisibility("public");
-        expiredTrack.setStatus("published");
-
-        Track activeTrack = new Track();
-        activeTrack.setId("active-456");
-        activeTrack.setName("active song");
-        activeTrack.setImageUrl("/uploads/covers/active.jpg");
-        activeTrack.setVisibility("public");
-        activeTrack.setStatus("published");
-
-        when(songLicenseRepository.findIneligibleTrackIds())
-            .thenReturn(List.of("expired-123"));
-
-        when(trackRepository.searchCatalogPublic(eq(java.util.regex.Pattern.quote("test")), any(Pageable.class)))
-            .thenReturn(new PageImpl<>(List.of(expiredTrack)));
-
-        TrackPageResponse result = trackService.getTracks(0, 10, "test");
-
-        assertNotNull(result);
-        assertEquals(0, result.content().size(), "Expired track should be filtered out from search results");
+    @Test void datesAreCheckedWithoutWaitingForSchedulerAndRevocationHasNoStaleCache() {
+        Track t=track("one");var l=license("one");when(licenses.findByTrackIdIn(anyList())).thenReturn(List.of(l));
+        assertThat(service.isTrackPubliclyAvailable(t)).isTrue();l.setStatus(LicenseStatus.REVOKED);
+        assertThat(service.isTrackPubliclyAvailable(t)).isFalse();l.setStatus(LicenseStatus.ACTIVE);l.setExpiryDate(LocalDate.now().minusDays(1));
+        assertThat(service.isTrackPubliclyAvailable(t)).isFalse();
     }
-
-    @Test
-    void shouldThrowExceptionWhenGettingExpiredTrackDirectly() {
-        Track expiredTrack = new Track();
-        expiredTrack.setId("expired-123");
-        expiredTrack.setName("test expired");
-        expiredTrack.setVisibility("public");
-        expiredTrack.setStatus("published");
-
-        when(trackRepository.findById("expired-123")).thenReturn(Optional.of(expiredTrack));
-        when(songLicenseRepository.findIneligibleTrackIds())
-            .thenReturn(List.of("expired-123"));
-
-        assertThrows(TrackService.TrackNotFoundException.class, () -> {
-            trackService.getTrack("expired-123");
-        });
+    @Test void databaseFailureNeverReturnsAnAllowAllSet() {
+        when(tracks.findAll()).thenReturn(List.of(track("one")));when(licenses.findByTrackIdIn(anyList())).thenThrow(new IllegalStateException("unavailable"));
+        assertThatThrownBy(service::getIneligibleTrackIds).isInstanceOf(IllegalStateException.class);
     }
-
-    @Test
-    void shouldResolveCoverImageUrlToFullUrl() {
-        new AudioUrlResolver("http://test-cdn.com", "http://test-server:9000");
-
-        Track track = new Track();
-        track.setId("valid-789");
-        track.setName("My valid song");
-        track.setImageUrl("/uploads/covers/my-cover.png");
-        track.setVisibility("public");
-        track.setStatus("published");
-
-        when(trackRepository.findById("valid-789")).thenReturn(Optional.of(track));
-        when(songLicenseRepository.findIneligibleTrackIds())
-            .thenReturn(List.of());
-
-        TrackResponse response = trackService.getTrack("valid-789");
-
-        assertNotNull(response);
-        assertEquals("http://test-server:9000/uploads/covers/my-cover.png", response.imageUrl(),
-            "Image URL should be resolved using configured base URL");
+    @Test void paginationFiltersBeforeCountingAndSlicing() {
+        Track hidden=track("a-hidden"),one=track("b-one"),two=track("c-two");
+        when(tracks.findAll()).thenReturn(List.of(hidden,one,two));when(licenses.findByTrackIdIn(anyList())).thenReturn(List.of(license("b-one"),license("c-two")));
+        var first=service.getTracks(0,1,null);var last=service.getTracks(1,1,null);
+        assertThat(first.totalElements()).isEqualTo(2);assertThat(first.totalPages()).isEqualTo(2);
+        assertThat(first.content().getFirst().id()).isEqualTo("b-one");assertThat(last.content().getFirst().id()).isEqualTo("c-two");
+    }
+    @Test void coverImageResolutionRemainsCorrect() {
+        new AudioUrlResolver("http://test-cdn.com","http://test-server:9000");Track t=track("one");t.setImageUrl("/uploads/covers/a.png");
+        when(tracks.findById("one")).thenReturn(Optional.of(t));when(licenses.findByTrackIdIn(anyList())).thenReturn(List.of(license("one")));
+        assertThat(service.getTrack("one").imageUrl()).isEqualTo("http://test-server:9000/uploads/covers/a.png");
     }
 }

@@ -121,6 +121,19 @@ public class AdminApi {
         return ResponseEntity.ok(Map.of("success", true, "message", "Thiết bị đã bị thu hồi quyền truy cập"));
     }
 
+    @PostMapping("/users/{id}/devices/revoke-all")
+    public ResponseEntity<Map<String, Object>> revokeAllUserDevices(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        int revoked = adminService.revokeAllUserDevices(id, authentication.getName());
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "revokedCount", revoked,
+                "message", "Đã thu hồi " + revoked + " phiên đăng nhập đang hoạt động"
+        ));
+    }
+
     // ==========================================
     // 3. CATALOG TRACKS (MongoDB)
     // ==========================================
@@ -251,6 +264,13 @@ public class AdminApi {
         return ResponseEntity.ok(adminService.getTransactions());
     }
 
+    @GetMapping("/monetization/revenue-stats")
+    public ResponseEntity<Map<String, Object>> getRevenueStats(
+            @RequestParam(defaultValue = "30") int days
+    ) {
+        return ResponseEntity.ok(adminService.getRevenueStats(days));
+    }
+
     @GetMapping("/subscriptions")
     public ResponseEntity<List<Map<String, Object>>> getSubscriptions() {
         return ResponseEntity.ok(adminService.getSubscriptions());
@@ -329,8 +349,11 @@ public class AdminApi {
     }
 
     @DeleteMapping("/favorites/{id}")
-    public ResponseEntity<Map<String, Object>> deleteFavorite(@PathVariable Long id) {
-        adminService.deleteFavorite(id);
+    public ResponseEntity<Map<String, Object>> deleteFavorite(
+            @PathVariable Long id,
+            @RequestParam(required = false) String type
+    ) {
+        adminService.deleteFavorite(id, type);
         return ResponseEntity.ok(Map.of("success", true, "message", "Lượt yêu thích đã được xóa khỏi hệ thống"));
     }
 

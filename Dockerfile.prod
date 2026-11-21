@@ -1,6 +1,6 @@
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg poppler-utils && ffprobe -version && ffmpeg -version && pdftotext -v
 RUN mkdir -p /app/uploads
 COPY moodify-0.0.1-SNAPSHOT.jar app.jar
 COPY firebase-service-account.json* /app/

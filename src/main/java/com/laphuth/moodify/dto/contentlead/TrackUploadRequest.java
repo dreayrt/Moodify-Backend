@@ -23,6 +23,7 @@ public class TrackUploadRequest {
     private Long distributionContractId;
     private String issueDate;
     private String expiryDate;
+    private String agreementDetails;
     private boolean isPerpetual;
 
     // Getters and Setters
@@ -75,6 +76,8 @@ public class TrackUploadRequest {
 
     public String getExpiryDate() { return expiryDate; }
     public void setExpiryDate(String expiryDate) { this.expiryDate = expiryDate; }
+    public String getAgreementDetails() { return agreementDetails; }
+    public void setAgreementDetails(String agreementDetails) { this.agreementDetails = agreementDetails; }
 
     public boolean isPerpetual() { return isPerpetual; }
     public void setPerpetual(boolean perpetual) { isPerpetual = perpetual; }

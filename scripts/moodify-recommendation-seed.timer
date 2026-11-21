@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Moodify seed sessions in Vietnam listening windows
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 Asia/Ho_Chi_Minh
+OnCalendar=*-*-* 12:00:00 Asia/Ho_Chi_Minh
+OnCalendar=*-*-* 19:00:00 Asia/Ho_Chi_Minh
+RandomizedDelaySec=25min
+AccuracySec=1min
+Persistent=false
+Unit=moodify-recommendation-seed.service
+
+[Install]
+WantedBy=timers.target

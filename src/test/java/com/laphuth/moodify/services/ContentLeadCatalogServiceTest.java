@@ -43,6 +43,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ContentLeadCatalogServiceTest {
+    @org.junit.jupiter.api.BeforeEach void integrityDependency() { contentLeadCatalogService.setCatalogIntegrity(catalogIntegrity); contentLeadCatalogService.setDocumentInspector(documentInspector); }
     @Mock
     private UserRepository userRepository;
 
@@ -66,6 +67,9 @@ class ContentLeadCatalogServiceTest {
 
     @Mock
     private OcrService ocrService;
+    @Mock private LicenseDocumentInspector documentInspector;
+    @Mock
+    private CatalogIntegrityService catalogIntegrity;
 
     @InjectMocks
     private ContentLeadCatalogService contentLeadCatalogService;
@@ -75,7 +79,7 @@ class ContentLeadCatalogServiceTest {
         when(userRepository.findByEmailOrUsername("contentlead01", "contentlead01"))
             .thenReturn(Optional.of(contentLeadUser("artist-1")));
         when(artistRepository.findBySpotifyId("artist-1")).thenReturn(Optional.of(artist("artist-1")));
-        when(ocrService.extractLicenseDocument(any())).thenReturn(new OcrExtractResponse(true, "OK"));
+        when(documentInspector.inspect(any())).thenReturn("TEXT_CHECKED");
         when(audioMetadataService.durationMs(any())).thenReturn(302347);
         Path[] storedAudio = new Path[1];
         Path[] storedLicense = new Path[1];
@@ -93,7 +97,9 @@ class ContentLeadCatalogServiceTest {
         TrackUploadRequest request = new TrackUploadRequest();
         request.setTitle("Uploaded song");
         request.setCopyrightOwner("Test owner");
+        request.setDistributionContractCode("AGREEMENT-001");
         request.setDistributionContractCode("TEST-LNAB-20261110-0003");
+        request.setLicenseType("DEMO_SIMULATED");
         request.setIssueDate(LocalDate.of(2020, 1, 1).toString());
         request.setPerpetual(true);
         try {
@@ -199,8 +205,9 @@ class ContentLeadCatalogServiceTest {
 
         contentLeadCatalogService.deleteTrack("contentlead01", "mongo-track-1");
 
-        verify(songLicenseRepository).deleteByTrackId("mongo-track-1");
-        verify(trackRepository).delete(track);
+        verify(catalogIntegrity).retire("mongo-track-1");
+        verify(songLicenseRepository,never()).deleteByTrackId("mongo-track-1");
+        verify(trackRepository,never()).delete(track);
     }
 
     @Test
@@ -238,8 +245,9 @@ class ContentLeadCatalogServiceTest {
         assertThat(rejectedRequest.getContentGenre()).isEqualTo("Pop");
         assertThat(rejectedRequest.getContentCoverUrl()).isEqualTo("/covers/come-my-way.png");
         verify(contentReviewRequestRepository).saveAll(reviewRequests);
-        verify(songLicenseRepository).deleteByTrackId("mongo-track-1");
-        verify(trackRepository).delete(track);
+        verify(catalogIntegrity).retire("mongo-track-1");
+        verify(songLicenseRepository,never()).deleteByTrackId("mongo-track-1");
+        verify(trackRepository,never()).delete(track);
         verify(contentReviewRequestRepository, never()).deleteAll(reviewRequests);
     }
 
@@ -257,6 +265,7 @@ class ContentLeadCatalogServiceTest {
 
     private Artist artist(String spotifyId) {
         Artist artist = new Artist();
+        artist.setId("artist-internal-id");
         artist.setSpotifyId(spotifyId);
         artist.setName("Xesi");
         return artist;

@@ -1,5 +1,6 @@
 package com.laphuth.moodify.dto.ocr;
 
+import com.laphuth.moodify.dto.contract.AgreementDetails;
 import java.util.Map;
 
 public class OcrExtractResponse {
@@ -18,6 +19,10 @@ public class OcrExtractResponse {
     private Map<String, Object> rawFields;
     private java.math.BigDecimal acquisitionCostVnd;
     private Map<String, Object> costEvidence;
+    private AgreementDetails agreementDetails;
+
+    public AgreementDetails getAgreementDetails() { return agreementDetails; }
+    public void setAgreementDetails(AgreementDetails details) { agreementDetails = details; }
 
     public OcrExtractResponse() {}
 

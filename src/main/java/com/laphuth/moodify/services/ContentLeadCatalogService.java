@@ -48,6 +48,14 @@ import java.util.UUID;
 
 @Service
 public class ContentLeadCatalogService {
+    private CatalogIntegrityService catalogIntegrity;
+    private LicenseDocumentInspector documentInspector;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentInspector(LicenseDocumentInspector value) { documentInspector=value; }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setCatalogIntegrity(CatalogIntegrityService value) { catalogIntegrity=value; }
+
     private static final int MAX_PAGE_SIZE = 100;
     private static final int ALBUM_PREVIEW_SIZE = 50;
 
@@ -100,7 +108,7 @@ public class ContentLeadCatalogService {
     ) {
         String artistSpotifyId = resolveCurrentContentLeadUser(principal).getArtistSpotifyId().trim();
 
-        Artist artist = artistRepository.findBySpotifyId(artistSpotifyId)
+        Artist artist = findArtist(artistSpotifyId)
             .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "Content catalog profile not found in MongoDB"
@@ -234,11 +242,25 @@ public class ContentLeadCatalogService {
             (request.getAcquisitionCostVnd().signum() < 0 || request.getAcquisitionCostVnd().scale() > 0)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chi phí mua quyền phải là số VND không âm.");
         }
-        // Financial cost is sourced from the uploaded document, never trusted from multipart form data alone.
-        var extractedLicense = ocrService.extractLicenseDocument(licenseDocFile);
-        java.math.BigDecimal verifiedCost = extractedLicense.isSuccess() ? extractedLicense.getAcquisitionCostVnd() : null;
-        if (request.getAcquisitionCostVnd() != null && !request.getAcquisitionCostVnd().equals(verifiedCost)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chi phí mua quyền phải khớp với số OCR trích xuất từ tài liệu.");
+        String requestedLicenseType=request.getLicenseType().trim().toUpperCase(java.util.Locale.ROOT);
+        boolean simulated="DEMO_SIMULATED".equals(requestedLicenseType);
+        if(!java.util.Set.of("DIGITAL_STREAMING","DEMO_SIMULATED").contains(requestedLicenseType))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Loại giấy phép chưa được hỗ trợ.");
+        if(!simulated && looksSimulated(request.getCopyrightOwner(),request.getDistributionContractCode()))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Hồ sơ giả định phải được khai báo DEMO_SIMULATED.");
+        if(request.getDistributionContractCode()==null||request.getDistributionContractCode().isBlank())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Mã hợp đồng trong tài liệu là bắt buộc.");
+        if(documentInspector==null)throw new IllegalStateException("Document inspection service unavailable");
+        String inspection=documentInspector.inspect(licenseDocFile);
+        if(!simulated && "SIMULATION_DETECTED".equals(inspection))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"PDF được đánh dấu là tài liệu thử nghiệm; phải khai báo DEMO_SIMULATED.");
+        // OCR is an optional convenience, never evidence of signed rights or payment.
+        java.math.BigDecimal declaredCost=request.getAcquisitionCostVnd();
+        com.laphuth.moodify.dto.contract.AgreementDetails agreementDetails;
+        try {
+            agreementDetails = com.laphuth.moodify.dto.contract.AgreementDetails.fromJson(request.getAgreementDetails());
+        } catch (IllegalArgumentException invalid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage(), invalid);
         }
         if (request.getDistributorId() == null &&
             (request.getCopyrightOwner() == null || request.getCopyrightOwner().isBlank())) {
@@ -274,6 +296,8 @@ public class ContentLeadCatalogService {
             validContractId = resolveValidContractCode(validDistributorId, contractCode);
         }
 
+        if(validDistributorId!=null && validContractId==null)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Hợp đồng phân phối chưa có trong hệ thống.");
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         LocalDate issueDate = parseDateSafely(request.getIssueDate());
         LocalDate expiryDate = request.isPerpetual() ? null : parseDateSafely(request.getExpiryDate());
@@ -294,18 +318,27 @@ public class ContentLeadCatalogService {
         }
 
         String artistSpotifyId = currentUser.getArtistSpotifyId();
-        Artist artist = artistRepository.findBySpotifyId(artistSpotifyId != null ? artistSpotifyId : "")
-            .orElse(null);
+        Artist artist = findArtist(artistSpotifyId != null ? artistSpotifyId : "")
+            .or(()->artistSpotifyId==null?java.util.Optional.empty():artistRepository.findById(artistSpotifyId)).orElse(null);
         String mainArtistName = artist != null ? artist.getName() : currentUser.getFullname();
 
         // Duration is required playback metadata, even if optional analysis is down.
         // Validate before persisting files or catalog/license/review records.
         int durationMs = audioMetadataService.durationMs(audioFile);
 
+        if(artist==null)throw new ResponseStatusException(HttpStatus.CONFLICT,"Nghệ sĩ chưa có hồ sơ định danh hợp lệ.");
+        if(catalogIntegrity==null)throw new IllegalStateException("Catalog integrity service unavailable");
+        java.util.List<Path> generatedFiles=new java.util.ArrayList<>();
+        boolean staged=false;
+        String createdTrackId=null;
+        try {
         // 1. Save audio file
         String audioUrl = saveUploadedFile(audioFile, "uploads/audio");
+        generatedFiles.add(Paths.get(audioUrl.substring(1)));
         String coverUrl = coverFile != null && !coverFile.isEmpty() ? saveUploadedFile(coverFile, "uploads/covers") : null;
-        String licenseDocUrl = licenseDocFile != null && !licenseDocFile.isEmpty() ? saveUploadedFile(licenseDocFile, "uploads/licenses") : null;
+        if(coverUrl!=null)generatedFiles.add(Paths.get(coverUrl.substring(1)));
+        String licenseDocUrl = saveUploadedFile(licenseDocFile, "uploads/licenses");
+        generatedFiles.add(Paths.get(licenseDocUrl.substring(1)));
 
         // 2. Save Track to MongoDB
         String feat = request.getFeaturedArtists() != null ? request.getFeaturedArtists().trim() : "";
@@ -316,6 +349,7 @@ public class ContentLeadCatalogService {
         track.setArtistName(fullArtist);
         track.setFeaturedArtists(feat.isEmpty() ? null : feat);
         track.setArtistSpotifyId(artistSpotifyId);
+        track.setArtistIds(List.of(artist.getId()));
         track.setAlbumName(request.getAlbumName() != null && !request.getAlbumName().isBlank() ? request.getAlbumName().trim() : null);
         track.setGenres(List.of(request.getGenre() != null && !request.getGenre().isBlank() ? request.getGenre().trim() : "Pop"));
         track.setExplicit(request.isExplicit());
@@ -324,10 +358,12 @@ public class ContentLeadCatalogService {
         track.setDescription(request.getDescription() != null && !request.getDescription().isBlank() ? request.getDescription().trim() : null);
         track.setImageUrl(coverUrl);
         track.setLocalPath(audioUrl);
+        track.setAudioHash(fileSha256(Paths.get(audioUrl.substring(1))));
+        track.setHasSyncedLyrics(track.getLyricsSynced()!=null&&!track.getLyricsSynced().isBlank());
         track.setDurationMs(durationMs);
         int totalSeconds = durationMs / 1000;
         track.setDurationFormatted("%d:%02d".formatted(totalSeconds / 60, totalSeconds % 60));
-        track.setStatus(normalizeTrackStatus(request.getStatus()));
+        track.setStatus("draft");
         track.setVisibility(normalizeTrackVisibility(request.getVisibility()));
         track.setCreatedAt(Instant.now());
         track.setUpdatedAt(Instant.now());
@@ -342,14 +378,19 @@ public class ContentLeadCatalogService {
         }
 
         Track savedTrack = trackRepository.save(track);
-        if (trackSyncService != null) {
-            trackSyncService.pushSingleTrack(savedTrack);
-        }
+        createdTrackId=savedTrack.getId();
+        catalogIntegrity.stageUpload(savedTrack,generatedFiles,() -> {
+            if(trackSyncService!=null)trackSyncService.pushSingleTrack(savedTrack);
+        });
+        staged=true;
 
         // 3. Save SongLicense
         SongLicense license = new SongLicense();
         license.setTrackId(savedTrack.getId());
-        license.setLicenseType(request.getLicenseType() != null ? request.getLicenseType() : "DIGITAL_STREAMING");
+        license.setLicenseType(requestedLicenseType);
+        license.setRightsEvidenceStatus(simulated ? "SIMULATED" : "UNVERIFIED");
+        license.setDocumentInspectionStatus(inspection);
+        license.setDocumentSha256(fileSha256(Paths.get(licenseDocUrl.substring(1))));
         license.setDistributorId(validDistributorId);
         license.setDistributionContractId(validDistributorId != null ? validContractId : null);
         license.setDistributionContractCode(
@@ -360,8 +401,10 @@ public class ContentLeadCatalogService {
             : mainArtistName;
         license.setCopyrightOwner(owner);
         license.setDocumentSonglicensesUrl(licenseDocUrl);
-        license.setAcquisitionCostVnd(verifiedCost);
-        license.setStatus(com.laphuth.moodify.entities.enums.LicenseStatus.ACTIVE);
+        license.setDeclaredAcquisitionCostVnd(declaredCost);
+        license.setAgreementDetails(agreementDetails);
+        license.setAcquisitionCostVnd(simulated ? java.math.BigDecimal.ZERO : null);
+        license.setStatus(com.laphuth.moodify.entities.enums.LicenseStatus.PENDING);
 
         license.setIssueDate(issueDate);
         license.setExpiryDate(expiryDate);
@@ -377,7 +420,28 @@ public class ContentLeadCatalogService {
         reviewRequest.setSubmittedAt(LocalDateTime.now());
         contentReviewRequestRepository.save(reviewRequest);
 
-        return ContentLeadTrackResponse.from(savedTrack);
+        return ContentLeadTrackResponse.from(savedTrack, license);
+        } catch(RuntimeException failure) {
+            if(!staged)catalogIntegrity.abortUnstagedUpload(createdTrackId);
+            if(!staged)for(Path path:generatedFiles) {
+                try { Files.deleteIfExists(path); } catch(IOException cleanup) { failure.addSuppressed(cleanup); }
+            }
+            throw failure;
+        }
+    }
+
+    static boolean looksSimulated(String owner,String code) {
+        String text=(java.util.Objects.toString(owner,"")+" "+java.util.Objects.toString(code,"")).toLowerCase(java.util.Locale.ROOT);
+        return java.util.regex.Pattern.compile("(?iu)(giả\\s+định|\\bsimulated\\b|\\bdemo\\b|\\btest-)").matcher(text).find();
+    }
+
+    private static String fileSha256(Path path) {
+        try(var input=Files.newInputStream(path)) {
+            java.security.MessageDigest digest=java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buffer=new byte[65536];int read;
+            while((read=input.read(buffer))!=-1)digest.update(buffer,0,read);
+            return java.util.HexFormat.of().formatHex(digest.digest());
+        } catch(IOException|java.security.NoSuchAlgorithmException error) { throw new IllegalStateException("Cannot hash uploaded file",error); }
     }
 
     private String saveUploadedFile(MultipartFile file, String subDir) {
@@ -418,7 +482,7 @@ public class ContentLeadCatalogService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Track title is required");
         }
 
-        Artist artist = artistRepository.findBySpotifyId(artistSpotifyId).orElse(null);
+        Artist artist = findArtist(artistSpotifyId).or(()->artistRepository.findById(artistSpotifyId)).orElse(null);
         String mainArtistName = artist != null ? artist.getName() : currentUser.getFullname();
         String featuredArtists = emptyToNull(request.getFeaturedArtists());
         String artistName = featuredArtists == null ? mainArtistName : mainArtistName + " feat. " + featuredArtists;
@@ -437,33 +501,17 @@ public class ContentLeadCatalogService {
         }
 
         String targetStatus = normalizeTrackStatus(request.getStatus());
-        // RÀNG BUỘC PHÁP LÝ BẢN QUYỀN: Không cho phép phát hành công khai nếu hợp đồng đã hết hạn hoặc chưa đến ngày bắt đầu
-        SongLicense currentLicense = songLicenseRepository.findByTrackId(trackId).orElse(null);
-        if ("published".equals(targetStatus) && currentLicense != null) {
-            LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-            if (currentLicense.getStatus() == com.laphuth.moodify.entities.enums.LicenseStatus.EXPIRED ||
-                (currentLicense.getExpiryDate() != null && currentLicense.getExpiryDate().isBefore(today))) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Bài hát đã hết hạn hợp đồng bản quyền (ngày hết hạn: " + currentLicense.getExpiryDate() + 
-                    "). Vui lòng nộp phụ lục/hợp đồng gia hạn trước khi phát hành lại."
-                );
-            }
-            if (currentLicense.getIssueDate() != null && currentLicense.getIssueDate().isAfter(today)) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Hợp đồng bản quyền chưa đến ngày có hiệu lực (ngày bắt đầu: " + currentLicense.getIssueDate() + 
-                    "). Chưa thể phát hành công khai bài hát trước thời điểm này."
-                );
-            }
-        }
+        LocalDate today=LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        SongLicense currentLicense=CatalogLicensePolicy.select(track,songLicenseRepository.findByTrackIdIn(List.of(trackId)),today);
+        if("published".equals(targetStatus) && (currentLicense==null || !CatalogLicensePolicy.effective(currentLicense,today)))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Giấy phép chưa có hiệu lực hoặc chưa được duyệt.");
 
-        track.setStatus(targetStatus);
+        track.setStatus("published".equals(targetStatus)?"draft":targetStatus);
         track.setVisibility(normalizeTrackVisibility(request.getVisibility()));
         track.setModerationStatus("pending");
         track.setUpdatedAt(Instant.now());
 
-        Track savedTrack = trackRepository.save(track);
+        Track savedTrack = catalogIntegrity.updateMetadata(track);
         if (trackSyncService != null) {
             trackSyncService.pushSingleTrack(savedTrack);
         }
@@ -488,7 +536,6 @@ public class ContentLeadCatalogService {
         return ContentLeadTrackResponse.from(savedTrack, currentLicense);
     }
 
-    @Transactional
     public void deleteTrack(String principal, String trackId) {
         String artistSpotifyId = resolveCurrentContentLeadUser(principal).getArtistSpotifyId().trim();
         Track track = resolveOwnedTrack(trackId, artistSpotifyId);
@@ -507,8 +554,8 @@ public class ContentLeadCatalogService {
             }
             contentReviewRequestRepository.saveAll(reviewRequests);
         }
-        songLicenseRepository.deleteByTrackId(track.getId());
-        trackRepository.delete(track);
+        if(catalogIntegrity==null)throw new IllegalStateException("Catalog integrity service unavailable");
+        catalogIntegrity.retire(track.getId());
     }
 
     private void snapshotTrackMetadataIfMissing(ContentReviewRequest reviewRequest, Track track) {
@@ -553,11 +600,16 @@ public class ContentLeadCatalogService {
         }
     }
 
+    private java.util.Optional<Artist> findArtist(String identity) {
+        if(identity==null||identity.isBlank())return java.util.Optional.empty();
+        return artistRepository.findBySpotifyId(identity).or(()->artistRepository.findById(identity));
+    }
+
     private Track resolveOwnedTrack(String trackId, String artistSpotifyId) {
         Track track = trackRepository.findById(trackId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Track not found"));
 
-        if (track.getArtistSpotifyId() == null || !track.getArtistSpotifyId().trim().equals(artistSpotifyId)) {
+        if (!java.util.Objects.equals(track.getArtistSpotifyId(),artistSpotifyId) && (track.getArtistIds()==null || !track.getArtistIds().contains(artistSpotifyId))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Track does not belong to the current catalog");
         }
 

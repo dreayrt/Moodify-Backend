@@ -1,5 +1,6 @@
 package com.laphuth.moodify.dto.moderator;
 
+import com.laphuth.moodify.dto.contract.AgreementDetails;
 import com.laphuth.moodify.entities.Track;
 import com.laphuth.moodify.repositories.SongLicenseDetailsProjection;
 
@@ -36,7 +37,8 @@ public record ModerationQueueTrackResponse(
     String licenseDocumentUrl,
 
     // Audio Features (from MongoDB tracks.audio_features)
-    Track.AudioFeatures audioFeatures
+    Track.AudioFeatures audioFeatures,
+    AgreementDetails agreementDetails
 ) {
     public static ModerationQueueTrackResponse from(Track track, SongLicenseDetailsProjection license) {
         String genre = (track.getGenres() != null && !track.getGenres().isEmpty()) 
@@ -73,8 +75,9 @@ public record ModerationQueueTrackResponse(
             license != null ? license.getIssueDate() : null,
             license != null ? license.getExpiryDate() : null,
             license != null ? license.getLicenseStatus() : null,
-            license != null ? license.getLicenseDocumentUrl() : null,
-            track.getAudioFeatures()
+            license != null ? com.laphuth.moodify.services.AudioUrlResolver.resolveProtectedDocumentUrl(license.getLicenseDocumentUrl()) : null,
+            track.getAudioFeatures(),
+            license == null ? null : AgreementDetails.fromJson(license.getAgreementDetailsJson())
         );
     }
 }

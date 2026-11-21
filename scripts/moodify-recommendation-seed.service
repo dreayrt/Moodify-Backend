@@ -1,0 +1,15 @@
+[Unit]
+Description=Moodify recommendation seed listening session
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+UMask=0077
+NoNewPrivileges=yes
+TimeoutStartSec=120
+TimeoutStopSec=10
+ExecStart=/opt/moodify/recommendation-seed-automation/run.sh scheduled
+ExecStopPost=-/usr/bin/docker rm -f moodify-seed-automation-scheduled

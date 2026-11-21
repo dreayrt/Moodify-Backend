@@ -81,17 +81,12 @@ public class RecommendationCatalog {
 
     private Map<String, SongLicense> licensesByCanonicalId(List<Track> all) {
         Map<String, String> aliases = aliases(all);
+        List<SongLicense> rows = aliases.isEmpty() ? List.of() : licenses.findByTrackIdIn(new ArrayList<>(aliases.keySet()));
         Map<String, SongLicense> result = new HashMap<>();
-        if (!aliases.isEmpty()) {
-            for (SongLicense license : licenses.findByTrackIdIn(new ArrayList<>(aliases.keySet()))) {
-                String canonical = aliases.get(license.getTrackId());
-                SongLicense old = result.get(canonical);
-                // An explicit canonical license takes precedence over its legacy external-ID alias.
-                if (old == null || (!old.getTrackId().equals(canonical) && license.getTrackId().equals(canonical)) ||
-                    (old.getTrackId().equals(license.getTrackId()) && Objects.requireNonNullElse(license.getId(),0L) > Objects.requireNonNullElse(old.getId(),0L))) {
-                    result.put(canonical, license);
-                }
-            }
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        for (Track track : all) {
+            SongLicense selected = CatalogLicensePolicy.select(track, rows.stream().filter(l->java.util.Objects.equals(aliases.get(l.getTrackId()),track.getId())).toList(), today);
+            if (selected != null) result.put(track.getId(), selected);
         }
         return result;
     }
@@ -162,25 +157,13 @@ public class RecommendationCatalog {
     }
 
     public static boolean eligible(Track track, SongLicense license, LocalDate date, boolean requireLicense) {
-        return !demoContent(track,license) && basicEligibility(track,license,date);
+        return CatalogLicensePolicy.canServe(track, license, date, false);
     }
     public static boolean demoContent(Track track, SongLicense license) {
-        return license != null && "DEMO_SIMULATED".equalsIgnoreCase(license.getLicenseType()) ||
-            track != null && track.getRecommendationDemo() != null && Boolean.TRUE.equals(track.getRecommendationDemo().get("simulated"));
+        return CatalogLicensePolicy.simulated(track, license);
     }
-    private static boolean basicEligibility(Track track, SongLicense license, LocalDate date) {
-        if (track == null || track.getId() == null || !"published".equalsIgnoreCase(track.getStatus()) ||
-            !"approved".equalsIgnoreCase(track.getModerationStatus()) ||
-            !"public".equalsIgnoreCase(track.getVisibility()) ||
-            !PublicTrackPolicy.hasAudioPath(track.getLocalPath())) return false;
-        if (license == null) return false;
-        return license.getStatus() == LicenseStatus.ACTIVE &&
-            (license.getIssueDate() == null || !license.getIssueDate().isAfter(date)) &&
-            (license.getExpiryDate() == null || !license.getExpiryDate().isBefore(date));
-    }
-
     private boolean isEligible(Track track, SongLicense license, LocalDate date) {
-        return basicEligibility(track,license,date) && (!demoContent(track,license) || demoCatalogEnabled);
+        return CatalogLicensePolicy.canServe(track, license, date, demoCatalogEnabled);
     }
 
     /** Kept for source compatibility; import batches never override rights. */

@@ -28,6 +28,8 @@ import java.security.SecureRandom;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -35,6 +37,14 @@ import java.util.stream.Collectors;
 
 @Service
 public class AdminService {
+    private CatalogIntegrityService catalogIntegrity;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setCatalogIntegrity(CatalogIntegrityService value) { catalogIntegrity=value; }
+
+    private UserDeviceService userDeviceService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setUserDeviceService(UserDeviceService value) { this.userDeviceService = value; }
+
 
     private final JdbcTemplate jdbcTemplate;
     private final TrackRepository trackRepository;
@@ -45,8 +55,35 @@ public class AdminService {
     private final ArtistRepository artistRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private Track findAdminTrack(String id) {
+        if (id == null || id.isBlank()) return null;
+        String key = id.trim();
+        if (key.startsWith("spotify:track:")) key = key.substring("spotify:track:".length());
+        Track track = trackRepository.findById(key).orElse(null);
+        return track != null ? track : trackRepository.findBySpotifyId(key).orElse(null);
+    }
+
     private String resolveAudioUrl(String localPath) {
-        return AudioUrlResolver.resolve(localPath);
+        return localPath == null || localPath.isBlank() ? "" : AudioUrlResolver.resolve(localPath);
+    }
+
+    private int resolveTrackDurationMs(Track track) {
+        if (track == null) return 0;
+        if (track.getDurationMs() != null && track.getDurationMs() > 0) return track.getDurationMs();
+        String formatted = track.getDurationFormatted();
+        if (formatted == null || !formatted.matches("\\d{1,4}:[0-5]\\d")) return 0;
+        String[] parts = formatted.split(":");
+        return (Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1])) * 1000;
+    }
+
+    private String formatTrackDuration(Track track) {
+        int durationMs = resolveTrackDurationMs(track);
+        return durationMs > 0 ? formatDurationSeconds(durationMs / 1000) : "—";
+    }
+
+    private String resolveAdminImageUrl(String imageUrl) {
+        String resolved = AudioUrlResolver.resolveImageUrl(imageUrl);
+        return resolved != null ? resolved : "/images/cover-placeholder.svg";
     }
 
     /**
@@ -255,20 +292,20 @@ public class AdminService {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> r : rows) {
             String trackId = (String) r.get("trackId");
-            Track t = trackRepository.findById(trackId).orElse(null);
+            Track t = findAdminTrack(trackId);
             if (t != null) {
                 r.put("title", t.getName());
                 r.put("artist", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ ẩn danh");
-                r.put("coverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                r.put("duration", t.getDurationFormatted() != null ? t.getDurationFormatted() : "3:30");
+                r.put("coverUrl", resolveAdminImageUrl(t.getImageUrl()));
+                r.put("duration", formatTrackDuration(t));
                 r.put("genre", resolveTrackGenre(t));
                 r.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
             } else {
-                r.put("title", "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
-                r.put("artist", "Moodify Artist");
-                r.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                r.put("duration", "3:30");
-                r.put("genre", "V-Pop");
+                r.put("title", "Không tìm thấy thông tin bài hát");
+                r.put("artist", "Chưa có thông tin nghệ sĩ");
+                r.put("coverUrl", "/images/cover-placeholder.svg");
+                r.put("duration", "");
+                r.put("genre", "Chưa phân loại");
                 r.put("audioUrl", resolveAudioUrl(null));
             }
             result.add(r);
@@ -289,20 +326,20 @@ public class AdminService {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> r : rows) {
             String trackId = (String) r.get("trackId");
-            Track t = trackRepository.findById(trackId).orElse(null);
+            Track t = findAdminTrack(trackId);
             if (t != null) {
                 r.put("title", t.getName());
                 r.put("artist", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ ẩn danh");
-                r.put("coverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                r.put("duration", t.getDurationFormatted() != null ? t.getDurationFormatted() : "3:30");
+                r.put("coverUrl", resolveAdminImageUrl(t.getImageUrl()));
+                r.put("duration", formatTrackDuration(t));
                 r.put("genre", resolveTrackGenre(t));
                 r.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
             } else {
-                r.put("title", "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
-                r.put("artist", "Moodify Artist");
-                r.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                r.put("duration", "3:30");
-                r.put("genre", "V-Pop");
+                r.put("title", "Không tìm thấy thông tin bài hát");
+                r.put("artist", "Chưa có thông tin nghệ sĩ");
+                r.put("coverUrl", "/images/cover-placeholder.svg");
+                r.put("duration", "");
+                r.put("genre", "Chưa phân loại");
                 r.put("audioUrl", resolveAudioUrl(null));
             }
             result.add(r);
@@ -378,7 +415,7 @@ public class AdminService {
                 Timestamp ts = rs.getTimestamp("paid_at") != null ? rs.getTimestamp("paid_at") : rs.getTimestamp("created_at");
                 a.put("timestamp", ts != null
                         ? ts.toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                        : "Hôm nay");
+                        : "");
                 list.add(a);
                 return null;
             });
@@ -395,14 +432,14 @@ public class AdminService {
                 a.put("id", "listen-" + rs.getLong("id"));
                 a.put("type", "STREAM");
                 String trackId = rs.getString("track_id");
-                Track t = trackRepository.findById(trackId).orElse(null);
+                Track t = findAdminTrack(trackId);
                 String trackName = t != null ? t.getName() : "Bài hát";
                 a.put("title", rs.getString("full_name") + " đã nghe " + trackName);
-                a.put("detail", "Nền tảng: " + (rs.getString("device_type") != null ? rs.getString("device_type") : "Web"));
+                a.put("detail", "Nền tảng: " + (rs.getString("device_type") != null ? rs.getString("device_type") : "Chưa xác định"));
                 Timestamp ts = rs.getTimestamp("started_at");
                 a.put("timestamp", ts != null
                         ? ts.toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                        : "Vừa xong");
+                        : "");
                 list.add(a);
                 return null;
             });
@@ -419,13 +456,13 @@ public class AdminService {
                 a.put("id", "fav-" + rs.getLong("id"));
                 a.put("type", "FAVORITE");
                 String trackId = rs.getString("track_id");
-                Track t = trackRepository.findById(trackId).orElse(null);
+                Track t = findAdminTrack(trackId);
                 String trackName = t != null ? t.getName() : "Bài hát";
                 a.put("title", rs.getString("full_name") + " đã yêu thích " + trackName);
                 a.put("detail", "Thêm vào danh sách yêu thích cá nhân");
                 a.put("timestamp", rs.getTimestamp("created_at") != null
                         ? rs.getTimestamp("created_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                        : "Hôm nay");
+                        : "");
                 list.add(a);
                 return null;
             });
@@ -471,7 +508,7 @@ public class AdminService {
             params.add(q);
         }
 
-        sql.append("GROUP BY u.id ORDER BY u.id ASC LIMIT 200");
+        sql.append("GROUP BY u.id ORDER BY u.id ASC LIMIT 1000");
 
         return jdbcTemplate.query(sql.toString(), params.toArray(), this::mapUserRow);
     }
@@ -482,7 +519,7 @@ public class AdminService {
         u.put("fullName", rs.getString("full_name"));
         u.put("username", rs.getString("username"));
         u.put("email", rs.getString("email"));
-        u.put("phone", rs.getString("phone") != null ? rs.getString("phone") : "Chưa cập nhật");
+        u.put("phone", rs.getString("phone") != null ? rs.getString("phone") : "");
         u.put("role", rs.getString("role"));
         u.put("status", rs.getString("status"));
         u.put("avatarUrl", rs.getString("avatar_url"));
@@ -493,8 +530,66 @@ public class AdminService {
                 : null);
         u.put("createdAt", rs.getTimestamp("created_at") != null
                 ? rs.getTimestamp("created_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                : "01/01/2026");
+                : "");
         return u;
+    }
+
+    private boolean isSamePrincipal(User target, String principal) {
+        if (target == null || principal == null || principal.isBlank()) return false;
+        String clean = principal.trim();
+        return (target.getUsername() != null && target.getUsername().equalsIgnoreCase(clean))
+                || (target.getEmail() != null && target.getEmail().equalsIgnoreCase(clean));
+    }
+
+    private Long countActiveAdmins() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE role = 'ADMIN' AND status = 'ACTIVE'",
+                Long.class
+        );
+    }
+
+    private int revokeUserSessions(Long userId) {
+        if (userId == null) return 0;
+        if (userDeviceService != null) {
+            return userDeviceService.revokeAllDevicesForUser(userId);
+        }
+        return jdbcTemplate.update(
+                "UPDATE user_devices SET status = 'REVOKED' WHERE user_id = ? AND status = 'ACTIVE'",
+                userId
+        );
+    }
+
+    private void ensureContentLeadArtistProfile(User user, String artistSpotifyId) {
+        if (artistSpotifyId != null && !artistSpotifyId.isBlank()) {
+            String trimmed = artistSpotifyId.trim();
+            user.setArtistSpotifyId(catalogIntegrity != null
+                    ? catalogIntegrity.registerArtistIdentity(trimmed)
+                    : trimmed);
+            return;
+        }
+        if (user.getArtistSpotifyId() != null && !user.getArtistSpotifyId().isBlank()) {
+            return;
+        }
+        String newArtistId = new org.bson.types.ObjectId().toHexString();
+        Artist artist = new Artist();
+        artist.setId(newArtistId);
+        artist.setSpotifyId(null);
+        String displayName = (user.getFullname() != null && !user.getFullname().isBlank())
+                ? user.getFullname().trim()
+                : user.getUsername();
+        artist.setName(displayName);
+        artist.setImageUrl(user.getAvatarUrl());
+        artist.setFollowers(0);
+        artist.setPopularity(0);
+        artist.setGenres(List.of("pop"));
+        artist.setGenresRaw(List.of("pop"));
+        artist.setCreatedAt(Instant.now());
+        artist.setUpdatedAt(Instant.now());
+        artistRepository.save(artist);
+        if (catalogIntegrity != null) {
+            catalogIntegrity.registerArtist(artist);
+        }
+        user.setArtistSpotifyId(newArtistId);
     }
 
     @Transactional
@@ -502,9 +597,33 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        UserStatus status = UserStatus.valueOf(newStatus.toUpperCase().trim());
+        UserStatus status;
+        try {
+            status = UserStatus.valueOf(newStatus.toUpperCase().trim());
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái không hợp lệ");
+        }
+
+        if (status != UserStatus.ACTIVE) {
+            if (isSamePrincipal(user, principal)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Không thể tự khóa hoặc vô hiệu hóa tài khoản quản trị đang đăng nhập.");
+            }
+            if (user.getRole() == UserRole.ADMIN && user.getStatus() == UserStatus.ACTIVE) {
+                Long activeAdmins = countActiveAdmins();
+                if (activeAdmins != null && activeAdmins <= 1) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Không thể khóa quản trị viên hoạt động cuối cùng của hệ thống.");
+                }
+            }
+        }
+
         user.setStatus(status);
         userRepository.save(user);
+
+        if (status != UserStatus.ACTIVE) {
+            revokeUserSessions(userId);
+        }
 
         recordAudit(principal, "USER", userId, status.name(),
                 reason != null ? reason : "Status changed by admin");
@@ -515,16 +634,39 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        String normalizedRole = newRole.toUpperCase().trim();
+        String normalizedRole = newRole != null ? newRole.toUpperCase().trim() : "";
         if ("ARTIST".equals(normalizedRole)) {
             normalizedRole = "CONTENT_LEAD";
         }
-        UserRole role = UserRole.valueOf(normalizedRole);
+        UserRole role;
+        try {
+            role = UserRole.valueOf(normalizedRole);
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vai trò không hợp lệ");
+        }
+
+        UserRole previousRole = user.getRole();
+        if (isSamePrincipal(user, principal) && role != previousRole) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Không thể tự thay đổi vai trò của tài khoản đang đăng nhập.");
+        }
+        if (previousRole == UserRole.ADMIN && user.getStatus() == UserStatus.ACTIVE && role != UserRole.ADMIN) {
+            Long activeAdmins = countActiveAdmins();
+            if (activeAdmins != null && activeAdmins <= 1) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Không thể hạ quyền quản trị viên hoạt động cuối cùng của hệ thống.");
+            }
+        }
+
         user.setRole(role);
-        if (artistSpotifyId != null && !artistSpotifyId.isBlank()) {
-            user.setArtistSpotifyId(artistSpotifyId.trim());
+        if (role == UserRole.CONTENT_LEAD) {
+            ensureContentLeadArtistProfile(user, artistSpotifyId);
         }
         userRepository.save(user);
+
+        if (role != previousRole) {
+            revokeUserSessions(userId);
+        }
 
         recordAudit(principal, "USER", userId, "CHANGE_ROLE",
                 "Vai trò chuyển sang " + role.name());
@@ -539,9 +681,16 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
+        if (isSamePrincipal(user, principal)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Không thể tự đặt lại mật khẩu tạm từ màn hình quản trị. Hãy dùng chức năng đổi mật khẩu cá nhân.");
+        }
+
         String tempPassword = generateTempPassword();
         user.setPassword(passwordEncoder.encode(tempPassword));
         userRepository.save(user);
+
+        revokeUserSessions(userId);
 
         recordAudit(principal, "USER", userId, "RESET_PASSWORD",
                 "Mật khẩu đã được đặt lại bằng mật khẩu tạm ngẫu nhiên");
@@ -563,49 +712,102 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         if (data.containsKey("fullName") && data.get("fullName") != null) {
-            user.setFullname(data.get("fullName").trim());
+            String fullName = data.get("fullName").trim();
+            if (fullName.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Họ tên không được để trống");
+            }
+            user.setFullname(fullName);
         }
         if (data.containsKey("email") && data.get("email") != null) {
-            user.setEmail(data.get("email").trim());
+            String email = data.get("email").trim().toLowerCase(Locale.ROOT);
+            if (email.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email không được để trống");
+            }
+            userRepository.findByEmail(email)
+                    .filter(other -> !other.getId().equals(userId))
+                    .ifPresent(other -> {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã được sử dụng bởi tài khoản khác");
+                    });
+            user.setEmail(email);
         }
         if (data.containsKey("phone")) {
-            user.setPhone(data.get("phone"));
+            String rawPhone = data.get("phone");
+            String normalizedPhone = rawPhone != null ? rawPhone.trim() : "";
+            if (normalizedPhone.isEmpty()) {
+                user.setPhone(null);
+            } else {
+                userRepository.findByPhone(normalizedPhone)
+                        .filter(other -> !other.getId().equals(userId))
+                        .ifPresent(other -> {
+                            throw new ResponseStatusException(HttpStatus.CONFLICT, "Số điện thoại đã được sử dụng bởi tài khoản khác");
+                        });
+                user.setPhone(normalizedPhone);
+            }
         }
         userRepository.save(user);
     }
 
     @Transactional
     public void createUser(Map<String, Object> data) {
-        String username = (String) data.getOrDefault("username", "user_" + System.currentTimeMillis());
-        String fullName = (String) data.getOrDefault("fullName", "User " + username);
-        String email = (String) data.getOrDefault("email", username + "@moodify.com");
-        String phone = (String) data.getOrDefault("phone", "0900000000");
-        String roleStr = (String) data.getOrDefault("role", "USER");
-        String statusStr = (String) data.getOrDefault("status", "ACTIVE");
-        String password = (String) data.get("password");
+        String rawUsername = data.get("username") != null ? data.get("username").toString().trim().toLowerCase(Locale.ROOT) : "";
+        String rawFullName = data.get("fullName") != null ? data.get("fullName").toString().trim() : "";
+        String rawEmail = data.get("email") != null ? data.get("email").toString().trim().toLowerCase(Locale.ROOT) : "";
+        String rawPhone = data.get("phone") != null ? data.get("phone").toString().trim() : "";
+        String roleStr = data.get("role") != null ? data.get("role").toString() : "USER";
+        String statusStr = data.get("status") != null ? data.get("status").toString() : "ACTIVE";
+        String password = data.get("password") != null ? data.get("password").toString() : null;
+
+        if (rawUsername.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên đăng nhập không được để trống");
+        }
+        if (rawEmail.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email không được để trống");
+        }
+        if (rawFullName.isEmpty()) {
+            rawFullName = rawUsername;
+        }
+        if (userRepository.existsByUsername(rawUsername)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tên đăng nhập đã tồn tại");
+        }
+        if (userRepository.existsByEmail(rawEmail)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã tồn tại");
+        }
+        String normalizedPhone = rawPhone.isEmpty() ? null : rawPhone;
+        if (normalizedPhone != null && userRepository.existsByPhone(normalizedPhone)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Số điện thoại đã được sử dụng");
+        }
 
         String r = roleStr.toUpperCase().trim();
         if ("ARTIST".equals(r)) {
             r = "CONTENT_LEAD";
         }
-        UserRole role = UserRole.valueOf(r);
-        UserStatus status = UserStatus.valueOf(statusStr.toUpperCase().trim());
+        UserRole role;
+        UserStatus status;
+        try {
+            role = UserRole.valueOf(r);
+            status = UserStatus.valueOf(statusStr.toUpperCase().trim());
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vai trò hoặc trạng thái không hợp lệ");
+        }
 
         User user = new User();
-        user.setUsername(username.trim());
-        user.setFullname(fullName.trim());
-        user.setEmail(email.trim());
-        user.setPhone(phone);
+        user.setUsername(rawUsername);
+        user.setFullname(rawFullName);
+        user.setEmail(rawEmail);
+        user.setPhone(normalizedPhone);
         user.setRole(role);
         user.setStatus(status);
         // Mật khẩu do admin cung cấp; nếu bỏ trống thì sinh mật khẩu tạm ngẫu nhiên
         user.setPassword(passwordEncoder.encode(
                 (password != null && !password.isBlank()) ? password.trim() : generateTempPassword()));
+        if (role == UserRole.CONTENT_LEAD) {
+            ensureContentLeadArtistProfile(user, null);
+        }
         userRepository.save(user);
     }
 
     public List<Map<String, Object>> getUserDevices(Long userId) {
-        String sql = "SELECT id, user_id, device_uuid, platform, device_name, status, created_at FROM user_devices WHERE user_id = ?";
+        String sql = "SELECT id, user_id, device_uuid, platform, device_name, status, created_at FROM user_devices WHERE user_id = ? ORDER BY status ASC, created_at DESC";
         return jdbcTemplate.query(sql, new Object[]{userId}, (rs, rowNum) -> {
             Map<String, Object> d = new HashMap<>();
             d.put("id", rs.getLong("id"));
@@ -616,13 +818,26 @@ public class AdminService {
             d.put("status", rs.getString("status"));
             d.put("createdAt", rs.getTimestamp("created_at") != null
                     ? rs.getTimestamp("created_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                    : "01/01/2026");
+                    : "");
             return d;
         });
     }
 
     public void revokeDevice(Long deviceId) {
-        jdbcTemplate.update("UPDATE user_devices SET status = 'REVOKED' WHERE id = ?", deviceId);
+        int updated = jdbcTemplate.update("UPDATE user_devices SET status = 'REVOKED' WHERE id = ?", deviceId);
+        if (updated == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Thiết bị không tồn tại");
+        }
+    }
+
+    @Transactional
+    public int revokeAllUserDevices(Long userId, String principal) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        int revoked = revokeUserSessions(user.getId());
+        recordAudit(principal, "USER", userId, "REVOKE_ALL_DEVICES",
+                "Đã thu hồi " + revoked + " phiên đăng nhập đang hoạt động");
+        return revoked;
     }
 
     // ==========================================
@@ -650,32 +865,32 @@ public class AdminService {
         }
 
         q.with(Sort.by(Sort.Direction.DESC, "popularity", "created_at"));
-        q.limit(200);
+
 
         List<Track> list = mongoTemplate.find(q, Track.class);
         List<Map<String, Object>> result = new ArrayList<>();
 
-        List<String> trackIds = list.stream().map(Track::getId).filter(Objects::nonNull).toList();
+        List<String> trackIds = list.stream().flatMap(t -> java.util.stream.Stream.of(t.getId(), t.getSpotifyId())).filter(Objects::nonNull).distinct().toList();
         Map<String, Long> playsMap = new HashMap<>();
         Map<String, Long> likesMap = new HashMap<>();
 
         if (!trackIds.isEmpty()) {
             String inSql = String.join(",", Collections.nCopies(trackIds.size(), "?"));
-            try {
+            {
                 String playsSql = "SELECT track_id, COUNT(*) as cnt FROM listening_history WHERE track_id IN (" + inSql + ") GROUP BY track_id";
                 jdbcTemplate.query(playsSql, trackIds.toArray(), (rs, rowNum) -> {
                     playsMap.put(rs.getString("track_id"), rs.getLong("cnt"));
                     return null;
                 });
-            } catch (Exception ignored) {}
+            }
 
-            try {
+            {
                 String likesSql = "SELECT track_id, COUNT(*) as cnt FROM favorite_songs WHERE track_id IN (" + inSql + ") GROUP BY track_id";
                 jdbcTemplate.query(likesSql, trackIds.toArray(), (rs, rowNum) -> {
                     likesMap.put(rs.getString("track_id"), rs.getLong("cnt"));
                     return null;
                 });
-            } catch (Exception ignored) {}
+            }
         }
 
         for (Track t : list) {
@@ -684,13 +899,13 @@ public class AdminService {
             map.put("spotifyId", t.getSpotifyId() != null ? t.getSpotifyId() : t.getId());
             map.put("title", t.getName() != null ? t.getName() : "Không tên");
             map.put("artist", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ ẩn danh");
-            map.put("album", t.getAlbumName() != null ? t.getAlbumName() : "Single");
+            map.put("album", t.getAlbumName() != null ? t.getAlbumName() : "Chưa có thông tin album");
             map.put("genre", resolveTrackGenre(t));
-            map.put("duration", t.getDurationFormatted() != null ? t.getDurationFormatted() : "3:30");
-            map.put("coverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+            map.put("duration", formatTrackDuration(t));
+            map.put("coverUrl", resolveAdminImageUrl(t.getImageUrl()));
             map.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
-            map.put("plays", playsMap.getOrDefault(t.getId(), 0L));
-            map.put("likes", likesMap.getOrDefault(t.getId(), 0L));
+            map.put("plays", playsMap.getOrDefault(t.getId(), 0L) + (!Objects.equals(t.getId(), t.getSpotifyId()) ? playsMap.getOrDefault(t.getSpotifyId(), 0L) : 0L));
+            map.put("likes", likesMap.getOrDefault(t.getId(), 0L) + (!Objects.equals(t.getId(), t.getSpotifyId()) ? likesMap.getOrDefault(t.getSpotifyId(), 0L) : 0L));
 
             // Moderation & Audio Features
             String modStatus = t.getModerationStatus() != null ? t.getModerationStatus().toLowerCase().trim() : "published";
@@ -702,35 +917,17 @@ public class AdminService {
                 map.put("status", "published");
             }
 
-            map.put("moderationScore", t.getModerationScore() != null ? t.getModerationScore().intValue() : 88);
-
+            map.put("moderationScore", t.getModerationScore());
             Track.AudioFeatures af = t.getAudioFeatures();
-            if (af != null) {
-                map.put("bpm", af.getBpm() != null ? af.getBpm().intValue() : 120);
-                map.put("energy", af.getEnergy() != null ? af.getEnergy() : 0.72);
-                map.put("danceability", af.getDanceability() != null ? af.getDanceability() : 0.65);
-                map.put("valence", af.getValence() != null ? af.getValence() : 0.58);
-                map.put("acousticness", af.getAcousticness() != null ? af.getAcousticness() : 0.25);
-                map.put("keySignature", af.getKeySignature() != null ? af.getKeySignature() : "C Major");
-            } else {
-                map.put("bpm", 120);
-                map.put("energy", 0.70);
-                map.put("danceability", 0.65);
-                map.put("valence", 0.55);
-                map.put("acousticness", 0.30);
-                map.put("keySignature", "C Major");
-            }
+            map.put("bpm", af != null ? af.getBpm() : null);
+            map.put("energy", af != null ? af.getEnergy() : null);
+            map.put("danceability", af != null ? af.getDanceability() : null);
+            map.put("valence", af != null ? af.getValence() : null);
+            map.put("acousticness", af != null ? af.getAcousticness() : null);
+            map.put("keySignature", af != null ? af.getKeySignature() : null);
+            map.put("vibeCategory", null);
 
-            // Vibe Category determination
-            double valence = map.get("valence") instanceof Number ? ((Number) map.get("valence")).doubleValue() : 0.5;
-            double energy = map.get("energy") instanceof Number ? ((Number) map.get("energy")).doubleValue() : 0.5;
-            if (energy > 0.75) map.put("vibeCategory", "Energetic");
-            else if (valence < 0.45) map.put("vibeCategory", "Sadness");
-            else if (energy < 0.55 && valence > 0.6) map.put("vibeCategory", "Chill");
-            else if (energy < 0.5) map.put("vibeCategory", "Focus");
-            else map.put("vibeCategory", "Romance");
-
-            map.put("createdAt", t.getCreatedAt() != null ? t.getCreatedAt().toString() : "2026-09-01T00:00:00Z");
+            map.put("createdAt", t.getCreatedAt() != null ? t.getCreatedAt().toString() : "");
             result.add(map);
         }
 
@@ -758,18 +955,8 @@ public class AdminService {
 
     @Transactional
     public void deleteTrack(String trackId) {
-        try {
-            jdbcTemplate.update("DELETE FROM favorite_songs WHERE track_id = ?", trackId);
-            jdbcTemplate.update("DELETE FROM user_library_tracks WHERE track_id = ?", trackId);
-            jdbcTemplate.update("DELETE FROM offline_downloads WHERE track_id = ?", trackId);
-            jdbcTemplate.update("DELETE FROM platform_traffic_events WHERE target_id = ?", trackId);
-            jdbcTemplate.update("DELETE FROM song_licenses WHERE track_id = ?", trackId);
-            // listening_history tự động cascade xóa playback_events
-            jdbcTemplate.update("DELETE FROM listening_history WHERE track_id = ?", trackId);
-        } catch (Exception ignored) {}
-
-        Query q = new Query(Criteria.where("_id").is(trackId));
-        mongoTemplate.remove(q, Track.class);
+        if(catalogIntegrity==null)throw new IllegalStateException("Catalog integrity service unavailable");
+        catalogIntegrity.retire(trackId);
     }
 
     private String resolveTrackGenre(Track t) {
@@ -787,13 +974,13 @@ public class AdminService {
                 }
             }
         }
-        return inferGenreFromMetadata(t.getName(), t.getArtistName());
+        return "Chưa phân loại";
     }
 
     private String formatGenreName(String raw) {
-        if (raw == null) return "V-Pop";
+        if (raw == null || raw.isBlank()) return "Chưa phân loại";
         String lower = raw.trim().toLowerCase(Locale.ROOT);
-        if (lower.contains("vpop") || lower.contains("v-pop") || lower.equals("pop")) return "V-Pop";
+        if (lower.contains("vpop") || lower.contains("v-pop") || lower.equals("vietnamese pop")) return "V-Pop";
         if (lower.contains("rap") || lower.contains("hiphop") || lower.contains("hip-hop")) return "Rap / Hip-Hop";
         if (lower.contains("indie")) return "Indie";
         if (lower.contains("r&b") || lower.contains("rnb")) return "R&B / Soul";
@@ -804,15 +991,6 @@ public class AdminService {
         return Character.toUpperCase(raw.charAt(0)) + raw.substring(1);
     }
 
-    private String inferGenreFromMetadata(String title, String artist) {
-        String text = ((title != null ? title : "") + " " + (artist != null ? artist : "")).toLowerCase(Locale.ROOT);
-        if (text.contains("remix") || text.contains("dj ") || text.contains("wrc") || text.contains("drum") || text.contains("edm")) return "EDM / Remix";
-        if (text.contains("đen") || text.contains("b ray") || text.contains("binz") || text.contains("pháp kiều") || text.contains("coldzy") || text.contains("bigdaddy") || text.contains("hieuthuhai") || text.contains("rap") || text.contains("dick")) return "Rap / Hip-Hop";
-        if (text.contains("ngọt") || text.contains("the flob") || text.contains("indiek") || text.contains("lucidrari") || text.contains("ronboogz") || text.contains("yedira") || text.contains("ashen") || text.contains("t.r.i") || text.contains("vẫn thế") || text.contains("trong bao nỗi buồn")) return "Indie";
-        if (text.contains("wren evans") || text.contains("kimmese") || text.contains("grey d")) return "R&B / Soul";
-        if (text.contains("phạm hồng phước") || text.contains("hà nhi") || text.contains("duongg") || text.contains("buồn") || text.contains("mưa")) return "Ballad";
-        return "V-Pop";
-    }
 
     // ==========================================
     // 4. CONTENT MODERATION QUEUE (MySQL + Mongo)
@@ -837,34 +1015,34 @@ public class AdminService {
             map.put("status", rs.getString("status"));
             map.put("submittedAt", rs.getTimestamp("submitted_at") != null
                     ? rs.getTimestamp("submitted_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                    : "01/09/2026 08:00");
+                    : "");
             map.put("resolvedAt", rs.getTimestamp("resolved_at") != null
                     ? rs.getTimestamp("resolved_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
                     : null);
 
             // Fetch Mongo track metadata
-            Track track = trackRepository.findById(contentId).orElse(null);
+            Track track = findAdminTrack(contentId);
             if (track != null) {
                 map.put("title", track.getName());
-                map.put("coverUrl", track.getImageUrl() != null ? track.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                map.put("coverUrl", resolveAdminImageUrl(track.getImageUrl()));
                 map.put("genre", resolveTrackGenre(track));
                 map.put("lyricsPlain", track.getLyricsPlain());
                 map.put("audioUrl", resolveAudioUrl(track.getLocalPath()));
 
                 if (track.getAudioFeatures() != null) {
                     Map<String, Object> af = new HashMap<>();
-                    af.put("bpm", track.getAudioFeatures().getBpm() != null ? track.getAudioFeatures().getBpm().intValue() : 120);
-                    af.put("energy", track.getAudioFeatures().getEnergy() != null ? track.getAudioFeatures().getEnergy() : 0.7);
-                    af.put("danceability", track.getAudioFeatures().getDanceability() != null ? track.getAudioFeatures().getDanceability() : 0.6);
-                    af.put("valence", track.getAudioFeatures().getValence() != null ? track.getAudioFeatures().getValence() : 0.5);
-                    af.put("acousticness", track.getAudioFeatures().getAcousticness() != null ? track.getAudioFeatures().getAcousticness() : 0.2);
-                    af.put("keySignature", track.getAudioFeatures().getKeySignature() != null ? track.getAudioFeatures().getKeySignature() : "C Major");
+                    af.put("bpm", track.getAudioFeatures().getBpm());
+                    af.put("energy", track.getAudioFeatures().getEnergy());
+                    af.put("danceability", track.getAudioFeatures().getDanceability());
+                    af.put("valence", track.getAudioFeatures().getValence());
+                    af.put("acousticness", track.getAudioFeatures().getAcousticness());
+                    af.put("keySignature", track.getAudioFeatures().getKeySignature());
                     map.put("audioFeatures", af);
                 }
             } else {
-                map.put("title", "Bài hát #" + contentId.substring(Math.max(0, contentId.length() - 6)));
-                map.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                map.put("genre", "V-Pop");
+                map.put("title", "Không tìm thấy thông tin bài hát");
+                map.put("coverUrl", "/images/cover-placeholder.svg");
+                map.put("genre", "Chưa phân loại");
             }
             return map;
         });
@@ -1099,13 +1277,68 @@ public class AdminService {
     /**
      * Lấy danh sách toàn bộ các tầng quyền hạn (subscription_tiers) đã chuẩn hóa.
      */
+    private boolean toBooleanValue(Object val, boolean fallback) {
+        if (val == null) return fallback;
+        if (val instanceof Boolean b) return b;
+        if (val instanceof Number n) return n.intValue() != 0;
+        String s = val.toString().trim();
+        return "1".equals(s) || "true".equalsIgnoreCase(s);
+    }
+
+    private int toIntValue(Object val, int fallback) {
+        if (val == null) return fallback;
+        if (val instanceof Number n) return n.intValue();
+        try {
+            return Integer.parseInt(val.toString().trim());
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
+    }
+
+    private double toDoubleValue(Object val) {
+        if (val == null) return 0.0;
+        if (val instanceof Number n) return n.doubleValue();
+        try {
+            return Double.parseDouble(val.toString().trim());
+        } catch (NumberFormatException ex) {
+            return 0.0;
+        }
+    }
+
+    private long toLongValue(Object val) {
+        if (val == null) return 0L;
+        if (val instanceof Number n) return n.longValue();
+        try {
+            return Long.parseLong(val.toString().trim());
+        } catch (NumberFormatException ex) {
+            return 0L;
+        }
+    }
+
     public List<Map<String, Object>> getSubscriptionTiers() {
         String sql = "SELECT * FROM subscription_tiers ORDER BY FIELD(id, 'FREE', 'INDIVIDUAL_BASIC', 'INDIVIDUAL_FULL', 'FAMILY'), id ASC";
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
+        List<Map<String, Object>> result = new ArrayList<>(rows.size());
         for (Map<String, Object> row : rows) {
-            row.put("entitlements", SubscriptionService.mapTierToEntitlements(row));
+            Map<String, Object> tier = new LinkedHashMap<>();
+            tier.put("id", row.get("id"));
+            tier.put("name", row.get("name"));
+            tier.put("description", row.get("description") != null ? row.get("description") : "");
+            tier.put("adPolicy", row.get("ad_policy") != null ? row.get("ad_policy") : "NO_ADS");
+            tier.put("adFreeDailyLimit", toIntValue(row.get("ad_free_daily_limit"), 0));
+            tier.put("skipPolicy", row.get("skip_policy") != null ? row.get("skip_policy") : "UNLIMITED");
+            tier.put("skipDailyLimit", toIntValue(row.get("skip_daily_limit"), 0));
+            tier.put("offlineAllowed", toBooleanValue(row.get("offline_allowed"), false));
+            tier.put("offlineMaxTracks", toIntValue(row.get("offline_max_tracks"), 0));
+            tier.put("maxDevices", Math.max(1, toIntValue(row.get("max_devices"), 1)));
+            tier.put("syncedLyrics", toBooleanValue(row.get("synced_lyrics"), false));
+            tier.put("vipBadge", toBooleanValue(row.get("vip_badge"), false));
+            tier.put("familySharing", toBooleanValue(row.get("family_sharing"), false));
+            tier.put("familyMembers", toIntValue(row.get("family_members"), 0));
+            tier.put("entitlements", SubscriptionService.mapTierToEntitlements(row));
+            result.add(tier);
         }
-        return rows;
+        return result;
     }
 
     /**
@@ -1113,11 +1346,11 @@ public class AdminService {
      * Mọi gói cước gắn tier_id này sẽ ngay lập tức thừa hưởng cấu hình mới nhất mà không bị lệch dữ liệu.
      */
     public void updateSubscriptionTier(String tierId, Map<String, Object> data) {
-        String name = (String) data.get("name");
-        String description = (String) data.get("description");
-        String adPolicy = (String) data.get("adPolicy");
+        String name = data.get("name") != null ? data.get("name").toString().trim() : null;
+        String description = data.get("description") != null ? data.get("description").toString().trim() : null;
+        String adPolicy = data.get("adPolicy") != null ? data.get("adPolicy").toString().trim() : null;
         Integer adFreeDailyLimit = data.get("adFreeDailyLimit") != null ? ((Number) data.get("adFreeDailyLimit")).intValue() : null;
-        String skipPolicy = (String) data.get("skipPolicy");
+        String skipPolicy = data.get("skipPolicy") != null ? data.get("skipPolicy").toString().trim() : null;
         Integer skipDailyLimit = data.get("skipDailyLimit") != null ? ((Number) data.get("skipDailyLimit")).intValue() : null;
         Boolean offlineAllowed = data.get("offlineAllowed") != null ? Boolean.parseBoolean(data.get("offlineAllowed").toString()) : null;
         Integer offlineMaxTracks = data.get("offlineMaxTracks") != null ? ((Number) data.get("offlineMaxTracks")).intValue() : null;
@@ -1126,6 +1359,16 @@ public class AdminService {
         Boolean vipBadge = data.get("vipBadge") != null ? Boolean.parseBoolean(data.get("vipBadge").toString()) : null;
         Boolean familySharing = data.get("familySharing") != null ? Boolean.parseBoolean(data.get("familySharing").toString()) : null;
         Integer familyMembers = data.get("familyMembers") != null ? ((Number) data.get("familyMembers")).intValue() : null;
+
+        if (maxDevices != null && maxDevices < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số thiết bị đồng thời tối thiểu là 1");
+        }
+        if ((adFreeDailyLimit != null && adFreeDailyLimit < 0)
+                || (skipDailyLimit != null && skipDailyLimit < 0)
+                || (offlineMaxTracks != null && offlineMaxTracks < 0)
+                || (familyMembers != null && familyMembers < 0)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Các giới hạn số lượng không được âm");
+        }
 
         String sql = "UPDATE subscription_tiers SET " +
                 "name = COALESCE(?, name), " +
@@ -1144,9 +1387,12 @@ public class AdminService {
                 "updated_at = NOW() " +
                 "WHERE id = ?";
 
-        jdbcTemplate.update(sql, name, description, adPolicy, adFreeDailyLimit, skipPolicy, skipDailyLimit,
+        int updated = jdbcTemplate.update(sql, name, description, adPolicy, adFreeDailyLimit, skipPolicy, skipDailyLimit,
                 offlineAllowed, offlineMaxTracks, maxDevices, syncedLyrics, vipBadge,
                 familySharing, familyMembers, tierId);
+        if (updated == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tầng quyền lợi: " + tierId);
+        }
     }
 
     /**
@@ -1172,12 +1418,12 @@ public class AdminService {
         String sql =
                 "SELECT t.id, t.subscription_id, u.full_name as user_name, u.email as user_email, " +
                 "p.name as package_name, t.amount, t.payment_method, t.provider, " +
-                "t.provider_transaction_id, t.status, t.paid_at " +
+                "t.provider_transaction_id, t.status, t.paid_at, t.created_at " +
                 "FROM payment_transactions t " +
                 "JOIN subscriptions s ON t.subscription_id = s.id " +
                 "JOIN users u ON s.user_id = u.id " +
                 "JOIN service_packages p ON s.service_package_id = p.id " +
-                "ORDER BY t.created_at DESC LIMIT 100";
+                "ORDER BY t.created_at DESC LIMIT 500";
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
             Map<String, Object> t = new HashMap<>();
@@ -1187,15 +1433,210 @@ public class AdminService {
             t.put("userEmail", rs.getString("user_email"));
             t.put("packageName", rs.getString("package_name"));
             t.put("amount", rs.getDouble("amount"));
-            t.put("paymentMethod", rs.getString("payment_method") != null ? rs.getString("payment_method") : "Online");
-            t.put("provider", rs.getString("provider") != null ? rs.getString("provider") : "VNPAY");
-            t.put("providerTransactionId", rs.getString("provider_transaction_id") != null ? rs.getString("provider_transaction_id") : "TXN-" + rs.getLong("id"));
+            t.put("paymentMethod", rs.getString("payment_method") != null ? rs.getString("payment_method") : "Chưa có thông tin");
+            t.put("provider", rs.getString("provider") != null ? rs.getString("provider") : "Chưa có thông tin");
+            t.put("providerTransactionId", rs.getString("provider_transaction_id") != null ? rs.getString("provider_transaction_id") : "");
             t.put("status", rs.getString("status"));
-            t.put("paidAt", rs.getTimestamp("paid_at") != null
-                    ? rs.getTimestamp("paid_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                    : "15/09/2026 14:00");
+            java.sql.Timestamp paidTs = rs.getTimestamp("paid_at");
+            t.put("paidAt", paidTs != null
+                    ? paidTs.toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    : "");
+            java.sql.Timestamp createdTs = rs.getTimestamp("created_at");
+            t.put("createdAt", createdTs != null
+                    ? createdTs.toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    : "");
             return t;
         });
+    }
+
+    public Map<String, Object> getRevenueStats(int days) {
+        int safeDays = (days == 7 || days == 30 || days == 90) ? days : 30;
+        int intervalOffset = safeDays - 1;
+        int previousIntervalStart = (safeDays * 2) - 1;
+
+        double totalRevenue = toDoubleValue(jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(amount), 0) FROM payment_transactions WHERE status = 'SUCCESS'",
+                Double.class
+        ));
+
+        Map<String, Object> periodSummary = jdbcTemplate.queryForMap(
+                "SELECT COALESCE(SUM(amount), 0) as period_revenue, COUNT(*) as period_success_count " +
+                "FROM payment_transactions WHERE status = 'SUCCESS' " +
+                "AND DATE(COALESCE(paid_at, created_at)) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)",
+                intervalOffset
+        );
+        double periodRevenue = toDoubleValue(periodSummary.get("period_revenue"));
+        long periodSuccessCount = toLongValue(periodSummary.get("period_success_count"));
+
+        double previousPeriodRevenue = toDoubleValue(jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(amount), 0) FROM payment_transactions WHERE status = 'SUCCESS' " +
+                "AND DATE(COALESCE(paid_at, created_at)) >= DATE_SUB(CURDATE(), INTERVAL ? DAY) " +
+                "AND DATE(COALESCE(paid_at, created_at)) < DATE_SUB(CURDATE(), INTERVAL ? DAY)",
+                Double.class,
+                previousIntervalStart,
+                intervalOffset
+        ));
+
+        double growthPercent = 0.0;
+        if (previousPeriodRevenue > 0) {
+            growthPercent = Math.round(((periodRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 1000.0) / 10.0;
+        } else if (periodRevenue > 0) {
+            growthPercent = 100.0;
+        }
+
+        List<Map<String, Object>> statusRows = jdbcTemplate.queryForList(
+                "SELECT status, COUNT(*) as cnt FROM payment_transactions GROUP BY status"
+        );
+        long successCount = 0;
+        long pendingCount = 0;
+        long failedCount = 0;
+        long refundedCount = 0;
+        for (Map<String, Object> row : statusRows) {
+            String st = row.get("status") != null ? row.get("status").toString().toUpperCase(Locale.ROOT) : "";
+            long cnt = toLongValue(row.get("cnt"));
+            if ("SUCCESS".equals(st)) {
+                successCount += cnt;
+            } else if ("PENDING".equals(st)) {
+                pendingCount += cnt;
+            } else if ("FAILED".equals(st) || "CANCELLED".equals(st)) {
+                failedCount += cnt;
+            } else if ("REFUNDED".equals(st)) {
+                refundedCount += cnt;
+            }
+        }
+        long totalTransactions = successCount + pendingCount + failedCount + refundedCount;
+        double avgOrderValue = periodSuccessCount > 0
+                ? Math.round(periodRevenue / periodSuccessCount)
+                : (successCount > 0 ? Math.round(totalRevenue / successCount) : 0.0);
+
+        long activeSubscriptionsCount = toLongValue(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE'",
+                Long.class
+        ));
+        long paidUsersCount = toLongValue(jdbcTemplate.queryForObject(
+                "SELECT COUNT(DISTINCT s.user_id) FROM payment_transactions t " +
+                "JOIN subscriptions s ON t.subscription_id = s.id WHERE t.status = 'SUCCESS'",
+                Long.class
+        ));
+
+        List<Map<String, Object>> rawDailyRows = jdbcTemplate.queryForList(
+                "SELECT DATE(COALESCE(t.paid_at, t.created_at)) as tx_date, " +
+                "COALESCE(SUM(CASE WHEN t.status = 'SUCCESS' THEN t.amount ELSE 0 END), 0) as revenue, " +
+                "SUM(CASE WHEN t.status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count, " +
+                "SUM(CASE WHEN t.status = 'PENDING' THEN 1 ELSE 0 END) as pending_count, " +
+                "SUM(CASE WHEN t.status IN ('FAILED', 'CANCELLED') THEN 1 ELSE 0 END) as failed_count, " +
+                "SUM(CASE WHEN t.status = 'REFUNDED' THEN 1 ELSE 0 END) as refunded_count " +
+                "FROM payment_transactions t " +
+                "WHERE DATE(COALESCE(t.paid_at, t.created_at)) >= DATE_SUB(CURDATE(), INTERVAL ? DAY) " +
+                "GROUP BY DATE(COALESCE(t.paid_at, t.created_at)) " +
+                "ORDER BY tx_date ASC",
+                intervalOffset
+        );
+
+        Map<String, Map<String, Object>> dailyMap = new HashMap<>();
+        for (Map<String, Object> row : rawDailyRows) {
+            Object dateObj = row.get("tx_date");
+            if (dateObj == null) continue;
+            String dateStr = dateObj.toString();
+            String isoKey = dateStr.length() >= 10 ? dateStr.substring(0, 10) : dateStr;
+            dailyMap.put(isoKey, row);
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.minusDays(intervalOffset);
+        DateTimeFormatter labelFmt = DateTimeFormatter.ofPattern("dd/MM");
+        List<Map<String, Object>> dailySeries = new ArrayList<>(safeDays);
+        for (LocalDate d = startDate; !d.isAfter(today); d = d.plusDays(1)) {
+            String isoKey = d.toString();
+            Map<String, Object> match = dailyMap.get(isoKey);
+            Map<String, Object> point = new LinkedHashMap<>();
+            point.put("isoDate", isoKey);
+            point.put("date", d.format(labelFmt));
+            point.put("revenue", match != null ? toDoubleValue(match.get("revenue")) : 0.0);
+            point.put("successCount", match != null ? toLongValue(match.get("success_count")) : 0L);
+            point.put("pendingCount", match != null ? toLongValue(match.get("pending_count")) : 0L);
+            point.put("failedCount", match != null ? toLongValue(match.get("failed_count")) : 0L);
+            point.put("refundedCount", match != null ? toLongValue(match.get("refunded_count")) : 0L);
+            dailySeries.add(point);
+        }
+
+        List<Map<String, Object>> rawPackageRows = jdbcTemplate.queryForList(
+                "SELECT p.id as package_id, p.name as package_name, p.tier_id, p.price as package_price, p.status as package_status, " +
+                "COUNT(CASE WHEN t.status = 'SUCCESS' THEN 1 END) as success_count, " +
+                "COUNT(t.id) as total_count, " +
+                "COALESCE(SUM(CASE WHEN t.status = 'SUCCESS' THEN t.amount ELSE 0 END), 0) as revenue, " +
+                "(SELECT COUNT(*) FROM subscriptions s2 WHERE s2.service_package_id = p.id AND s2.status = 'ACTIVE') as active_subs " +
+                "FROM service_packages p " +
+                "LEFT JOIN subscriptions s ON s.service_package_id = p.id " +
+                "LEFT JOIN payment_transactions t ON t.subscription_id = s.id " +
+                "GROUP BY p.id, p.name, p.tier_id, p.price, p.status " +
+                "ORDER BY revenue DESC, active_subs DESC, p.display_order ASC"
+        );
+        List<Map<String, Object>> byPackage = new ArrayList<>(rawPackageRows.size());
+        for (Map<String, Object> row : rawPackageRows) {
+            double pkgRevenue = toDoubleValue(row.get("revenue"));
+            double sharePercent = totalRevenue > 0
+                    ? Math.round((pkgRevenue / totalRevenue) * 1000.0) / 10.0
+                    : 0.0;
+            Map<String, Object> pkg = new LinkedHashMap<>();
+            pkg.put("packageId", toLongValue(row.get("package_id")));
+            pkg.put("packageName", row.get("package_name"));
+            pkg.put("tierId", row.get("tier_id"));
+            pkg.put("packagePrice", toDoubleValue(row.get("package_price")));
+            pkg.put("packageStatus", row.get("package_status"));
+            pkg.put("successCount", toLongValue(row.get("success_count")));
+            pkg.put("totalCount", toLongValue(row.get("total_count")));
+            pkg.put("revenue", pkgRevenue);
+            pkg.put("activeSubscriptions", toLongValue(row.get("active_subs")));
+            pkg.put("sharePercent", sharePercent);
+            byPackage.add(pkg);
+        }
+
+        List<Map<String, Object>> rawProviderRows = jdbcTemplate.queryForList(
+                "SELECT COALESCE(NULLIF(TRIM(t.provider), ''), 'OTHER') as provider_name, " +
+                "COALESCE(NULLIF(TRIM(t.payment_method), ''), 'OTHER') as payment_method, " +
+                "COUNT(CASE WHEN t.status = 'SUCCESS' THEN 1 END) as success_count, " +
+                "COUNT(t.id) as total_count, " +
+                "COALESCE(SUM(CASE WHEN t.status = 'SUCCESS' THEN t.amount ELSE 0 END), 0) as revenue " +
+                "FROM payment_transactions t " +
+                "GROUP BY COALESCE(NULLIF(TRIM(t.provider), ''), 'OTHER'), COALESCE(NULLIF(TRIM(t.payment_method), ''), 'OTHER') " +
+                "ORDER BY revenue DESC, total_count DESC"
+        );
+        List<Map<String, Object>> byProvider = new ArrayList<>(rawProviderRows.size());
+        for (Map<String, Object> row : rawProviderRows) {
+            double provRevenue = toDoubleValue(row.get("revenue"));
+            double sharePercent = totalRevenue > 0
+                    ? Math.round((provRevenue / totalRevenue) * 1000.0) / 10.0
+                    : 0.0;
+            Map<String, Object> prov = new LinkedHashMap<>();
+            prov.put("provider", row.get("provider_name"));
+            prov.put("paymentMethod", row.get("payment_method"));
+            prov.put("successCount", toLongValue(row.get("success_count")));
+            prov.put("totalCount", toLongValue(row.get("total_count")));
+            prov.put("revenue", provRevenue);
+            prov.put("sharePercent", sharePercent);
+            byProvider.add(prov);
+        }
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("periodDays", safeDays);
+        res.put("totalRevenue", totalRevenue);
+        res.put("periodRevenue", periodRevenue);
+        res.put("previousPeriodRevenue", previousPeriodRevenue);
+        res.put("growthPercent", growthPercent);
+        res.put("avgOrderValue", avgOrderValue);
+        res.put("totalTransactions", totalTransactions);
+        res.put("successCount", successCount);
+        res.put("periodSuccessCount", periodSuccessCount);
+        res.put("pendingCount", pendingCount);
+        res.put("failedCount", failedCount);
+        res.put("refundedCount", refundedCount);
+        res.put("activeSubscriptionsCount", activeSubscriptionsCount);
+        res.put("paidUsersCount", paidUsersCount);
+        res.put("dailySeries", dailySeries);
+        res.put("byPackage", byPackage);
+        res.put("byProvider", byProvider);
+        return res;
     }
 
     public List<Map<String, Object>> getSubscriptions() {
@@ -1217,8 +1658,8 @@ public class AdminService {
             sub.put("userEmail", rs.getString("user_email"));
             sub.put("servicePackageId", rs.getLong("service_package_id"));
             sub.put("packageName", rs.getString("package_name"));
-            sub.put("tierId", rs.getString("tier_id") != null ? rs.getString("tier_id") : "INDIVIDUAL_BASIC");
-            sub.put("tierName", rs.getString("tier_name") != null ? rs.getString("tier_name") : "Gói Tiết Kiệm");
+            sub.put("tierId", rs.getString("tier_id") != null ? rs.getString("tier_id") : "");
+            sub.put("tierName", rs.getString("tier_name") != null ? rs.getString("tier_name") : "Chưa có thông tin tầng");
             sub.put("price", rs.getDouble("price"));
             sub.put("autoRenew", rs.getBoolean("auto_renew"));
             sub.put("status", rs.getString("status"));
@@ -1251,8 +1692,8 @@ public class AdminService {
             sub.put("userId", rs.getLong("user_id"));
             sub.put("servicePackageId", rs.getLong("service_package_id"));
             sub.put("packageName", rs.getString("package_name"));
-            sub.put("tierId", rs.getString("tier_id") != null ? rs.getString("tier_id") : "INDIVIDUAL_BASIC");
-            sub.put("tierName", rs.getString("tier_name") != null ? rs.getString("tier_name") : "Gói Tiết Kiệm");
+            sub.put("tierId", rs.getString("tier_id") != null ? rs.getString("tier_id") : "");
+            sub.put("tierName", rs.getString("tier_name") != null ? rs.getString("tier_name") : "Chưa có thông tin tầng");
             sub.put("price", rs.getDouble("price"));
             sub.put("autoRenew", rs.getBoolean("auto_renew"));
             sub.put("status", rs.getString("status"));
@@ -1302,7 +1743,7 @@ public class AdminService {
             d.put("companyName", rs.getString("company_name"));
             d.put("country", rs.getString("country"));
             d.put("contactName", rs.getString("contact_name") != null ? rs.getString("contact_name") : "Đại diện pháp lý");
-            d.put("contactEmail", rs.getString("contact_email") != null ? rs.getString("contact_email") : "contact@distributor.com");
+            d.put("contactEmail", rs.getString("contact_email") != null ? rs.getString("contact_email") : "");
             d.put("contactPhone", rs.getString("contact_phone") != null ? rs.getString("contact_phone") : "+84 901 000 000");
             d.put("status", rs.getString("status"));
             d.put("contractCount", rs.getInt("contract_count"));
@@ -1324,12 +1765,12 @@ public class AdminService {
             c.put("distributorName", rs.getString("distributor_name"));
             c.put("contractCode", rs.getString("contract_code"));
             c.put("title", rs.getString("title"));
-            c.put("signedDate", rs.getDate("signed_date") != null ? rs.getDate("signed_date").toString() : "2026-01-01");
-            c.put("effectiveFrom", rs.getDate("effective_from") != null ? rs.getDate("effective_from").toString() : "2026-01-01");
-            c.put("effectiveTo", rs.getDate("effective_to") != null ? rs.getDate("effective_to").toString() : "2027-12-31");
+            c.put("signedDate", rs.getDate("signed_date") != null ? rs.getDate("signed_date").toString() : "");
+            c.put("effectiveFrom", rs.getDate("effective_from") != null ? rs.getDate("effective_from").toString() : "");
+            c.put("effectiveTo", rs.getDate("effective_to") != null ? rs.getDate("effective_to").toString() : "");
             c.put("revenueShare", rs.getDouble("revenue_share"));
             c.put("status", rs.getString("status"));
-            c.put("documentUrl", rs.getString("document_url") != null ? rs.getString("document_url") : "https://example.com/contract.pdf");
+            c.put("documentUrl", rs.getString("document_url") != null ? rs.getString("document_url") : "");
             return c;
         });
 
@@ -1349,14 +1790,14 @@ public class AdminService {
             l.put("distributorName", rs.getString("distributor_name") != null ? rs.getString("distributor_name") : "Phát hành trực tiếp");
             l.put("licenseType", rs.getString("license_type"));
             l.put("copyrightOwner", rs.getString("copyright_owner") != null ? rs.getString("copyright_owner") : "Độc quyền Moodify");
-            l.put("issueDate", rs.getDate("issue_date") != null ? rs.getDate("issue_date").toString() : "01/01/2026");
-            l.put("expiryDate", rs.getDate("expiry_date") != null ? rs.getDate("expiry_date").toString() : "Vĩnh viễn");
+            l.put("issueDate", rs.getDate("issue_date") != null ? rs.getDate("issue_date").toString() : "");
+            l.put("expiryDate", rs.getDate("expiry_date") != null ? rs.getDate("expiry_date").toString() : "Chưa có thông tin");
             l.put("status", rs.getString("status"));
             l.put("documentUrl", rs.getString("document_songlicenses_url"));
 
             // Track title from MongoDB
-            Track t = trackRepository.findById(trackId).orElse(null);
-            l.put("trackTitle", t != null ? t.getName() : "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
+            Track t = findAdminTrack(trackId);
+            l.put("trackTitle", t != null ? t.getName() : "Bài hát đã lưu");
             return l;
         });
 
@@ -1545,24 +1986,24 @@ public class AdminService {
             m.put("type", itType);
             m.put("createdAt", rs.getTimestamp("created_at") != null
                     ? rs.getTimestamp("created_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                    : "Hôm nay");
+                    : "");
 
             if ("SONG".equals(itType)) {
-                Track t = trackRepository.findById(targetId).orElse(null);
+                Track t = findAdminTrack(targetId);
                 if (t == null) {
-                    t = trackRepository.findBySpotifyId(targetId).orElse(null);
+                    t = findAdminTrack(targetId);
                 }
                 if (t != null) {
                     m.put("targetTitle", t.getName());
                     m.put("targetSubtitle", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ Moodify");
                     m.put("targetCoverUrl", t.getImageUrl() != null && !t.getImageUrl().isBlank()
                             ? t.getImageUrl()
-                            : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                            : "/images/cover-placeholder.svg");
                     m.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
                 } else {
-                    m.put("targetTitle", "Bài hát #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
-                    m.put("targetSubtitle", "V-Pop");
-                    m.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    m.put("targetTitle", "Bài hát đã lưu");
+                    m.put("targetSubtitle", "Chưa có thông tin");
+                    m.put("targetCoverUrl", "/images/cover-placeholder.svg");
                     m.put("audioUrl", resolveAudioUrl(null));
                 }
             } else if ("ARTIST".equals(itType)) {
@@ -1574,18 +2015,18 @@ public class AdminService {
                     m.put("targetTitle", a.getName());
                     String subtitle = (a.getGenres() != null && !a.getGenres().isEmpty())
                             ? String.join(", ", a.getGenres())
-                            : "Nghệ sĩ đã xác minh";
+                            : "Chưa có thông tin nghệ sĩ";
                     if (a.getFollowers() != null && a.getFollowers() > 0) {
                         subtitle += " • " + a.getFollowers() + " người theo dõi";
                     }
                     m.put("targetSubtitle", subtitle);
                     m.put("targetCoverUrl", a.getImageUrl() != null && !a.getImageUrl().isBlank()
                             ? a.getImageUrl()
-                            : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                            : "/images/cover-placeholder.svg");
                 } else {
-                    m.put("targetTitle", "Nghệ sĩ #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
-                    m.put("targetSubtitle", "Nghệ sĩ đã xác minh");
-                    m.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    m.put("targetTitle", "Không tìm thấy thông tin nghệ sĩ");
+                    m.put("targetSubtitle", "Chưa có thông tin nghệ sĩ");
+                    m.put("targetCoverUrl", "/images/cover-placeholder.svg");
                 }
             } else { // ALBUM
                 Map<String, Object> albInfo = resolveAlbumDetail(targetId);
@@ -1635,17 +2076,16 @@ public class AdminService {
         for (Map<String, Object> r : rows) {
             String targetId = (String) r.get("targetId");
             if ("SONG".equals(favType)) {
-                Track t = trackRepository.findById(targetId).orElse(null);
-                if (t == null) t = trackRepository.findBySpotifyId(targetId).orElse(null);
+                Track t = findAdminTrack(targetId);
                 if (t != null) {
                     r.put("targetTitle", t.getName());
                     r.put("targetSubtitle", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ Moodify");
-                    r.put("targetCoverUrl", t.getImageUrl() != null && !t.getImageUrl().isBlank() ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    r.put("targetCoverUrl", t.getImageUrl() != null && !t.getImageUrl().isBlank() ? t.getImageUrl() : "/images/cover-placeholder.svg");
                     r.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
                 } else {
-                    r.put("targetTitle", "Bài hát #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
-                    r.put("targetSubtitle", "Moodify Artist");
-                    r.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    r.put("targetTitle", "Bài hát đã lưu");
+                    r.put("targetSubtitle", "Chưa có thông tin nghệ sĩ");
+                    r.put("targetCoverUrl", "/images/cover-placeholder.svg");
                     r.put("audioUrl", resolveAudioUrl(null));
                 }
             } else if ("ARTIST".equals(favType)) {
@@ -1653,16 +2093,16 @@ public class AdminService {
                 if (a == null) a = artistRepository.findBySpotifyId(targetId).orElse(null);
                 if (a != null) {
                     r.put("targetTitle", a.getName());
-                    String sub = (a.getGenres() != null && !a.getGenres().isEmpty()) ? String.join(", ", a.getGenres()) : "Nghệ sĩ đã xác minh";
+                    String sub = (a.getGenres() != null && !a.getGenres().isEmpty()) ? String.join(", ", a.getGenres()) : "Chưa có thông tin nghệ sĩ";
                     if (a.getFollowers() != null && a.getFollowers() > 0) {
                         sub += " • " + a.getFollowers() + " người theo dõi";
                     }
                     r.put("targetSubtitle", sub);
-                    r.put("targetCoverUrl", a.getImageUrl() != null && !a.getImageUrl().isBlank() ? a.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    r.put("targetCoverUrl", a.getImageUrl() != null && !a.getImageUrl().isBlank() ? a.getImageUrl() : "/images/cover-placeholder.svg");
                 } else {
-                    r.put("targetTitle", "Nghệ sĩ #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
-                    r.put("targetSubtitle", "Nghệ sĩ nổi bật");
-                    r.put("targetCoverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    r.put("targetTitle", "Không tìm thấy thông tin nghệ sĩ");
+                    r.put("targetSubtitle", "Chưa có thông tin nghệ sĩ");
+                    r.put("targetCoverUrl", "/images/cover-placeholder.svg");
                 }
             } else { // ALBUM
                 Map<String, Object> albInfo = resolveAlbumDetail(targetId);
@@ -1694,7 +2134,7 @@ public class AdminService {
                 detail.put("subtitle", subtitle);
                 detail.put("coverUrl", alb.getImageUrl() != null && !alb.getImageUrl().isBlank()
                         ? alb.getImageUrl()
-                        : "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300");
+                        : "/images/cover-placeholder.svg");
                 return detail;
             }
         } catch (Exception ignored) {}
@@ -1710,7 +2150,7 @@ public class AdminService {
                 (rs, rowNum) -> {
                     Map<String, Object> m = new HashMap<>();
                     m.put("title", rs.getString("title"));
-                    String artistName = rs.getString("artist_name") != null ? rs.getString("artist_name") : "Moodify Artist";
+                    String artistName = rs.getString("artist_name") != null ? rs.getString("artist_name") : "Chưa có thông tin nghệ sĩ";
                     int trackCount = rs.getInt("track_count");
                     String subtitle = artistName;
                     if (trackCount > 0) {
@@ -1724,7 +2164,7 @@ public class AdminService {
                     String coverUrl = rs.getString("cover_url");
                     m.put("coverUrl", coverUrl != null && !coverUrl.isBlank()
                             ? coverUrl
-                            : "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300");
+                            : "/images/cover-placeholder.svg");
                     return m;
                 },
                 targetId
@@ -1737,17 +2177,46 @@ public class AdminService {
         // 3. Fallback
         detail.put("title", "Album #" + (targetId.length() > 6 ? targetId.substring(targetId.length() - 6) : targetId));
         detail.put("subtitle", "Album tuyển chọn");
-        detail.put("coverUrl", "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300");
+        detail.put("coverUrl", "/images/cover-placeholder.svg");
         return detail;
     }
 
     public void deleteFavorite(Long id) {
+        deleteFavorite(id, null);
+    }
+
+    public void deleteFavorite(Long id, String type) {
+        String normalized = type != null ? type.trim().toUpperCase(Locale.ROOT) : "";
+        if ("SONG".equals(normalized) || "TRACK".equals(normalized)) {
+            int deleted = jdbcTemplate.update("DELETE FROM favorite_songs WHERE id = ?", id);
+            if (deleted == 0) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Favorite song record not found");
+            }
+            return;
+        }
+        if ("ARTIST".equals(normalized)) {
+            int deleted = jdbcTemplate.update("DELETE FROM favorite_artists WHERE id = ?", id);
+            if (deleted == 0) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Favorite artist record not found");
+            }
+            return;
+        }
+        if ("ALBUM".equals(normalized)) {
+            int deleted = jdbcTemplate.update("DELETE FROM favorite_albums WHERE id = ?", id);
+            if (deleted == 0) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Favorite album record not found");
+            }
+            return;
+        }
         int deleted = jdbcTemplate.update("DELETE FROM favorite_songs WHERE id = ?", id);
         if (deleted == 0) {
             deleted = jdbcTemplate.update("DELETE FROM favorite_artists WHERE id = ?", id);
         }
         if (deleted == 0) {
-            jdbcTemplate.update("DELETE FROM favorite_albums WHERE id = ?", id);
+            deleted = jdbcTemplate.update("DELETE FROM favorite_albums WHERE id = ?", id);
+        }
+        if (deleted == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Favorite record not found");
         }
     }
 
@@ -1847,19 +2316,19 @@ public class AdminService {
         for (Map<String, Object> item : items) {
             String trackId = (String) item.get("trackId");
             if (trackId != null) {
-                Track t = trackRepository.findById(trackId).orElse(null);
+                Track t = findAdminTrack(trackId);
                 if (t != null) {
                     item.put("trackTitle", t.getName());
-                    item.put("artistName", t.getArtistName() != null ? t.getArtistName() : "Moodify Artist");
-                    item.put("coverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                    item.put("totalDuration", t.getDurationFormatted() != null ? t.getDurationFormatted() : "N/A");
+                    item.put("artistName", t.getArtistName() != null ? t.getArtistName() : "Chưa có thông tin nghệ sĩ");
+                    item.put("coverUrl", resolveAdminImageUrl(t.getImageUrl()));
+                    item.put("totalDuration", formatTrackDuration(t));
                     item.put("genre", resolveTrackGenre(t));
                 } else {
-                    item.put("trackTitle", "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
-                    item.put("artistName", "Moodify Artist");
-                    item.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                    item.put("trackTitle", "Không tìm thấy thông tin bài hát");
+                    item.put("artistName", "Chưa có thông tin nghệ sĩ");
+                    item.put("coverUrl", "/images/cover-placeholder.svg");
                     item.put("totalDuration", "N/A");
-                    item.put("genre", "V-Pop");
+                    item.put("genre", "Chưa phân loại");
                 }
             }
         }
@@ -1973,12 +2442,10 @@ public class AdminService {
             } catch (Exception ignored) {}
             r.put("favoriteCount", favCount != null ? favCount : 0L);
 
-            Track t = trackRepository.findById(trackId).orElse(null);
-            int trackDurationMs = (t != null && t.getDurationMs() != null && t.getDurationMs() > 0)
-                ? t.getDurationMs()
-                : 210000;
+            Track t = findAdminTrack(trackId);
+            int trackDurationMs = resolveTrackDurationMs(t);
 
-            double completionRate = Math.min(100.0, Math.round(((double) avgDurationMs / trackDurationMs * 100.0) * 10.0) / 10.0);
+            Double completionRate = trackDurationMs > 0 ? Math.min(100.0, Math.round(((double) avgDurationMs / trackDurationMs * 100.0) * 10.0) / 10.0) : null;
             double skipRate = (streamCount > 0)
                 ? Math.min(100.0, Math.round(((double) earlyDropCount / streamCount * 100.0) * 10.0) / 10.0)
                 : 0.0;
@@ -1991,16 +2458,16 @@ public class AdminService {
             if (t != null) {
                 r.put("title", t.getName());
                 r.put("artist", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ ẩn danh");
-                r.put("coverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                r.put("duration", t.getDurationFormatted() != null ? t.getDurationFormatted() : formatDurationSeconds(trackDurationMs / 1000));
+                r.put("coverUrl", resolveAdminImageUrl(t.getImageUrl()));
+                r.put("duration", formatTrackDuration(t));
                 r.put("genre", resolveTrackGenre(t));
                 r.put("audioUrl", resolveAudioUrl(t.getLocalPath()));
             } else {
-                r.put("title", "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
-                r.put("artist", "Moodify Artist");
-                r.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
-                r.put("duration", formatDurationSeconds(trackDurationMs / 1000));
-                r.put("genre", "V-Pop");
+                r.put("title", "Không tìm thấy thông tin bài hát");
+                r.put("artist", "Chưa có thông tin nghệ sĩ");
+                r.put("coverUrl", "/images/cover-placeholder.svg");
+                r.put("duration", trackDurationMs > 0 ? formatDurationSeconds(trackDurationMs / 1000) : "—");
+                r.put("genre", "Chưa phân loại");
                 r.put("audioUrl", resolveAudioUrl(null));
             }
 
@@ -2081,15 +2548,15 @@ public class AdminService {
 
         for (Map<String, Object> it : items) {
             String trackId = (String) it.get("trackId");
-            Track t = trackRepository.findById(trackId).orElse(null);
+            Track t = findAdminTrack(trackId);
             if (t != null) {
                 it.put("trackTitle", t.getName());
                 it.put("artistName", t.getArtistName() != null ? t.getArtistName() : "Nghệ sĩ");
-                it.put("coverUrl", t.getImageUrl() != null ? t.getImageUrl() : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                it.put("coverUrl", resolveAdminImageUrl(t.getImageUrl()));
             } else {
-                it.put("trackTitle", "Bài hát #" + trackId.substring(Math.max(0, trackId.length() - 6)));
-                it.put("artistName", "Moodify Artist");
-                it.put("coverUrl", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=240");
+                it.put("trackTitle", "Không tìm thấy thông tin bài hát");
+                it.put("artistName", "Chưa có thông tin nghệ sĩ");
+                it.put("coverUrl", "/images/cover-placeholder.svg");
             }
         }
 
