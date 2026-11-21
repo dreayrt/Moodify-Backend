@@ -17,6 +17,7 @@ import secrets
 import shutil
 import socket
 import subprocess
+import sys
 import time
 from urllib import request, error
 from urllib.parse import urlparse
@@ -234,7 +235,9 @@ def run():
                    MONGODB_DATABASE=database, JWT_SECRET=secret, SYNC_SCHEDULER_ENABLED="false",
                    APP_SCHEDULING_ENABLED="false", SPRING_JPA_SHOW_SQL="false", SPRING_JPA_HIBERNATE_DDL_AUTO="none",
                    APP_CORS_ALLOWED_ORIGINS="http://localhost:38100", SERVER_ADDRESS="127.0.0.1",
-                   ORACLE_AUDIO_BASE_URL=f"http://127.0.0.1:{port}/test-no-audio")
+                   ORACLE_AUDIO_BASE_URL=f"http://127.0.0.1:{port}/test-no-audio",
+                   # Required placeholder without default; CI has no application .env to supply it.
+                   OCR_SERVICE_BASE_URL=f"http://127.0.0.1:{port}/test-no-ocr")
         java = Path("C:/Program Files/Java/jdk-26/bin/java.exe")
         if not java.exists():
             java = Path("java")
@@ -284,6 +287,8 @@ def run():
         deadline = time.time()+90
         while time.time()<deadline:
             if process.poll() is not None:
+                log.flush()
+                print(log_path.read_text(encoding="utf-8", errors="replace")[-4000:], file=sys.stderr)
                 raise RuntimeError(f"Backend failed to start; inspect {log_path}")
             try:
                 call("/api/recommendations/home", user=None, expected=401)
