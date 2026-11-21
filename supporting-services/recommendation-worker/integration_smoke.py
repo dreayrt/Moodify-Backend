@@ -181,6 +181,18 @@ def run():
             cursor.execute("CREATE TABLE IF NOT EXISTS catalog_schema_versions (version INT PRIMARY KEY, "
                            "applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB")
             cursor.execute("INSERT IGNORE INTO catalog_schema_versions(version) VALUES (1)")
+            # Mirrors database/catalog_agreement_details_v2.sql, which the SongLicense entity maps.
+            # The annotated schema also lags behind the SongLicense entity; add the rights-review columns from database/Moodify.sql.
+            cursor.execute("""ALTER TABLE song_licenses
+                ADD COLUMN agreement_details JSON NULL,
+                ADD COLUMN rights_evidence_status VARCHAR(20) NOT NULL DEFAULT 'UNVERIFIED',
+                ADD COLUMN document_sha256 VARCHAR(64) NULL,
+                ADD COLUMN document_inspection_status VARCHAR(32) NULL,
+                ADD COLUMN declared_acquisition_cost_vnd DECIMAL(18,0) NULL,
+                ADD COLUMN rights_verified_by BIGINT NULL,
+                ADD COLUMN rights_verified_at DATETIME NULL,
+                ADD COLUMN rights_review_note VARCHAR(1000) NULL""")
+            cursor.execute("INSERT IGNORE INTO catalog_schema_versions(version) VALUES (2)")
         sql.commit()
         mongo = client[database]
         now = datetime.now(timezone.utc)
