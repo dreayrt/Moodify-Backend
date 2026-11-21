@@ -389,9 +389,6 @@ public class ContentLeadCatalogService {
         });
         staged=true;
 
-        // Production schema FKs song_licenses.track_id -> catalog_track_aliases -> catalog_track_registry.
-        registerCatalogTrack(savedTrack.getId());
-
         // 3. Save SongLicense
         SongLicense license = new SongLicense();
         license.setTrackId(savedTrack.getId());
@@ -450,20 +447,6 @@ public class ContentLeadCatalogService {
             while((read=input.read(buffer))!=-1)digest.update(buffer,0,read);
             return java.util.HexFormat.of().formatHex(digest.digest());
         } catch(IOException|java.security.NoSuchAlgorithmException error) { throw new IllegalStateException("Cannot hash uploaded file",error); }
-    }
-
-    private void registerCatalogTrack(String trackId) {
-        if (jdbcTemplate == null || trackId == null) {
-            return;
-        }
-        try {
-            jdbcTemplate.update(
-                "INSERT IGNORE INTO catalog_track_registry (track_id, state, revision) VALUES (?, 'LIVE', 0)", trackId);
-            jdbcTemplate.update(
-                "INSERT IGNORE INTO catalog_track_aliases (alias_id, track_id) VALUES (?, ?)", trackId, trackId);
-        } catch (org.springframework.jdbc.BadSqlGrammarException catalogTablesNotInstalled) {
-            // Older/dev databases without the catalog integrity tables.
-        }
     }
 
     private static String sha256Hex(MultipartFile file) {

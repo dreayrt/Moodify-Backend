@@ -600,9 +600,6 @@ public class AdminService {
         artist.setCreatedAt(Instant.now());
         artist.setUpdatedAt(Instant.now());
         artistRepository.save(artist);
-        if (catalogIntegrity != null) {
-            catalogIntegrity.registerArtist(artist);
-        }
         user.setArtistSpotifyId(newArtistId);
     }
 

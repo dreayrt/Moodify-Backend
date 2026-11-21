@@ -43,9 +43,6 @@ import java.util.UUID;
 
 @Service
 public class AuthenticationService {
-    private CatalogIntegrityService catalogIntegrity;
-    @org.springframework.beans.factory.annotation.Autowired
-    public void setCatalogIntegrity(CatalogIntegrityService value) { catalogIntegrity=value; }
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthenticationService.class);
 
@@ -159,8 +156,6 @@ public class AuthenticationService {
             artist.setCreatedAt(Instant.now());
             artist.setUpdatedAt(Instant.now());
             artistRepository.save(artist);
-            if(catalogIntegrity==null)throw new IllegalStateException("Catalog integrity service unavailable");
-            catalogIntegrity.registerArtist(artist);
             newUser.setArtistSpotifyId(artistSpotifyId);
 
         }

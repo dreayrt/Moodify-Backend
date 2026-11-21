@@ -1,58 +1,25 @@
-"""Explicit schema migration; never run automatically at application startup.
+"""Explicit song license rights-evidence migration; never run automatically at application startup.
 
-Requires a verified backup and a reviewed identity manifest, including tombstones.
-Connections use environment variables, never command-line passwords. Idempotent.
+Requires a verified backup. Connections use environment variables, never
+command-line passwords. Idempotent.
 """
-import argparse,json,os,re
-from pathlib import Path
+import argparse,os,re
 import pymysql
 
-def migrate(connection,source,manifest):
+def migrate(connection):
     with connection.cursor() as c:
-        for statement in re.sub(r'--[^\n]*','',source).split(';'):
-            if statement.strip():c.execute(statement)
-        c.execute("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='catalog_track_registry' AND column_name='revision'")
-        if not c.fetchone()[0]:c.execute('ALTER TABLE catalog_track_registry ADD COLUMN revision BIGINT NOT NULL DEFAULT 0')
         c.execute("SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='song_licenses'")
         columns={r[0] for r in c.fetchall()}
         additions={'rights_evidence_status':"VARCHAR(20) NOT NULL DEFAULT 'UNVERIFIED'",'document_sha256':'VARCHAR(64) NULL',
                    'document_inspection_status':'VARCHAR(32) NULL','declared_acquisition_cost_vnd':'DECIMAL(18,0) NULL','rights_verified_by':'BIGINT NULL','rights_verified_at':'DATETIME NULL','rights_review_note':'VARCHAR(1000) NULL'}
         for column,definition in additions.items():
             if column not in columns:c.execute(f'ALTER TABLE song_licenses ADD COLUMN `{column}` {definition}')
-        for t in manifest['tracks']:
-            c.execute("INSERT INTO catalog_track_registry(track_id,state,updated_at) VALUES (%s,%s,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE state=VALUES(state)",(t['id'],t['state']))
-            for alias in t['aliases']:
-                c.execute('INSERT IGNORE INTO catalog_track_aliases(alias_id,track_id) VALUES (%s,%s)',(alias,t['id']))
-                c.execute('SELECT track_id FROM catalog_track_aliases WHERE alias_id=%s',(alias,))
-                if c.fetchone()[0]!=t['id']:raise ValueError('track_alias_collision')
-        for a in manifest['artists']:
-            c.execute('INSERT IGNORE INTO catalog_artist_registry(artist_id) VALUES (%s)',(a['id'],))
-            for alias in a['aliases']:
-                c.execute('INSERT IGNORE INTO catalog_artist_aliases(alias_id,artist_id) VALUES (%s,%s)',(alias,a['id']))
-                c.execute('SELECT artist_id FROM catalog_artist_aliases WHERE alias_id=%s',(alias,))
-                if c.fetchone()[0]!=a['id']:raise ValueError('artist_alias_collision')
-        for track,artist in manifest['credits']:
-            c.execute('INSERT IGNORE INTO catalog_track_artists(track_id,artist_id) VALUES (%s,%s)',(track,artist))
     connection.commit()
 
 def constraints(connection):
     with connection.cursor() as c:
         c.execute('SELECT constraint_name FROM information_schema.table_constraints WHERE constraint_schema=DATABASE()')
         existing={r[0] for r in c.fetchall()}
-        relations=[('song_licenses','track_id'),('listening_history','track_id'),('user_library_tracks','track_id'),
-            ('favorite_songs','track_id'),('album_tracks','track_id'),('offline_downloads','track_id'),
-            ('download_license_tokens','track_id'),('offline_audit_log','track_id'),('qualified_streams','track_id'),
-            ('karaoke_room_queue','track_id'),('karaoke_rooms','current_track_id')]
-        relations += [('users','artist_spotify_id'),('favorite_artists','artist_id'),('artist_profiles','artist_id'),('artist_reviews','artist_id')]
-        for table,column in relations:
-            name='fk_integrity_'+table
-            if name in existing:continue
-            parent='catalog_artist_aliases' if column in ['artist_id','artist_spotify_id'] else 'catalog_track_aliases'
-            c.execute('SELECT COLUMN_TYPE,IS_NULLABLE,COLLATION_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=%s AND column_name=%s',(table,column))
-            kind,nullable,collation=c.fetchone()
-            assert re.fullmatch(r'varchar\(\d+\)',kind)
-            if collation!='utf8mb4_bin':c.execute(f'ALTER TABLE `{table}` MODIFY `{column}` {kind} CHARACTER SET utf8mb4 COLLATE utf8mb4_bin '+('NULL' if nullable=='YES' else 'NOT NULL'))
-            c.execute(f'ALTER TABLE `{table}` ADD CONSTRAINT `{name}` FOREIGN KEY (`{column}`) REFERENCES `{parent}`(alias_id)')
         # A live license must never silently lose its parent on deletion. MySQL
         # also requires RESTRICT actions before checking this nullable pair.
         for name,column,parent in [('fk_song_license_contract','distribution_contract_id','distribution_contracts'),('fk_song_license_distributor','distributor_id','distributors')]:
@@ -113,14 +80,13 @@ def constraints(connection):
           IF NEW.status<>'ACTIVE' AND EXISTS (SELECT 1 FROM song_licenses sl WHERE sl.distributor_id=OLD.id AND sl.status='ACTIVE')
           THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Resolve active licenses before deactivating distributor'; END IF;
         END""")
-        c.execute('INSERT IGNORE INTO catalog_schema_versions(version) VALUES (1)')
     connection.commit()
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('--manifest',type=Path,required=True);parser.add_argument('--constraints-only',action='store_true');a=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--constraints-only',action='store_true');a=parser.parse_args()
     if not os.environ.get('CATALOG_BACKUP_VERIFIED'):raise SystemExit('Verified backup required')
     db=pymysql.connect(host=os.environ['MYSQL_HOST'],port=int(os.environ.get('MYSQL_PORT','3306')),user=os.environ['MYSQL_USER'],password=os.environ['MYSQL_PASSWORD'],database=os.environ.get('MYSQL_DATABASE','moodify'),charset='utf8mb4')
     try:
         if a.constraints_only:constraints(db)
-        else:migrate(db,(Path(__file__).parents[1]/'database/catalog_integrity_v1.sql').read_text(),json.loads(a.manifest.read_text()))
+        else:migrate(db)
     finally:db.close()

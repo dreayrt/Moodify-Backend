@@ -132,7 +132,6 @@ class AdminSecurityAndStatsTest {
         ArgumentCaptor<Artist> artistCaptor = ArgumentCaptor.forClass(Artist.class);
         verify(artistRepository).save(artistCaptor.capture());
         assertThat(artistCaptor.getValue().getName()).isEqualTo("Creator Demo");
-        verify(catalogIntegrityService).registerArtist(any(Artist.class));
         verify(userDeviceService).revokeAllDevicesForUser(20L);
     }
 

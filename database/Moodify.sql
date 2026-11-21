@@ -903,7 +903,6 @@ INSERT INTO subscription_tiers (
 -- revenue_share ở đây dùng theo đơn vị phần trăm (ví dụ 70 = 70%).
 -- ============================================================
 -- Song-license expiry is owned by the Spring scheduler in Asia/Ho_Chi_Minh.
--- Apply database/catalog_integrity_v1.sql and the catalog migration before starting the runtime.
 
 USE moodify;
 
