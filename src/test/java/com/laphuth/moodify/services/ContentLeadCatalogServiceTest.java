@@ -125,6 +125,48 @@ class ContentLeadCatalogServiceTest {
     }
 
     @Test
+    void uploadAcceptsTestDataDeclaredAsDigitalStreamingAndStoresItAsDemoSimulated() throws Exception {
+        when(userRepository.findByEmailOrUsername("contentlead01", "contentlead01"))
+            .thenReturn(Optional.of(contentLeadUser("artist-1")));
+        when(artistRepository.findBySpotifyId("artist-1")).thenReturn(Optional.of(artist("artist-1")));
+        when(documentInspector.inspect(any())).thenReturn("TEXT_CHECKED");
+        when(audioMetadataService.durationMs(any())).thenReturn(180000);
+        Path[] storedAudio = new Path[1];
+        Path[] storedLicense = new Path[1];
+        when(trackRepository.save(any())).thenAnswer(invocation -> {
+            Track saved = invocation.getArgument(0);
+            saved.setId("uploaded-track-2");
+            storedAudio[0] = Path.of(saved.getLocalPath().substring(1));
+            return saved;
+        });
+        when(songLicenseRepository.save(any())).thenAnswer(invocation -> {
+            com.laphuth.moodify.entities.SongLicense license = invocation.getArgument(0);
+            storedLicense[0] = Path.of(license.getDocumentSonglicensesUrl().substring(1));
+            return license;
+        });
+        TrackUploadRequest request = new TrackUploadRequest();
+        request.setTitle("Demo song");
+        request.setCopyrightOwner("Đơn vị cấp quyền ThuanTest (giả định)");
+        request.setDistributionContractCode("TEST-LNAB-20261110-0001");
+        request.setLicenseType("DIGITAL_STREAMING");
+        request.setIssueDate(LocalDate.of(2020, 1, 1).toString());
+        request.setPerpetual(true);
+        try {
+            contentLeadCatalogService.uploadTrack("contentlead01", request,
+                new MockMultipartFile("audioFile", "song.mp3", "audio/mpeg", new byte[]{1}), null,
+                new MockMultipartFile("licenseDocFile", "license.pdf", "application/pdf", new byte[]{1}));
+            var licenseCaptor = org.mockito.ArgumentCaptor.forClass(com.laphuth.moodify.entities.SongLicense.class);
+            verify(songLicenseRepository).save(licenseCaptor.capture());
+            assertThat(licenseCaptor.getValue().getLicenseType()).isEqualTo("DEMO_SIMULATED");
+            assertThat(licenseCaptor.getValue().getRightsEvidenceStatus()).isEqualTo("SIMULATED");
+            assertThat(licenseCaptor.getValue().getAcquisitionCostVnd()).isEqualByComparingTo("0");
+        } finally {
+            if (storedAudio[0] != null) Files.deleteIfExists(storedAudio[0]);
+            if (storedLicense[0] != null) Files.deleteIfExists(storedLicense[0]);
+        }
+    }
+
+    @Test
     void getCurrentCatalogShouldReturnTracksForContentLead() {
         User user = contentLeadUser("44ZNcW1ZSGB9oqX1ALnriH");
         Artist artist = artist("44ZNcW1ZSGB9oqX1ALnriH");

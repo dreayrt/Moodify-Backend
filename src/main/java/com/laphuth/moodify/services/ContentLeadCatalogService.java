@@ -246,14 +246,17 @@ public class ContentLeadCatalogService {
         boolean simulated="DEMO_SIMULATED".equals(requestedLicenseType);
         if(!java.util.Set.of("DIGITAL_STREAMING","DEMO_SIMULATED").contains(requestedLicenseType))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Loại giấy phép chưa được hỗ trợ.");
-        if(!simulated && looksSimulated(request.getCopyrightOwner(),request.getDistributionContractCode()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Hồ sơ giả định phải được khai báo DEMO_SIMULATED.");
         if(request.getDistributionContractCode()==null||request.getDistributionContractCode().isBlank())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Mã hợp đồng trong tài liệu là bắt buộc.");
         if(documentInspector==null)throw new IllegalStateException("Document inspection service unavailable");
         String inspection=documentInspector.inspect(licenseDocFile);
-        if(!simulated && "SIMULATION_DETECTED".equals(inspection))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"PDF được đánh dấu là tài liệu thử nghiệm; phải khai báo DEMO_SIMULATED.");
+        // Demo / test data is accepted: a document that reads as simulated is stored as DEMO_SIMULATED
+        // (zero cost, demo mode only) instead of being rejected or passed off as a verified real license.
+        if(!simulated && ("SIMULATION_DETECTED".equals(inspection)
+            || looksSimulated(request.getCopyrightOwner(),request.getDistributionContractCode()))) {
+            simulated=true;
+            requestedLicenseType="DEMO_SIMULATED";
+        }
         // OCR is an optional convenience, never evidence of signed rights or payment.
         java.math.BigDecimal declaredCost=request.getAcquisitionCostVnd();
         com.laphuth.moodify.dto.contract.AgreementDetails agreementDetails;
