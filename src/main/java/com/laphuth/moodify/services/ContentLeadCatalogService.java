@@ -349,7 +349,12 @@ public class ContentLeadCatalogService {
         track.setArtistName(fullArtist);
         track.setFeaturedArtists(feat.isEmpty() ? null : feat);
         track.setArtistSpotifyId(artistSpotifyId);
-        track.setArtistIds(List.of(artist.getId()));
+        // MongoDB tracks validator requires artist_ids as 24-hex ObjectId strings (artists._id).
+        java.util.ArrayList<String> artistIds = new java.util.ArrayList<>();
+        if (artist != null && artist.getId() != null && artist.getId().matches("^[0-9a-f]{24}$")) {
+            artistIds.add(artist.getId());
+        }
+        track.setArtistIds(artistIds);
         track.setAlbumName(request.getAlbumName() != null && !request.getAlbumName().isBlank() ? request.getAlbumName().trim() : null);
         track.setGenres(List.of(request.getGenre() != null && !request.getGenre().isBlank() ? request.getGenre().trim() : "Pop"));
         track.setExplicit(request.isExplicit());
@@ -383,6 +388,9 @@ public class ContentLeadCatalogService {
             if(trackSyncService!=null)trackSyncService.pushSingleTrack(savedTrack);
         });
         staged=true;
+
+        // Production schema FKs song_licenses.track_id -> catalog_track_aliases -> catalog_track_registry.
+        registerCatalogTrack(savedTrack.getId());
 
         // 3. Save SongLicense
         SongLicense license = new SongLicense();
@@ -442,6 +450,32 @@ public class ContentLeadCatalogService {
             while((read=input.read(buffer))!=-1)digest.update(buffer,0,read);
             return java.util.HexFormat.of().formatHex(digest.digest());
         } catch(IOException|java.security.NoSuchAlgorithmException error) { throw new IllegalStateException("Cannot hash uploaded file",error); }
+    }
+
+    private void registerCatalogTrack(String trackId) {
+        if (jdbcTemplate == null || trackId == null) {
+            return;
+        }
+        try {
+            jdbcTemplate.update(
+                "INSERT IGNORE INTO catalog_track_registry (track_id, state, revision) VALUES (?, 'LIVE', 0)", trackId);
+            jdbcTemplate.update(
+                "INSERT IGNORE INTO catalog_track_aliases (alias_id, track_id) VALUES (?, ?)", trackId, trackId);
+        } catch (org.springframework.jdbc.BadSqlGrammarException catalogTablesNotInstalled) {
+            // Older/dev databases without the catalog integrity tables.
+        }
+    }
+
+    private static String sha256Hex(MultipartFile file) {
+        try (java.io.InputStream in = file.getInputStream()) {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+            return java.util.HexFormat.of().formatHex(md.digest());
+        } catch (IOException | java.security.NoSuchAlgorithmException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể tính mã băm tài liệu bản quyền.");
+        }
     }
 
     private String saveUploadedFile(MultipartFile file, String subDir) {

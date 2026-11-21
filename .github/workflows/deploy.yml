@@ -59,9 +59,21 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          source: "deploy-bundle/*"
+          source: "target/moodify-0.0.1-SNAPSHOT.jar,scripts/configure-karaoke-room-websocket-nginx.py,scripts/recommendation.production.compose.yaml,supporting-services/karaoke-media/Dockerfile,supporting-services/karaoke-media/package.json,supporting-services/karaoke-media/package-lock.json,supporting-services/karaoke-media/server.js,supporting-services/karaoke-media/compose.production.yaml"
           target: "/opt/moodify/backend"
           strip_components: 1
+
+      # Dockerfile.prod sits at the repo root (one path segment), so the step above with
+      # strip_components: 1 would drop it. Copy it separately without stripping.
+      - name: Copy Dockerfile.prod to Google Cloud VM
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          source: "Dockerfile.prod"
+          target: "/opt/moodify/backend"
 
       - name: Reload Moodify Backend Container via SSH
         uses: appleboy/ssh-action@v1.2.5

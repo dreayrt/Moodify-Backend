@@ -224,6 +224,7 @@ public class ModeratorService {
         if(license!=null)songLicenseRepository.saveAndFlush(license);
 
         if ("approve".equals(action)) {
+            ensureAudioHash(track);
             track.setModerationStatus("approved");
             track.setStatus("published");
             double score = (request.getModerationScore() != null && request.getModerationScore() > 0)
@@ -248,6 +249,27 @@ public class ModeratorService {
             .append("download_status",track.getDownloadStatus()).append("explicit",track.isExplicit())
             .append("updated_at",java.util.Date.from(track.getUpdatedAt()));
         catalogIntegrity.stagePatch(track.getId(),patch);
+    }
+
+    /** Published tracks must carry a SHA-256 audio_hash (MongoDB validator); backfill legacy uploads from disk. */
+    private void ensureAudioHash(Track track) {
+        if (track.getAudioHash() != null && track.getAudioHash().matches("[0-9a-f]{64}")) {
+            return;
+        }
+        String local = track.getLocalPath();
+        if (local == null || local.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bài hát chưa có tệp âm thanh để duyệt.");
+        }
+        java.nio.file.Path file = java.nio.file.Paths.get(local.replace("\\", "/").replaceFirst("^/+", "")).toAbsolutePath().normalize();
+        try (java.io.InputStream in = java.nio.file.Files.newInputStream(file)) {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+            track.setAudioHash(java.util.HexFormat.of().formatHex(md.digest()));
+        } catch (java.io.IOException | java.security.NoSuchAlgorithmException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Không đọc được tệp âm thanh để tính mã băm khi duyệt.", e);
+        }
     }
 
     private ContentReviewRequest createReviewRequestForPendingTrack(Track track) {
