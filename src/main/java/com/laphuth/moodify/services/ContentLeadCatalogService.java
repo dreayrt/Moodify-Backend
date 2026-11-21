@@ -330,6 +330,7 @@ public class ContentLeadCatalogService {
         track.setDescription(request.getDescription() != null && !request.getDescription().isBlank() ? request.getDescription().trim() : null);
         track.setImageUrl(coverUrl);
         track.setLocalPath(audioUrl);
+        track.setAudioHash(sha256Hex(audioFile));
         track.setDurationMs(durationMs);
         int totalSeconds = durationMs / 1000;
         track.setDurationFormatted("%d:%02d".formatted(totalSeconds / 60, totalSeconds % 60));

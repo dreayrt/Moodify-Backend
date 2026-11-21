@@ -84,6 +84,9 @@ public class Track {
     @Field("local_path")
     private String localPath;
 
+    @Field("audio_hash")
+    private String audioHash;
+
     @Field("download_status")
     private String downloadStatus;
 
@@ -175,6 +178,8 @@ public class Track {
     public void setLyricsPlain(String lyricsPlain) { this.lyricsPlain = lyricsPlain; }
     public String getLyricsSynced() { return lyricsSynced; }
     public void setLyricsSynced(String lyricsSynced) { this.lyricsSynced = lyricsSynced; }
+    public String getAudioHash() { return audioHash; }
+    public void setAudioHash(String audioHash) { this.audioHash = audioHash; }
     public String getLocalPath() { return localPath; }
     public void setLocalPath(String localPath) { this.localPath = localPath; }
     public String getCatalogMigrationBatch() { return catalogMigrationBatch; }
