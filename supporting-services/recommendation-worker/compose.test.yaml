@@ -8,7 +8,8 @@ services:
     ports: ["127.0.0.1:13316:3306"]
     volumes: ["./fixture-init.sql:/docker-entrypoint-initdb.d/fixture-init.sql:ro"]
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      # TCP, not the socket: the image's init phase runs a socket-only temporary server that would report healthy before the real one is up.
+      test: ["CMD", "mysqladmin", "ping", "--protocol=tcp", "-h", "127.0.0.1", "-uroot", "-pisolated-bootstrap-only", "--silent"]
       interval: 5s
       retries: 20
   mongo:
