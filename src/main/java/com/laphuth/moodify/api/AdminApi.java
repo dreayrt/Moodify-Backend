@@ -3,12 +3,14 @@ package com.laphuth.moodify.api;
 import com.laphuth.moodify.services.AdService;
 import com.laphuth.moodify.services.AdminService;
 import com.laphuth.moodify.services.NotificationService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -210,39 +212,67 @@ public class AdminApi {
     @PutMapping("/packages/{id}/price")
     public ResponseEntity<Map<String, Object>> updatePackagePrice(
             @PathVariable Long id,
-            @RequestBody Map<String, Object> body
+            @RequestBody Map<String, Object> body,
+            Authentication authentication
     ) {
         Object priceObj = body.get("price");
-        Double newPrice = priceObj instanceof Number ? ((Number) priceObj).doubleValue() : Double.parseDouble(priceObj.toString());
-        adminService.updatePackagePrice(id, newPrice);
+        if (priceObj == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng nhập đơn giá gói dịch vụ.");
+        }
+        Double newPrice;
+        if (priceObj instanceof Number n) {
+            newPrice = n.doubleValue();
+        } else {
+            try {
+                newPrice = Double.parseDouble(priceObj.toString().trim());
+            } catch (NumberFormatException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đơn giá gói dịch vụ không hợp lệ.");
+            }
+        }
+        String principal = authentication != null ? authentication.getName() : null;
+        adminService.updatePackagePrice(id, newPrice, principal);
         return ResponseEntity.ok(Map.of("success", true, "message", "Giá gói cước đã được cập nhật"));
     }
 
     @PostMapping("/packages")
-    public ResponseEntity<Map<String, Object>> createPackage(@RequestBody Map<String, Object> body) {
-        adminService.createPackage(body);
+    public ResponseEntity<Map<String, Object>> createPackage(
+            @RequestBody Map<String, Object> body,
+            Authentication authentication
+    ) {
+        String principal = authentication != null ? authentication.getName() : null;
+        adminService.createPackage(body, principal);
         return ResponseEntity.ok(Map.of("success", true, "message", "Gói cước mới đã được tạo thành công"));
     }
 
     @PutMapping("/packages/{id}")
     public ResponseEntity<Map<String, Object>> updatePackageDetails(
             @PathVariable Long id,
-            @RequestBody Map<String, Object> body
+            @RequestBody Map<String, Object> body,
+            Authentication authentication
     ) {
-        adminService.updatePackageDetails(id, body);
+        String principal = authentication != null ? authentication.getName() : null;
+        adminService.updatePackageDetails(id, body, principal);
         return ResponseEntity.ok(Map.of("success", true, "message", "Chi tiết gói cước đã được cập nhật thành công"));
     }
 
     @PatchMapping("/packages/{id}/status")
-    public ResponseEntity<Map<String, Object>> togglePackageStatus(@PathVariable Long id) {
-        adminService.togglePackageStatus(id);
+    public ResponseEntity<Map<String, Object>> togglePackageStatus(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        String principal = authentication != null ? authentication.getName() : null;
+        adminService.togglePackageStatus(id, principal);
         return ResponseEntity.ok(Map.of("success", true, "message", "Trạng thái gói cước đã được thay đổi"));
     }
 
     @DeleteMapping("/packages/{id}")
-    public ResponseEntity<Map<String, Object>> deletePackage(@PathVariable Long id) {
-        adminService.deletePackage(id);
-        return ResponseEntity.ok(Map.of("success", true, "message", "Gói cước đã được xử lý xóa / vô hiệu hóa thành công"));
+    public ResponseEntity<Map<String, Object>> deletePackage(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        String principal = authentication != null ? authentication.getName() : null;
+        adminService.deletePackage(id, principal);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Gói cước đã được xóa thành công"));
     }
 
     @GetMapping("/subscription-tiers")
@@ -250,13 +280,39 @@ public class AdminApi {
         return ResponseEntity.ok(adminService.getSubscriptionTiers());
     }
 
+    @PostMapping("/subscription-tiers")
+    public ResponseEntity<Map<String, Object>> createSubscriptionTier(
+            @RequestBody Map<String, Object> body,
+            Authentication authentication
+    ) {
+        String principal = authentication != null ? authentication.getName() : null;
+        Map<String, Object> tier = adminService.createSubscriptionTier(body, principal);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "tier", tier,
+                "message", "Đã tạo hạng gói dịch vụ mới thành công"
+        ));
+    }
+
     @PutMapping("/subscription-tiers/{id}")
     public ResponseEntity<Map<String, Object>> updateSubscriptionTier(
             @PathVariable String id,
-            @RequestBody Map<String, Object> body
+            @RequestBody Map<String, Object> body,
+            Authentication authentication
     ) {
-        adminService.updateSubscriptionTier(id, body);
-        return ResponseEntity.ok(Map.of("success", true, "message", "Cấu hình tầng quyền lợi đã được cập nhật thành công"));
+        String principal = authentication != null ? authentication.getName() : null;
+        adminService.updateSubscriptionTier(id, body, principal);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Cấu hình hạng gói đã được cập nhật thành công"));
+    }
+
+    @DeleteMapping("/subscription-tiers/{id}")
+    public ResponseEntity<Map<String, Object>> deleteSubscriptionTier(
+            @PathVariable String id,
+            Authentication authentication
+    ) {
+        String principal = authentication != null ? authentication.getName() : null;
+        adminService.deleteSubscriptionTier(id, principal);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đã xóa hạng gói dịch vụ"));
     }
 
     @GetMapping("/transactions")
@@ -277,8 +333,12 @@ public class AdminApi {
     }
 
     @PostMapping("/subscriptions/{id}/cancel")
-    public ResponseEntity<Map<String, Object>> cancelSubscription(@PathVariable Long id) {
-        adminService.cancelSubscription(id);
+    public ResponseEntity<Map<String, Object>> cancelSubscription(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        String principal = authentication != null ? authentication.getName() : null;
+        adminService.cancelSubscription(id, principal);
         return ResponseEntity.ok(Map.of("success", true, "message", "Gói dịch vụ người dùng đã được hủy thành công"));
     }
 

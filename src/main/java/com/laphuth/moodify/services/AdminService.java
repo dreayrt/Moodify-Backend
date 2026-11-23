@@ -45,6 +45,10 @@ public class AdminService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setUserDeviceService(UserDeviceService value) { this.userDeviceService = value; }
 
+    private NotificationService notificationService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setNotificationService(NotificationService value) { this.notificationService = value; }
+
 
     private final JdbcTemplate jdbcTemplate;
     private final TrackRepository trackRepository;
@@ -1133,6 +1137,204 @@ public class AdminService {
     // ==========================================
     // 5. PACKAGES & MONETIZATION (MySQL)
     // ==========================================
+    private static final Set<String> VALID_AD_POLICIES = Set.of("NO_ADS", "DAILY_QUOTA", "FULL_ADS");
+    private static final Set<String> VALID_SKIP_POLICIES = Set.of("UNLIMITED", "LIMITED");
+    private static final Set<String> VALID_PACKAGE_STATUSES = Set.of("ACTIVE", "INACTIVE");
+
+    private record TierSpec(
+            String name,
+            String description,
+            String adPolicy,
+            int adFreeDailyLimit,
+            String skipPolicy,
+            int skipDailyLimit,
+            boolean offlineAllowed,
+            int offlineMaxTracks,
+            int maxDevices,
+            boolean syncedLyrics,
+            boolean vipBadge,
+            boolean familySharing,
+            int familyMembers
+    ) {}
+
+    private double parseRequiredDouble(Object raw, String fieldLabel) {
+        if (raw == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thiếu trường " + fieldLabel + ".");
+        }
+        double value;
+        if (raw instanceof Number n) {
+            value = n.doubleValue();
+        } else {
+            try {
+                value = Double.parseDouble(raw.toString().trim());
+            } catch (NumberFormatException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldLabel + " phải là số hợp lệ.");
+            }
+        }
+        if (!Double.isFinite(value)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldLabel + " không hợp lệ.");
+        }
+        return value;
+    }
+
+    private int parseRequiredInt(Object raw, String fieldLabel) {
+        if (raw == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thiếu trường " + fieldLabel + ".");
+        }
+        if (raw instanceof Number n) {
+            return n.intValue();
+        }
+        try {
+            return Integer.parseInt(raw.toString().trim());
+        } catch (NumberFormatException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldLabel + " phải là số nguyên hợp lệ.");
+        }
+    }
+
+    private boolean parseBooleanStrict(Object raw, boolean fallback) {
+        if (raw == null) return fallback;
+        if (raw instanceof Boolean b) return b;
+        if (raw instanceof Number n) return n.intValue() != 0;
+        String s = raw.toString().trim();
+        if ("1".equals(s) || "true".equalsIgnoreCase(s)) return true;
+        if ("0".equals(s) || "false".equalsIgnoreCase(s)) return false;
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giá trị boolean không hợp lệ: " + s);
+    }
+
+    private TierSpec validateTierSpec(
+            String tierId,
+            String rawName,
+            String rawDescription,
+            String rawAdPolicy,
+            int rawAdFreeDailyLimit,
+            String rawSkipPolicy,
+            int rawSkipDailyLimit,
+            boolean offlineAllowed,
+            int rawOfflineMaxTracks,
+            int maxDevices
+    ) {
+        String name = rawName == null ? "" : rawName.trim();
+        if (name.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên hạng gói không được để trống.");
+        }
+        if (name.length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên hạng gói tối đa 100 ký tự.");
+        }
+        String description = rawDescription == null ? "" : rawDescription.trim();
+        if (description.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mô tả hạng gói tối đa 255 ký tự.");
+        }
+        String adPolicy = rawAdPolicy == null ? "" : rawAdPolicy.trim().toUpperCase(Locale.ROOT);
+        if (!VALID_AD_POLICIES.contains(adPolicy)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chính sách quảng cáo không hợp lệ: " + rawAdPolicy);
+        }
+        String skipPolicy = rawSkipPolicy == null ? "" : rawSkipPolicy.trim().toUpperCase(Locale.ROOT);
+        if (!VALID_SKIP_POLICIES.contains(skipPolicy)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chính sách chuyển bài không hợp lệ: " + rawSkipPolicy);
+        }
+        if (maxDevices < 1 || maxDevices > 10) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số thiết bị tối đa phải nằm trong khoảng 1 đến 10.");
+        }
+
+        int adFreeDailyLimit = 0;
+        if ("DAILY_QUOTA".equals(adPolicy)) {
+            if (rawAdFreeDailyLimit < 1 || rawAdFreeDailyLimit > 500) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hạn mức bài không quảng cáo/ngày phải từ 1 đến 500.");
+            }
+            adFreeDailyLimit = rawAdFreeDailyLimit;
+        }
+
+        int skipDailyLimit = 0;
+        if ("LIMITED".equals(skipPolicy)) {
+            if (rawSkipDailyLimit < 1 || rawSkipDailyLimit > 500) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hạn mức lượt chuyển bài/ngày phải từ 1 đến 500.");
+            }
+            skipDailyLimit = rawSkipDailyLimit;
+        }
+
+        int offlineMaxTracks = 0;
+        if (offlineAllowed) {
+            if (rawOfflineMaxTracks < 1 || rawOfflineMaxTracks > 9999) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số bài ngoại tuyến tối đa phải từ 1 đến 9999.");
+            }
+            offlineMaxTracks = rawOfflineMaxTracks;
+        }
+
+        boolean isFree = "FREE".equalsIgnoreCase(tierId);
+        boolean vipBadge = !isFree;
+        boolean syncedLyrics = true;
+        boolean familySharing = !isFree && maxDevices > 1;
+        int familyMembers = familySharing ? maxDevices : 0;
+
+        return new TierSpec(
+                name,
+                description,
+                adPolicy,
+                adFreeDailyLimit,
+                skipPolicy,
+                skipDailyLimit,
+                offlineAllowed,
+                offlineMaxTracks,
+                maxDevices,
+                syncedLyrics,
+                vipBadge,
+                familySharing,
+                familyMembers
+        );
+    }
+
+    private void requireValidPackageTier(String tierId) {
+        if (tierId == null || tierId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng chọn hạng gói cho gói dịch vụ.");
+        }
+        if ("FREE".equalsIgnoreCase(tierId.trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Gói bán hàng phải thuộc hạng gói trả phí (không dùng hạng FREE).");
+        }
+        Integer exists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM subscription_tiers WHERE id = ?",
+                Integer.class,
+                tierId.trim()
+        );
+        if (exists == null || exists == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hạng gói không tồn tại: " + tierId);
+        }
+    }
+
+    private Map<String, Object> buildTierResponse(String tierId, TierSpec spec) {
+        Map<String, Object> tierRow = new LinkedHashMap<>();
+        tierRow.put("id", tierId);
+        tierRow.put("tier_name", spec.name());
+        tierRow.put("ad_policy", spec.adPolicy());
+        tierRow.put("ad_free_daily_limit", spec.adFreeDailyLimit());
+        tierRow.put("skip_policy", spec.skipPolicy());
+        tierRow.put("skip_daily_limit", spec.skipDailyLimit());
+        tierRow.put("offline_allowed", spec.offlineAllowed());
+        tierRow.put("offline_max_tracks", spec.offlineMaxTracks());
+        tierRow.put("max_devices", spec.maxDevices());
+        tierRow.put("synced_lyrics", spec.syncedLyrics());
+        tierRow.put("vip_badge", spec.vipBadge());
+        tierRow.put("family_sharing", spec.familySharing());
+        tierRow.put("family_members", spec.familyMembers());
+
+        Map<String, Object> tier = new LinkedHashMap<>();
+        tier.put("id", tierId);
+        tier.put("name", spec.name());
+        tier.put("description", spec.description());
+        tier.put("adPolicy", spec.adPolicy());
+        tier.put("adFreeDailyLimit", spec.adFreeDailyLimit());
+        tier.put("skipPolicy", spec.skipPolicy());
+        tier.put("skipDailyLimit", spec.skipDailyLimit());
+        tier.put("offlineAllowed", spec.offlineAllowed());
+        tier.put("offlineMaxTracks", spec.offlineMaxTracks());
+        tier.put("maxDevices", spec.maxDevices());
+        tier.put("syncedLyrics", spec.syncedLyrics());
+        tier.put("vipBadge", spec.vipBadge());
+        tier.put("familySharing", spec.familySharing());
+        tier.put("familyMembers", spec.familyMembers());
+        tier.put("entitlements", SubscriptionService.mapTierToEntitlements(tierRow));
+        return tier;
+    }
+
     public List<Map<String, Object>> getPackages() {
         String sql =
                 "SELECT p.id, p.name, p.description, p.price, p.duration_days, p.display_order, p.status, p.tier_id, " +
@@ -1189,82 +1391,140 @@ public class AdminService {
     }
 
     public void updatePackagePrice(Long packageId, Double newPrice) {
-        jdbcTemplate.update("UPDATE service_packages SET price = ?, updated_at = NOW() WHERE id = ?", newPrice, packageId);
+        updatePackagePrice(packageId, newPrice, null);
+    }
+
+    public void updatePackagePrice(Long packageId, Double newPrice, String principal) {
+        if (newPrice == null || !Double.isFinite(newPrice) || newPrice < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đơn giá gói dịch vụ không hợp lệ.");
+        }
+        int updated = jdbcTemplate.update("UPDATE service_packages SET price = ?, updated_at = NOW() WHERE id = ?", newPrice, packageId);
+        if (updated == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy gói dịch vụ #" + packageId);
+        }
+        if (principal != null) {
+            recordAudit(principal, "SERVICE_PACKAGE", packageId, "UPDATE_PACKAGE_PRICE",
+                    "Cập nhật giá gói #" + packageId + " thành " + Math.round(newPrice) + " đ");
+        }
     }
 
     public void createPackage(Map<String, Object> data) {
-        String name = (String) data.getOrDefault("name", "Gói Cước Mới");
-        String description = (String) data.getOrDefault("description", "");
+        createPackage(data, null);
+    }
 
-        Double price = 0.0;
-        if (data.get("price") instanceof Number) {
-            price = ((Number) data.get("price")).doubleValue();
-        } else if (data.get("price") != null) {
-            try { price = Double.parseDouble(data.get("price").toString().trim()); } catch (Exception ignored) {}
+    public void createPackage(Map<String, Object> data, String principal) {
+        String name = data.get("name") != null ? data.get("name").toString().trim() : "";
+        if (name.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên gói dịch vụ không được để trống.");
         }
-
-        Integer durationDays = 30;
-        if (data.get("durationDays") instanceof Number) {
-            durationDays = ((Number) data.get("durationDays")).intValue();
-        } else if (data.get("durationDays") != null) {
-            try { durationDays = Integer.parseInt(data.get("durationDays").toString().trim()); } catch (Exception ignored) {}
+        if (name.length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên gói dịch vụ tối đa 100 ký tự.");
         }
 
-        Integer displayOrder = 1;
-        if (data.get("displayOrder") instanceof Number) {
-            displayOrder = ((Number) data.get("displayOrder")).intValue();
-        } else if (data.get("displayOrder") != null) {
-            try { displayOrder = Integer.parseInt(data.get("displayOrder").toString().trim()); } catch (Exception ignored) {}
+        String description = data.get("description") != null ? data.get("description").toString().trim() : "";
+        if (description.length() > 1000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mô tả gói dịch vụ tối đa 1000 ký tự.");
         }
 
-        String status = (String) data.getOrDefault("status", "ACTIVE");
-        String tierId = (String) data.get("tierId");
-        if (tierId == null || tierId.isBlank()) {
-            // Thử lấy từ entitlements nếu có
-            if (data.get("entitlements") instanceof Map) {
-                tierId = (String) ((Map<?, ?>) data.get("entitlements")).get("tier");
-            }
+        double price = parseRequiredDouble(data.get("price"), "đơn giá gói");
+        if (price < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đơn giá gói dịch vụ không được âm.");
         }
-        if (tierId == null || tierId.isBlank()) {
-            tierId = "INDIVIDUAL_BASIC";
+
+        int durationDays = parseRequiredInt(data.get("durationDays"), "chu kỳ gói");
+        if (durationDays < 1 || durationDays > 3650) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chu kỳ gói dịch vụ phải từ 1 đến 3650 ngày.");
         }
+
+        int displayOrder = data.get("displayOrder") != null ? parseRequiredInt(data.get("displayOrder"), "thứ tự hiển thị") : 1;
+        if (displayOrder < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thứ tự hiển thị không được âm.");
+        }
+
+        String status = data.get("status") != null ? data.get("status").toString().trim().toUpperCase(Locale.ROOT) : "ACTIVE";
+        if (!VALID_PACKAGE_STATUSES.contains(status)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái gói dịch vụ không hợp lệ: " + status);
+        }
+
+        String tierId = data.get("tierId") != null ? data.get("tierId").toString().trim() : "";
+        if (tierId.isEmpty() && data.get("entitlements") instanceof Map<?, ?> ent && ent.get("tier") != null) {
+            tierId = ent.get("tier").toString().trim();
+        }
+        requireValidPackageTier(tierId);
 
         String sql = "INSERT INTO service_packages (name, description, price, duration_days, display_order, status, tier_id, created_at, updated_at) " +
                      "VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
-        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status.toUpperCase(), tierId);
+        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status, tierId);
+        if (principal != null) {
+            recordAudit(principal, "SERVICE_PACKAGE", null, "CREATE_PACKAGE",
+                    "Tạo gói \"" + name + "\" (hạng " + tierId + ", giá " + Math.round(price) + " đ, " + durationDays + " ngày)");
+        }
     }
 
     public void updatePackageDetails(Long packageId, Map<String, Object> data) {
-        String name = (String) data.get("name");
-        String description = (String) data.get("description");
+        updatePackageDetails(packageId, data, null);
+    }
+
+    public void updatePackageDetails(Long packageId, Map<String, Object> data, String principal) {
+        String name = null;
+        if (data.containsKey("name")) {
+            name = data.get("name") != null ? data.get("name").toString().trim() : "";
+            if (name.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên gói dịch vụ không được để trống.");
+            }
+            if (name.length() > 100) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên gói dịch vụ tối đa 100 ký tự.");
+            }
+        }
+
+        String description = null;
+        if (data.containsKey("description")) {
+            description = data.get("description") != null ? data.get("description").toString().trim() : "";
+            if (description.length() > 1000) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mô tả gói dịch vụ tối đa 1000 ký tự.");
+            }
+        }
 
         Double price = null;
-        if (data.get("price") instanceof Number) {
-            price = ((Number) data.get("price")).doubleValue();
-        } else if (data.get("price") != null) {
-            try { price = Double.parseDouble(data.get("price").toString().trim()); } catch (Exception ignored) {}
+        if (data.containsKey("price") && data.get("price") != null) {
+            price = parseRequiredDouble(data.get("price"), "đơn giá gói");
+            if (price < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đơn giá gói dịch vụ không được âm.");
+            }
         }
 
         Integer durationDays = null;
-        if (data.get("durationDays") instanceof Number) {
-            durationDays = ((Number) data.get("durationDays")).intValue();
-        } else if (data.get("durationDays") != null) {
-            try { durationDays = Integer.parseInt(data.get("durationDays").toString().trim()); } catch (Exception ignored) {}
+        if (data.containsKey("durationDays") && data.get("durationDays") != null) {
+            durationDays = parseRequiredInt(data.get("durationDays"), "chu kỳ gói");
+            if (durationDays < 1 || durationDays > 3650) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chu kỳ gói dịch vụ phải từ 1 đến 3650 ngày.");
+            }
         }
 
         Integer displayOrder = null;
-        if (data.get("displayOrder") instanceof Number) {
-            displayOrder = ((Number) data.get("displayOrder")).intValue();
-        } else if (data.get("displayOrder") != null) {
-            try { displayOrder = Integer.parseInt(data.get("displayOrder").toString().trim()); } catch (Exception ignored) {}
+        if (data.containsKey("displayOrder") && data.get("displayOrder") != null) {
+            displayOrder = parseRequiredInt(data.get("displayOrder"), "thứ tự hiển thị");
+            if (displayOrder < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thứ tự hiển thị không được âm.");
+            }
         }
 
-        String status = (String) data.get("status");
-        String tierId = (String) data.get("tierId");
-        if (tierId == null || tierId.isBlank()) {
-            if (data.get("entitlements") instanceof Map) {
-                tierId = (String) ((Map<?, ?>) data.get("entitlements")).get("tier");
+        String status = null;
+        if (data.containsKey("status") && data.get("status") != null) {
+            status = data.get("status").toString().trim().toUpperCase(Locale.ROOT);
+            if (!VALID_PACKAGE_STATUSES.contains(status)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái gói dịch vụ không hợp lệ: " + status);
             }
+        }
+
+        String tierId = null;
+        if (data.containsKey("tierId")) {
+            tierId = data.get("tierId") != null ? data.get("tierId").toString().trim() : "";
+        } else if (data.get("entitlements") instanceof Map<?, ?> ent && ent.get("tier") != null) {
+            tierId = ent.get("tier").toString().trim();
+        }
+        if (tierId != null) {
+            requireValidPackageTier(tierId);
         }
 
         String sql = "UPDATE service_packages SET " +
@@ -1277,12 +1537,30 @@ public class AdminService {
                      "tier_id = COALESCE(?, tier_id), " +
                      "updated_at = NOW() " +
                      "WHERE id = ?";
-        jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status != null ? status.toUpperCase() : null, tierId, packageId);
+        int updated = jdbcTemplate.update(sql, name, description, price, durationDays, displayOrder, status, tierId, packageId);
+        if (updated == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy gói dịch vụ #" + packageId);
+        }
+        if (principal != null) {
+            recordAudit(principal, "SERVICE_PACKAGE", packageId, "UPDATE_PACKAGE",
+                    "Cập nhật chi tiết gói #" + packageId + (name != null ? " (" + name + ")" : ""));
+        }
     }
 
     public void togglePackageStatus(Long packageId) {
+        togglePackageStatus(packageId, null);
+    }
+
+    public void togglePackageStatus(Long packageId, String principal) {
         String sql = "UPDATE service_packages SET status = CASE WHEN status = 'ACTIVE' THEN 'INACTIVE' ELSE 'ACTIVE' END, updated_at = NOW() WHERE id = ?";
-        jdbcTemplate.update(sql, packageId);
+        int updated = jdbcTemplate.update(sql, packageId);
+        if (updated == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy gói dịch vụ #" + packageId);
+        }
+        if (principal != null) {
+            recordAudit(principal, "SERVICE_PACKAGE", packageId, "TOGGLE_PACKAGE_STATUS",
+                    "Đổi trạng thái cung cấp gói #" + packageId);
+        }
     }
 
     /**
@@ -1352,66 +1630,180 @@ public class AdminService {
         return result;
     }
 
+    public Map<String, Object> createSubscriptionTier(Map<String, Object> data) {
+        return createSubscriptionTier(data, null);
+    }
+
+    public Map<String, Object> createSubscriptionTier(Map<String, Object> data, String principal) {
+        String rawId = data.get("id") != null ? data.get("id").toString().trim().toUpperCase(Locale.ROOT) : "";
+        String tierId;
+        if (rawId.isEmpty()) {
+            tierId = "CUSTOM_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase(Locale.ROOT);
+        } else {
+            if ("FREE".equalsIgnoreCase(rawId)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể tạo mới hạng gói với mã FREE.");
+            }
+            if (!rawId.matches("^[A-Z0-9_]{2,50}$")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã hạng gói chỉ gồm chữ in hoa, số và dấu gạch dưới (2-50 ký tự).");
+            }
+            tierId = rawId;
+        }
+
+        Integer existing = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM subscription_tiers WHERE id = ?",
+                Integer.class,
+                tierId
+        );
+        if (existing != null && existing > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Hạng gói với mã " + tierId + " đã tồn tại.");
+        }
+
+        String name = data.get("name") != null ? data.get("name").toString() : "";
+        String description = data.get("description") != null ? data.get("description").toString() : "";
+        String adPolicy = data.get("adPolicy") != null ? data.get("adPolicy").toString() : "NO_ADS";
+        int adFreeDailyLimit = data.get("adFreeDailyLimit") != null ? parseRequiredInt(data.get("adFreeDailyLimit"), "hạn mức bài không quảng cáo") : 0;
+        String skipPolicy = data.get("skipPolicy") != null ? data.get("skipPolicy").toString() : "UNLIMITED";
+        int skipDailyLimit = data.get("skipDailyLimit") != null ? parseRequiredInt(data.get("skipDailyLimit"), "hạn mức chuyển bài") : 0;
+        boolean offlineAllowed = parseBooleanStrict(data.get("offlineAllowed"), true);
+        int offlineMaxTracks = data.get("offlineMaxTracks") != null
+                ? parseRequiredInt(data.get("offlineMaxTracks"), "số bài ngoại tuyến tối đa")
+                : (offlineAllowed ? 100 : 0);
+        int maxDevices = data.get("maxDevices") != null ? parseRequiredInt(data.get("maxDevices"), "số thiết bị tối đa") : 1;
+
+        TierSpec spec = validateTierSpec(
+                tierId, name, description, adPolicy, adFreeDailyLimit,
+                skipPolicy, skipDailyLimit, offlineAllowed, offlineMaxTracks, maxDevices
+        );
+
+        String sql = "INSERT INTO subscription_tiers (" +
+                "id, name, description, ad_policy, ad_free_daily_limit, skip_policy, skip_daily_limit, " +
+                "offline_allowed, offline_max_tracks, max_devices, synced_lyrics, vip_badge, family_sharing, family_members" +
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        jdbcTemplate.update(
+                sql,
+                tierId, spec.name(), spec.description(), spec.adPolicy(), spec.adFreeDailyLimit(),
+                spec.skipPolicy(), spec.skipDailyLimit(), spec.offlineAllowed(), spec.offlineMaxTracks(),
+                spec.maxDevices(), spec.syncedLyrics(), spec.vipBadge(), spec.familySharing(), spec.familyMembers()
+        );
+
+        if (principal != null) {
+            recordAudit(principal, "SUBSCRIPTION_TIER", null, "CREATE_TIER",
+                    "Tạo hạng gói " + tierId + " (" + spec.name() + ")");
+        }
+        return buildTierResponse(tierId, spec);
+    }
+
     /**
      * Cập nhật trực tiếp quyền lợi và giới hạn của một tầng dịch vụ (subscription_tiers).
      * Mọi gói cước gắn tier_id này sẽ ngay lập tức thừa hưởng cấu hình mới nhất mà không bị lệch dữ liệu.
      */
     public void updateSubscriptionTier(String tierId, Map<String, Object> data) {
-        String name = data.get("name") != null ? data.get("name").toString().trim() : null;
-        String description = data.get("description") != null ? data.get("description").toString().trim() : null;
-        String adPolicy = data.get("adPolicy") != null ? data.get("adPolicy").toString().trim() : null;
-        Integer adFreeDailyLimit = data.get("adFreeDailyLimit") != null ? ((Number) data.get("adFreeDailyLimit")).intValue() : null;
-        String skipPolicy = data.get("skipPolicy") != null ? data.get("skipPolicy").toString().trim() : null;
-        Integer skipDailyLimit = data.get("skipDailyLimit") != null ? ((Number) data.get("skipDailyLimit")).intValue() : null;
-        Boolean offlineAllowed = data.get("offlineAllowed") != null ? Boolean.parseBoolean(data.get("offlineAllowed").toString()) : null;
-        Integer offlineMaxTracks = data.get("offlineMaxTracks") != null ? ((Number) data.get("offlineMaxTracks")).intValue() : null;
-        Integer maxDevices = data.get("maxDevices") != null ? ((Number) data.get("maxDevices")).intValue() : null;
-        Boolean syncedLyrics = data.get("syncedLyrics") != null ? Boolean.parseBoolean(data.get("syncedLyrics").toString()) : null;
-        Boolean vipBadge = data.get("vipBadge") != null ? Boolean.parseBoolean(data.get("vipBadge").toString()) : null;
-        Boolean familySharing = data.get("familySharing") != null ? Boolean.parseBoolean(data.get("familySharing").toString()) : null;
-        Integer familyMembers = data.get("familyMembers") != null ? ((Number) data.get("familyMembers")).intValue() : null;
+        updateSubscriptionTier(tierId, data, null);
+    }
 
-        if (maxDevices != null && maxDevices < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số thiết bị đồng thời tối thiểu là 1");
+    public void updateSubscriptionTier(String tierId, Map<String, Object> data, String principal) {
+        List<Map<String, Object>> existingRows = jdbcTemplate.queryForList(
+                "SELECT * FROM subscription_tiers WHERE id = ?",
+                tierId
+        );
+        if (existingRows.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hạng gói: " + tierId);
         }
-        if ((adFreeDailyLimit != null && adFreeDailyLimit < 0)
-                || (skipDailyLimit != null && skipDailyLimit < 0)
-                || (offlineMaxTracks != null && offlineMaxTracks < 0)
-                || (familyMembers != null && familyMembers < 0)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Các giới hạn số lượng không được âm");
-        }
+        Map<String, Object> existing = existingRows.get(0);
+
+        String name = data.containsKey("name")
+                ? (data.get("name") != null ? data.get("name").toString() : "")
+                : (existing.get("name") != null ? existing.get("name").toString() : "");
+        String description = data.containsKey("description")
+                ? (data.get("description") != null ? data.get("description").toString() : "")
+                : (existing.get("description") != null ? existing.get("description").toString() : "");
+        String adPolicy = data.containsKey("adPolicy") && data.get("adPolicy") != null
+                ? data.get("adPolicy").toString()
+                : (existing.get("ad_policy") != null ? existing.get("ad_policy").toString() : "NO_ADS");
+        int adFreeDailyLimit = data.containsKey("adFreeDailyLimit") && data.get("adFreeDailyLimit") != null
+                ? parseRequiredInt(data.get("adFreeDailyLimit"), "hạn mức bài không quảng cáo")
+                : toIntValue(existing.get("ad_free_daily_limit"), 0);
+        String skipPolicy = data.containsKey("skipPolicy") && data.get("skipPolicy") != null
+                ? data.get("skipPolicy").toString()
+                : (existing.get("skip_policy") != null ? existing.get("skip_policy").toString() : "UNLIMITED");
+        int skipDailyLimit = data.containsKey("skipDailyLimit") && data.get("skipDailyLimit") != null
+                ? parseRequiredInt(data.get("skipDailyLimit"), "hạn mức chuyển bài")
+                : toIntValue(existing.get("skip_daily_limit"), 0);
+        boolean offlineAllowed = data.containsKey("offlineAllowed") && data.get("offlineAllowed") != null
+                ? parseBooleanStrict(data.get("offlineAllowed"), false)
+                : toBooleanValue(existing.get("offline_allowed"), false);
+        int offlineMaxTracks = data.containsKey("offlineMaxTracks") && data.get("offlineMaxTracks") != null
+                ? parseRequiredInt(data.get("offlineMaxTracks"), "số bài ngoại tuyến tối đa")
+                : toIntValue(existing.get("offline_max_tracks"), 0);
+        int maxDevices = data.containsKey("maxDevices") && data.get("maxDevices") != null
+                ? parseRequiredInt(data.get("maxDevices"), "số thiết bị tối đa")
+                : Math.max(1, toIntValue(existing.get("max_devices"), 1));
+
+        TierSpec spec = validateTierSpec(
+                tierId, name, description, adPolicy, adFreeDailyLimit,
+                skipPolicy, skipDailyLimit, offlineAllowed, offlineMaxTracks, maxDevices
+        );
 
         String sql = "UPDATE subscription_tiers SET " +
-                "name = COALESCE(?, name), " +
-                "description = COALESCE(?, description), " +
-                "ad_policy = COALESCE(?, ad_policy), " +
-                "ad_free_daily_limit = COALESCE(?, ad_free_daily_limit), " +
-                "skip_policy = COALESCE(?, skip_policy), " +
-                "skip_daily_limit = COALESCE(?, skip_daily_limit), " +
-                "offline_allowed = COALESCE(?, offline_allowed), " +
-                "offline_max_tracks = COALESCE(?, offline_max_tracks), " +
-                "max_devices = COALESCE(?, max_devices), " +
-                "synced_lyrics = COALESCE(?, synced_lyrics), " +
-                "vip_badge = COALESCE(?, vip_badge), " +
-                "family_sharing = COALESCE(?, family_sharing), " +
-                "family_members = COALESCE(?, family_members), " +
-                "updated_at = NOW() " +
+                "name = ?, description = ?, ad_policy = ?, ad_free_daily_limit = ?, " +
+                "skip_policy = ?, skip_daily_limit = ?, offline_allowed = ?, offline_max_tracks = ?, " +
+                "max_devices = ?, synced_lyrics = ?, vip_badge = ?, family_sharing = ?, family_members = ? " +
                 "WHERE id = ?";
 
-        int updated = jdbcTemplate.update(sql, name, description, adPolicy, adFreeDailyLimit, skipPolicy, skipDailyLimit,
-                offlineAllowed, offlineMaxTracks, maxDevices, syncedLyrics, vipBadge,
-                familySharing, familyMembers, tierId);
+        int updated = jdbcTemplate.update(
+                sql,
+                spec.name(), spec.description(), spec.adPolicy(), spec.adFreeDailyLimit(),
+                spec.skipPolicy(), spec.skipDailyLimit(), spec.offlineAllowed(), spec.offlineMaxTracks(),
+                spec.maxDevices(), spec.syncedLyrics(), spec.vipBadge(), spec.familySharing(), spec.familyMembers(),
+                tierId
+        );
         if (updated == 0) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tầng quyền lợi: " + tierId);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hạng gói: " + tierId);
+        }
+        if (principal != null) {
+            recordAudit(principal, "SUBSCRIPTION_TIER", null, "UPDATE_TIER",
+                    "Cập nhật quyền lợi hạng gói " + tierId + " (" + spec.name() + ")");
+        }
+    }
+
+    public void deleteSubscriptionTier(String tierId) {
+        deleteSubscriptionTier(tierId, null);
+    }
+
+    public void deleteSubscriptionTier(String tierId, String principal) {
+        if ("FREE".equalsIgnoreCase(tierId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể xóa hạng gói mặc định FREE.");
+        }
+        Long packageCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM service_packages WHERE tier_id = ?",
+                Long.class,
+                tierId
+        );
+        if (packageCount != null && packageCount > 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Không thể xóa hạng gói đang được sử dụng bởi " + packageCount + " gói dịch vụ."
+            );
+        }
+        int deleted = jdbcTemplate.update("DELETE FROM subscription_tiers WHERE id = ?", tierId);
+        if (deleted == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hạng gói: " + tierId);
+        }
+        if (principal != null) {
+            recordAudit(principal, "SUBSCRIPTION_TIER", null, "DELETE_TIER", "Xóa hạng gói " + tierId);
         }
     }
 
     /**
-     * Xóa gói cước an toàn: nếu gói đã phát sinh lịch sử thanh toán thì từ chối
-     * xóa cứng (tránh mất dữ liệu doanh thu), admin nên chuyển gói sang INACTIVE.
+     * Xóa gói cước an toàn: nếu gói đã phát sinh lịch sử thanh toán hoặc đang có thuê bao hoạt động
+     * thì từ chối xóa cứng, admin nên chuyển gói sang INACTIVE.
      */
-    @Transactional
     public void deletePackage(Long packageId) {
+        deletePackage(packageId, null);
+    }
+
+    @Transactional
+    public void deletePackage(Long packageId, String principal) {
         Long paymentCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM payment_transactions t " +
                 "JOIN subscriptions s ON t.subscription_id = s.id " +
@@ -1419,10 +1811,25 @@ public class AdminService {
         if (paymentCount != null && paymentCount > 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Gói này đã phát sinh " + paymentCount + " giao dịch thanh toán nên không thể xóa. " +
-                    "Vui lòng chuyển gói sang trạng thái INACTIVE để ngừng bán thay vì xóa.");
+                    "Vui lòng chuyển gói sang trạng thái Tạm ẩn để ngừng bán thay vì xóa.");
+        }
+        Long activeCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM subscriptions WHERE service_package_id = ? AND status = 'ACTIVE'",
+                Long.class,
+                packageId
+        );
+        if (activeCount != null && activeCount > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Gói này hiện có " + activeCount + " thuê bao đang hoạt động nên không thể xóa. Vui lòng chuyển sang Tạm ẩn.");
         }
         jdbcTemplate.update("DELETE FROM subscriptions WHERE service_package_id = ?", packageId);
-        jdbcTemplate.update("DELETE FROM service_packages WHERE id = ?", packageId);
+        int deleted = jdbcTemplate.update("DELETE FROM service_packages WHERE id = ?", packageId);
+        if (deleted == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy gói dịch vụ #" + packageId);
+        }
+        if (principal != null) {
+            recordAudit(principal, "SERVICE_PACKAGE", packageId, "DELETE_PACKAGE", "Xóa gói dịch vụ #" + packageId);
+        }
     }
 
     public List<Map<String, Object>> getTransactions() {
@@ -1724,13 +2131,52 @@ public class AdminService {
     /**
      * Hủy gói dịch vụ người dùng (chuyển trạng thái sang CANCELLED).
      */
-    @Transactional
     public void cancelSubscription(Long subscriptionId) {
-        int updated = jdbcTemplate.update(
-                "UPDATE subscriptions SET status = 'CANCELLED', updated_at = NOW() WHERE id = ?",
-                subscriptionId);
-        if (updated == 0) {
+        cancelSubscription(subscriptionId, null);
+    }
+
+    @Transactional
+    public void cancelSubscription(Long subscriptionId, String principal) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT s.id, s.user_id, s.status, p.name AS package_name " +
+                "FROM subscriptions s " +
+                "LEFT JOIN service_packages p ON p.id = s.service_package_id " +
+                "WHERE s.id = ?",
+                subscriptionId
+        );
+        if (rows.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy gói đăng ký #" + subscriptionId);
+        }
+        Map<String, Object> row = rows.get(0);
+        String currentStatus = row.get("status") != null ? row.get("status").toString() : "";
+        if (!"ACTIVE".equals(currentStatus) && !"PENDING".equals(currentStatus)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Chỉ có thể hủy thuê bao đang hoạt động hoặc đang chờ thanh toán (trạng thái hiện tại: " + currentStatus + ").");
+        }
+
+        jdbcTemplate.update(
+                "UPDATE subscriptions SET status = 'CANCELLED', updated_at = NOW() WHERE id = ?",
+                subscriptionId
+        );
+        if ("PENDING".equals(currentStatus)) {
+            jdbcTemplate.update(
+                    "UPDATE payment_transactions SET status = 'CANCELLED', updated_at = NOW() WHERE subscription_id = ? AND status = 'PENDING'",
+                    subscriptionId
+            );
+        }
+
+        Long userId = row.get("user_id") instanceof Number n ? n.longValue() : null;
+        String packageName = row.get("package_name") != null ? row.get("package_name").toString() : ("#" + subscriptionId);
+        if (notificationService != null && userId != null) {
+            notificationService.notifySubscriptionManagementCancelled(
+                    userId,
+                    subscriptionId,
+                    "Quản trị viên đã hủy gói dịch vụ \"" + packageName + "\" (#" + subscriptionId + ") trên tài khoản của bạn."
+            );
+        }
+        if (principal != null) {
+            recordAudit(principal, "SUBSCRIPTION", subscriptionId, "CANCEL_SUBSCRIPTION",
+                    "Hủy thuê bao #" + subscriptionId + " (" + packageName + ", trạng thái trước: " + currentStatus + ")");
         }
     }
 

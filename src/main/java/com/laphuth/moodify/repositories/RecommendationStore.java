@@ -185,7 +185,6 @@ public class RecommendationStore {
         if (includeSimulated) {
             Set<Long> syntheticUsers = new HashSet<>(jdbc.queryForList("""
                 SELECT id FROM users WHERE role='USER' AND status='ACTIVE'
-                  AND LEFT(username,9)='rec_seed_' AND email LIKE '%@recommendation-seed.invalid'
                 """, Long.class));
             Query query = Query.query(Criteria.where("kind").is("SIMULATED_PLAYLIST_BEHAVIOR")
                 .and("provenance").is("SIMULATED").and("event_type").is("LISTEN")

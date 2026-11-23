@@ -69,14 +69,14 @@ public class SubscriptionService {
         m.put("tierName", row.get("tier_name") != null ? row.get("tier_name") : row.get("name"));
         m.put("adPolicy", adPolicy);
         m.put("adFreeDailyLimit", toInt(row.get("ad_free_daily_limit"), 0));
-        m.put("adIntervalAfterLimit", "DAILY_QUOTA".equals(adPolicy) ? 7 : 0);
+        m.put("adIntervalAfterLimit", "DAILY_QUOTA".equals(adPolicy) ? 7 : ("FULL_ADS".equals(adPolicy) ? 2 : 0));
         m.put("skipPolicy", row.getOrDefault("skip_policy", "UNLIMITED"));
         m.put("skipDailyLimit", toInt(row.get("skip_daily_limit"), 0));
         m.put("offlineAllowed", toBool(row.get("offline_allowed"), true));
         m.put("offlineMaxTracks", toInt(row.get("offline_max_tracks"), 100));
         m.put("maxDevices", toInt(row.get("max_devices"), 1));
         m.put("syncedLyrics", toBool(row.get("synced_lyrics"), true));
-        m.put("vipBadge", toBool(row.get("vip_badge"), true));
+        m.put("vipBadge", toBool(row.get("vip_badge"), !"FREE".equalsIgnoreCase(tierId)));
         m.put("familySharing", toBool(row.get("family_sharing"), false));
         m.put("familyMembers", toInt(row.get("family_members"), 0));
         return m;
@@ -123,10 +123,65 @@ public class SubscriptionService {
             Map<String, Object> entitlements = mapTierToEntitlements(row);
             String featuresJson = toJsonString(entitlements);
             row.put("tierId", row.get("tier_id"));
+            row.put("tierName", row.get("tier_name"));
+            row.put("durationDays", row.get("duration_days"));
             row.put("featuresJson", featuresJson);
             row.put("entitlements", entitlements);
         }
         return rows;
+    }
+
+    /**
+     * Lấy danh sách hạng gói công khai để trang bán hàng hiển thị bảng so sánh động.
+     */
+    public List<Map<String, Object>> getPublicSubscriptionTiers() {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+            "SELECT id, name, description, ad_policy, ad_free_daily_limit, skip_policy, skip_daily_limit, " +
+            "       offline_allowed, offline_max_tracks, max_devices, synced_lyrics, vip_badge, family_sharing, family_members " +
+            "FROM subscription_tiers " +
+            "ORDER BY FIELD(id, 'FREE', 'INDIVIDUAL_BASIC', 'INDIVIDUAL_FULL', 'FAMILY'), id ASC"
+        );
+        List<Map<String, Object>> result = new ArrayList<>(rows.size() + 1);
+        boolean hasFree = false;
+        for (Map<String, Object> row : rows) {
+            String tierId = row.get("id") != null ? String.valueOf(row.get("id")) : "";
+            if ("FREE".equalsIgnoreCase(tierId)) {
+                hasFree = true;
+            }
+            Map<String, Object> entitlements = mapTierToEntitlements(row);
+            Map<String, Object> tier = new LinkedHashMap<>();
+            tier.put("id", tierId);
+            tier.put("name", row.get("name"));
+            tier.put("description", row.get("description") != null ? row.get("description") : "");
+            tier.put("adPolicy", entitlements.get("adPolicy"));
+            tier.put("adFreeDailyLimit", entitlements.get("adFreeDailyLimit"));
+            tier.put("skipPolicy", entitlements.get("skipPolicy"));
+            tier.put("skipDailyLimit", entitlements.get("skipDailyLimit"));
+            tier.put("offlineAllowed", entitlements.get("offlineAllowed"));
+            tier.put("offlineMaxTracks", entitlements.get("offlineMaxTracks"));
+            tier.put("maxDevices", entitlements.get("maxDevices"));
+            tier.put("vipBadge", entitlements.get("vipBadge"));
+            tier.put("entitlements", entitlements);
+            result.add(tier);
+        }
+        if (!hasFree) {
+            Map<String, Object> freeEnt = freeEntitlements();
+            Map<String, Object> freeTier = new LinkedHashMap<>();
+            freeTier.put("id", "FREE");
+            freeTier.put("name", freeEnt.get("tierName"));
+            freeTier.put("description", "Tài khoản nghe nhạc cơ bản kèm quảng cáo");
+            freeTier.put("adPolicy", freeEnt.get("adPolicy"));
+            freeTier.put("adFreeDailyLimit", freeEnt.get("adFreeDailyLimit"));
+            freeTier.put("skipPolicy", freeEnt.get("skipPolicy"));
+            freeTier.put("skipDailyLimit", freeEnt.get("skipDailyLimit"));
+            freeTier.put("offlineAllowed", freeEnt.get("offlineAllowed"));
+            freeTier.put("offlineMaxTracks", freeEnt.get("offlineMaxTracks"));
+            freeTier.put("maxDevices", freeEnt.get("maxDevices"));
+            freeTier.put("vipBadge", freeEnt.get("vipBadge"));
+            freeTier.put("entitlements", freeEnt);
+            result.add(0, freeTier);
+        }
+        return result;
     }
 
     /**
@@ -791,7 +846,7 @@ public class SubscriptionService {
 
         String currentTier = String.valueOf(context.current().get("tier_id"));
         String targetTier = String.valueOf(targetPackage.get("tier_id"));
-        int comparison = compareTier(targetTier, currentTier);
+        int comparison = compareTier(targetTier, currentTier, targetPackage, context.current());
         if (comparison > 0) {
             int bonusDays = calculateUpgradeBonusDays(context.current(), durationDays, price, now);
             LocalDateTime end = now.plusDays((long) durationDays + bonusDays);
@@ -811,11 +866,35 @@ public class SubscriptionService {
                 "Gói hiện tại được giữ nguyên đến " + formatDate(start) + "; gói mới bắt đầu sau thời điểm đó.", 0);
     }
 
-    /** FAMILY is the highest package tier, followed by FULL and BASIC. */
-    private int compareTier(String targetTier, String currentTier) {
+    /** FAMILY is the highest known tier, followed by FULL and BASIC; custom tiers compare daily catalog price. */
+    private int compareTier(String targetTier, String currentTier,
+                            Map<String, Object> targetPackage, Map<String, Object> currentPackage) {
         if (Objects.equals(targetTier, currentTier)) return 0;
-        if (tierRank(targetTier) == 0 || tierRank(currentTier) == 0) return -1;
-        return Integer.compare(tierRank(targetTier), tierRank(currentTier));
+        int targetRank = tierRank(targetTier);
+        int currentRank = tierRank(currentTier);
+        if (targetRank > 0 && currentRank > 0) {
+            return Integer.compare(targetRank, currentRank);
+        }
+        BigDecimal targetDaily = calculateDailyCatalogPrice(targetPackage);
+        BigDecimal currentDaily = calculateDailyCatalogPrice(currentPackage);
+        int dailyCmp = targetDaily.compareTo(currentDaily);
+        if (dailyCmp != 0) {
+            return dailyCmp > 0 ? 1 : -1;
+        }
+        BigDecimal targetTotal = targetPackage != null && targetPackage.get("price") != null
+                ? asBigDecimal(targetPackage.get("price")) : BigDecimal.ZERO;
+        BigDecimal currentTotal = currentPackage != null && currentPackage.get("price") != null
+                ? asBigDecimal(currentPackage.get("price")) : BigDecimal.ZERO;
+        return targetTotal.compareTo(currentTotal) >= 0 ? 1 : -1;
+    }
+
+    private BigDecimal calculateDailyCatalogPrice(Map<String, Object> pkg) {
+        if (pkg == null || pkg.get("price") == null || pkg.get("duration_days") == null) {
+            return BigDecimal.ZERO;
+        }
+        int days = ((Number) pkg.get("duration_days")).intValue();
+        if (days <= 0) return BigDecimal.ZERO;
+        return asBigDecimal(pkg.get("price")).divide(BigDecimal.valueOf(days), 8, RoundingMode.HALF_UP);
     }
 
     private int tierRank(String tierId) {

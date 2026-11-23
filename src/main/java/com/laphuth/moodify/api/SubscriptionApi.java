@@ -37,6 +37,14 @@ public class SubscriptionApi {
     }
 
     /**
+     * Lấy cấu hình hạng gói công khai (FREE + các hạng gói hiện có).
+     */
+    @GetMapping("/packages/tiers")
+    public ResponseEntity<List<Map<String, Object>>> getPublicSubscriptionTiers() {
+        return ResponseEntity.ok(subscriptionService.getPublicSubscriptionTiers());
+    }
+
+    /**
      * Lấy thông tin bản quyền và trạng thái gói cước của người dùng hiện tại.
      */
     @GetMapping("/subscriptions/me")
@@ -93,13 +101,17 @@ public class SubscriptionApi {
             ));
         }
 
-        // Kiểm tra quyền Premium
+        // Kiểm tra quyền tải ngoại tuyến theo gói hiện tại
         Map<String, Object> sub = subscriptionService.getCurrentUserSubscription(authentication.getName());
         boolean isPremium = Boolean.TRUE.equals(sub.get("isPremium"));
-        if (!isPremium) {
+        Map<?, ?> entitlements = sub.get("entitlements") instanceof Map<?, ?> ent ? ent : null;
+        boolean offlineAllowed = entitlements != null && Boolean.TRUE.equals(entitlements.get("offlineAllowed"));
+        int maxTracks = entitlements != null && entitlements.get("offlineMaxTracks") instanceof Number num
+                ? num.intValue() : 0;
+        if (!isPremium || !offlineAllowed || maxTracks <= 0) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                "error", "PREMIUM_REQUIRED",
-                "message", "Tính năng tải nhạc ngoại tuyến chỉ dành riêng cho tài khoản Moodify Premium."
+                "error", isPremium ? "OFFLINE_NOT_ALLOWED" : "PREMIUM_REQUIRED",
+                "message", "Gói dịch vụ hiện tại của bạn không bao gồm quyền tải nhạc ngoại tuyến."
             ));
         }
 
