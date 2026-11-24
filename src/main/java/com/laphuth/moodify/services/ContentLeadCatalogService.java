@@ -278,6 +278,11 @@ public class ContentLeadCatalogService {
         if (request.getCopyrightOwner() != null && request.getCopyrightOwner().trim().length() > 200) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên chủ sở hữu quyền không được vượt quá 200 ký tự.");
         }
+        // A contract code identifies one agreement; a rejected (REVOKED) upload may be resubmitted.
+        if (!contractCode.isEmpty() && songLicenseRepository.existsByDistributionContractCodeIgnoreCaseAndStatusNot(
+                contractCode, com.laphuth.moodify.entities.enums.LicenseStatus.REVOKED)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã hợp đồng \"" + contractCode + "\" đã được sử dụng cho một bài hát khác.");
+        }
         boolean hasContractReference = request.getDistributionContractId() != null || !contractCode.isEmpty();
         if (request.getDistributorId() != null && request.getDistributorId() > 0 && !hasContractReference) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã hợp đồng trong tài liệu là bắt buộc khi chọn đơn vị phân phối.");

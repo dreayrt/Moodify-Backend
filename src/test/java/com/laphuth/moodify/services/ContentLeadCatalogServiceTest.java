@@ -167,6 +167,29 @@ class ContentLeadCatalogServiceTest {
     }
 
     @Test
+    void uploadRejectsContractCodeAlreadyUsedByAnotherTrack() {
+        when(userRepository.findByEmailOrUsername("contentlead01", "contentlead01"))
+            .thenReturn(Optional.of(contentLeadUser("artist-1")));
+        when(documentInspector.inspect(any())).thenReturn("TEXT_CHECKED");
+        when(songLicenseRepository.existsByDistributionContractCodeIgnoreCaseAndStatusNot(
+            eq("TEST-LNAB-20261110-0001"), eq(com.laphuth.moodify.entities.enums.LicenseStatus.REVOKED))).thenReturn(true);
+        TrackUploadRequest request = new TrackUploadRequest();
+        request.setTitle("Duplicate contract song");
+        request.setCopyrightOwner("Test owner");
+        request.setDistributionContractCode(" TEST-LNAB-20261110-0001 ");
+        request.setLicenseType("DEMO_SIMULATED");
+        request.setIssueDate(LocalDate.of(2020, 1, 1).toString());
+        request.setPerpetual(true);
+
+        assertThatThrownBy(() -> contentLeadCatalogService.uploadTrack("contentlead01", request,
+            new MockMultipartFile("audioFile", "song.mp3", "audio/mpeg", new byte[]{1}), null,
+            new MockMultipartFile("licenseDocFile", "license.pdf", "application/pdf", new byte[]{1})))
+            .isInstanceOfSatisfying(ResponseStatusException.class,
+                e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+        verify(trackRepository, never()).save(any());
+    }
+
+    @Test
     void getCurrentCatalogShouldReturnTracksForContentLead() {
         User user = contentLeadUser("44ZNcW1ZSGB9oqX1ALnriH");
         Artist artist = artist("44ZNcW1ZSGB9oqX1ALnriH");

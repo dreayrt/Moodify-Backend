@@ -16,6 +16,8 @@ public interface SongLicenseRepository extends JpaRepository<SongLicense, Long> 
     @Query("UPDATE SongLicense l SET l.status=com.laphuth.moodify.entities.enums.LicenseStatus.EXPIRED WHERE l.id=:id AND l.status=com.laphuth.moodify.entities.enums.LicenseStatus.ACTIVE AND l.expiryDate<:today")
     int expireIfActive(@Param("id") Long id,@Param("today") java.time.LocalDate today);
 
+    boolean existsByDistributionContractCodeIgnoreCaseAndStatusNot(String code, com.laphuth.moodify.entities.enums.LicenseStatus status);
+
     Optional<SongLicense> findByTrackId(String trackId);
     Optional<SongLicense> findFirstByTrackIdOrderByIdDesc(String trackId);
     @Query(value="""
